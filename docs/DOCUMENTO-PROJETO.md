@@ -196,7 +196,7 @@ O GitHub é o ponto de encontro: as duas IAs leem o mesmo repositório e convers
 
 - [x] Desenhar as telas principais (receitas, editor do time, execução, resultado)
 - [x] Criar conta no GitHub e o repositório do projeto
-- [ ] Criar contas de API (Anthropic, OpenAI, Google) com limite baixo de gasto — adiado para quando a etapa 4 conectar as IAs reais
+- [ ] Criar contas de API (Anthropic, OpenAI, Google) com limite baixo de gasto — adiado: o fluxo é construído primeiro com uma IA simulada (custo zero) e só é ligado às IAs reais quando já estiver funcionando visivelmente na tela
 - [x] Escrever o `AGENTS.md` com a stack e as regras
 - [ ] Construir o primeiro fluxo ponta a ponta: uma receita, três IAs, resultado na tela
 - [ ] Testar com 5 a 10 pessoas (colegas do Insper, conhecidos) e anotar o que travou

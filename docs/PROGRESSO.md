@@ -84,7 +84,8 @@ revisor) e a IA recomendada para cada um. Pode editar ou criar projeto próprio.
 - Decisões: código com nomes em inglês e telas em português; commits e PRs em português;
   o repositório é a casa oficial do PROGRESSO e do documento.
 - **Contas de API adiadas:** a etapa 4 começa com uma "IA simulada" (respostas falsas, custo zero).
-  Créditos (mínimo, ~US$5 cada, recarga automática DESLIGADA) e chaves só quando for conectar as IAs reais.
+  Só depois que o fluxo estiver funcionando visivelmente na tela é que se compram os créditos
+  (mínimo, ~US$5 cada, recarga automática DESLIGADA), se criam as chaves e se conectam as IAs reais.
   Gemini: plano grátis basta para testes (não enviar dados reais). Chaves nunca no chat; só no `.env.local`.
 
 ## Próximo passo
