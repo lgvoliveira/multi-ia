@@ -38,7 +38,8 @@ cada IA trabalhando na tela até o resultado final.
 
 | Camada | Escolha |
 |--------|---------|
-| Interface e servidor | Next.js (App Router) + TypeScript |
+| Interface e servidor | Next.js 16 (App Router) + TypeScript |
+| Estilos | CSS Modules (um `.module.css` por componente) usando só os tokens de `styles/tokens.css`. Sem Tailwind |
 | Login e banco de dados | Supabase |
 | Hospedagem | Vercel |
 | IAs | SDKs oficiais (Anthropic, OpenAI, Google) — ou OpenRouter: **decisão em aberto** |
@@ -63,15 +64,17 @@ MOTOR DE ORQUESTRAÇÃO  -- receitas e times, executor de etapas, créditos
         +--> Banco de dados (usuários, histórico, créditos)
 ```
 
-Estrutura de pastas proposta (criada na etapa 4, pode ser ajustada com aprovação):
+Estrutura de pastas (criada na etapa 4, pode ser ajustada com aprovação):
 
 ```
 app/                 telas e rotas do Next.js
+components/          pedaços de tela reutilizáveis (cada um com seu .module.css)
 lib/engine/          motor: executa as etapas de um time
 lib/providers/       um adaptador por IA, todos com a mesma interface
 lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema)
 styles/tokens.css    TODAS as cores, fontes, espaçamentos e arredondamentos
 docs/                documento do projeto e diário de progresso
+.github/workflows/   checagens automáticas (CI) que rodam em todo pull request
 ```
 
 ## 5. Regras de funcionamento (especificação do MVP)
@@ -118,7 +121,18 @@ docs/                documento do projeto e diário de progresso
 - **Nomes no código em inglês** (variáveis, funções, arquivos). **Textos da interface em português do Brasil.**
 - Comentários em português, só onde a lógica não é óbvia.
 - Funções pequenas, com um propósito claro. Prefira código simples e legível a código "esperto".
-- Antes de abrir um PR, rode lint, checagem de tipos e testes (os comandos exatos serão definidos na etapa 4 e listados aqui).
+- Antes de abrir um PR, rode as checagens abaixo. Elas também rodam sozinhas no GitHub (`.github/workflows/ci.yml`),
+  e um PR com checagem vermelha não está pronto.
+
+  | Comando | O que faz |
+  |---------|-----------|
+  | `npm run lint` | Procura erros comuns e código desleixado (ESLint) |
+  | `npm run typecheck` | Confere os tipos do TypeScript |
+  | `npm run build` | Monta a versão de produção do site |
+  | `npm run dev` | Roda o site na máquina, em http://localhost:3000 |
+
+- Esta versão do Next.js é mais nova que o conhecimento de muitas IAs: antes de usar uma API do Next.js,
+  confira o guia correspondente em `node_modules/next/dist/docs/` (veja o bloco no fim deste arquivo).
 
 ## 8. Fluxo de trabalho no Git
 
@@ -139,3 +153,18 @@ contador de créditos.
 **Fica de fora por enquanto:** pagamento real (acesso por convite), "Traga sua chave", upload de arquivos,
 vídeo, execução de código, conector MCP, WhatsApp, projeto próprio totalmente livre.
 Não implemente nada desta lista sem pedido explícito.
+
+## 10. Bloco automático do Next.js
+
+O bloco abaixo é escrito e mantido pelo próprio Next.js (o `npm run dev` o recoloca se ele sumir).
+Não edite. Em resumo: antes de mexer em algo do Next.js, leia o guia da versão instalada em `node_modules/next/dist/docs/`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
