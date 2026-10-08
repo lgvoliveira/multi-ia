@@ -99,8 +99,8 @@ peças invisíveis com testes primeiro, telas depois. Cada tarefa = 1 issue + 1 
 
 | # | Tarefa | Status |
 |---|--------|--------|
-| T0 | Preparar o terreno: GitHub CLI (`gh`) + issues no GitHub | GitHub CLI instalado; falta login e issues |
-| T1 | Esqueleto do site: Next.js, tokens visuais, topo, CI | Em andamento (branch `feat/esqueleto-nextjs`) |
+| T0 | Preparar o terreno: GitHub CLI (`gh`) + issues no GitHub | Concluída (issues #1 a #8, marco "Etapa 4") |
+| T1 | Esqueleto do site: Next.js, tokens visuais, topo, CI | Em revisão (branch `feat/esqueleto-nextjs`) |
 | T2 | IA simulada: contrato do "provedor", respostas em pedaços, testes (Vitest) | A fazer |
 | T3 | Receita "Criar um site" como dados (papéis, prompts, etapas) + 3 receitas "em breve" | A fazer |
 | T4 | Motor de orquestração: executa as etapas e narra eventos | A fazer |
@@ -128,7 +128,8 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 
 ## Próximo passo
 
-Terminar a T0 (login do `gh` + issues) e abrir o PR da T1. Depois, T2 (IA simulada).
+Luis testa e faz o merge do PR da T1. Depois, T2 (IA simulada, issue #2).
+As issues de cada tarefa têm o número igual ao da tarefa (T1 = #1 … T8 = #8).
 
 ## Decisões em aberto
 
