@@ -4,7 +4,7 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 08/10/2026 (noite)
+**Última atualização:** 08/10/2026 (noite, início da etapa 4)
 **Etapa atual:** 4 — Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela)
 
 ---
@@ -70,7 +70,7 @@ revisor) e a IA recomendada para cada um. Pode editar ou criar projeto próprio.
 | 1 | Ideia, discussão e documento do projeto | Concluída | Cowork |
 | 2 | Desenho das telas + regras de funcionamento | Concluída | Cowork |
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
-| 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | A fazer | Claude Code |
+| 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Em andamento | Claude Code |
 | 5 | Demais receitas do MVP, login, histórico, créditos | A fazer | Claude Code |
 | 6 | Teste com 5 a 10 usuários e ajustes | A fazer | — |
 
@@ -88,10 +88,47 @@ revisor) e a IA recomendada para cada um. Pode editar ou criar projeto próprio.
   (mínimo, ~US$5 cada, recarga automática DESLIGADA), se criam as chaves e se conectam as IAs reais.
   Gemini: plano grátis basta para testes (não enviar dados reais). Chaves nunca no chat; só no `.env.local`.
 
+## Etapa 4 — plano aprovado (08/10/2026)
+
+Receita escolhida: **Criar um site** (única do MVP com 3 IAs). Quatro etapas em sequência:
+Chefe/Claude planeja → Programador/GPT escreve o site → Revisor/Gemini aponta erros →
+Consolidação/Claude entrega o site final (um arquivo HTML). Construção "de dentro para fora":
+peças invisíveis com testes primeiro, telas depois. Cada tarefa = 1 issue + 1 branch + 1 PR.
+
+**Parte A — fluxo completo com a IA simulada (custo zero)**
+
+| # | Tarefa | Status |
+|---|--------|--------|
+| T0 | Preparar o terreno: GitHub CLI (`gh`) + issues no GitHub | GitHub CLI instalado; falta login e issues |
+| T1 | Esqueleto do site: Next.js, tokens visuais, topo, CI | Em andamento (branch `feat/esqueleto-nextjs`) |
+| T2 | IA simulada: contrato do "provedor", respostas em pedaços, testes (Vitest) | A fazer |
+| T3 | Receita "Criar um site" como dados (papéis, prompts, etapas) + 3 receitas "em breve" | A fazer |
+| T4 | Motor de orquestração: executa as etapas e narra eventos | A fazer |
+| T5 | Telas: Receitas e Montar o time (trocar IA, pedido com contador de 4.000) | A fazer |
+| T6 | Execução ao vivo: rota `/api/runs` com streaming + tela "Seu time está trabalhando" | A fazer |
+| T7 | Resultado: prévia do site (iframe isolado), código, baixar arquivo, resumo do time | A fazer |
+| T8 | Quando uma IA falha: 2 tentativas, troca de IA, aviso na tela (pausar/retomar fica para a etapa 5) | A fazer |
+
+**Parte B — IAs de verdade (só depois da Parte A funcionando na tela):** decidir OpenRouter x APIs
+diretas; comprar créditos mínimos (~US$ 5, recarga automática desligada) e criar chaves no `.env.local`;
+**T9** adaptadores reais (a IA simulada continua para testes); medir o custo real em dólar.
+
+**Fora da etapa 4:** login, créditos, histórico, banco e publicação na Vercel (publicar com IAs reais
+sem login deixaria qualquer um gastar nossos créditos; a publicação entra junto com o login).
+
+**Decisões desta etapa**
+- Estilos com **CSS Modules** + tokens (sem Tailwind).
+- **Vitest** aprovado para testes automáticos (entra na T2; só desenvolvimento).
+- **GitHub CLI** instalado na máquina do Luis para o Claude criar issues e PRs.
+- Next.js **16.4** (gerado com `create-next-app`, sem pasta `src/`). Esta versão traz a própria documentação
+  em `node_modules/next/dist/docs/` e mantém um bloco automático no fim do AGENTS.md.
+- Endereços das páginas com nomes em inglês (regra de nomes de arquivo do AGENTS.md).
+- **Codex como revisor:** ainda não confirmado se está conectado ao GitHub. Enquanto não estiver,
+  o Luis revisa e faz o merge sozinho.
+
 ## Próximo passo
 
-Etapa 4 no **Claude Code**, no terminal do VS Code, dentro da pasta do repositório.
-Começar pelo plano da etapa em tarefas pequenas, com a IA simulada.
+Terminar a T0 (login do `gh` + issues) e abrir o PR da T1. Depois, T2 (IA simulada).
 
 ## Decisões em aberto
 
