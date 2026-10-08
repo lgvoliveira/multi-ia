@@ -2,19 +2,22 @@
 
 > Diário do projeto. Toda conversa nova (Cowork ou Claude Code) começa lendo este arquivo.
 > Atualizado pelo Claude ao fim de cada etapa.
+> **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
 **Última atualização:** 08/10/2026 (noite)
-**Etapa atual:** 3 — Preparar ambiente (GitHub, pasta fora do OneDrive, Node.js, Git, AGENTS.md)
+**Etapa atual:** 4 — Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela)
 
 ---
 
 ## Links importantes
 
+- Repositório (privado): https://github.com/lgvoliveira/multi-ia
+- Pasta local do código: `C:\Users\Luis\projetos\multi-ia` (fora do OneDrive)
 - Documento do projeto (visão, receitas, arquitetura, negócio, MVP):
   https://claude.ai/code/artifact/2b5773d4-3ece-4278-9147-06cd89fda02d
 - Protótipo das telas (canvas de design, 10 telas clicáveis):
   https://claude.ai/artifact/XWxF7wU57nRp5Yq7PTZY3n
-- Cópia local do documento: `DOCUMENTO-PROJETO.md` (nesta pasta; o online é a versão viva)
+- Documento no repositório: `docs/DOCUMENTO-PROJETO.md` (versão oficial; o online é para leitura e pode ficar defasado)
 
 ## Resumo da ideia
 
@@ -56,6 +59,9 @@ revisor) e a IA recomendada para cada um. Pode editar ou criar projeto próprio.
 - Disponibilidade: ~1 h por dia útil + sessões mais longas no sábado e domingo.
 - Está aprendendo; prefere explicações claras quando o tema é novo.
 - Modelo: Opus 5.5 em esforço Alto como padrão; Extra alto para sessões longas de código.
+- Regra de troca de conversa: o Claude avisa quando for hora de abrir uma conversa nova e diz
+  onde abrir (Cowork ou Claude Code), qual mensagem colar e qual nível de esforço usar.
+  Antes de trocar, atualiza este arquivo.
 
 ## Etapas
 
@@ -63,19 +69,28 @@ revisor) e a IA recomendada para cada um. Pode editar ou criar projeto próprio.
 |---|-------|--------|------|
 | 1 | Ideia, discussão e documento do projeto | Concluída | Cowork |
 | 2 | Desenho das telas + regras de funcionamento | Concluída | Cowork |
-| 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, contas de API | A fazer | Cowork / Claude Code |
+| 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | A fazer | Claude Code |
 | 5 | Demais receitas do MVP, login, histórico, créditos | A fazer | Claude Code |
 | 6 | Teste com 5 a 10 usuários e ajustes | A fazer | — |
 
+## Etapa 3 — o que ficou pronto (08/10/2026)
+
+- Node.js v24 e npm 11 (já existiam); política de execução do PowerShell liberada para o usuário.
+- Git 2.55 instalado e configurado (nome, e-mail lgvoliveira1304@gmail.com, branch padrão `main`).
+- Repositório privado `lgvoliveira/multi-ia` no GitHub, clonado em `C:\Users\Luis\projetos\multi-ia`.
+- `AGENTS.md` (regras para as IAs), `CLAUDE.md` (aponta para o AGENTS.md), `.gitattributes`, `README.md`, `docs/`.
+- Claude Code 2.1.295 instalado, logado com a assinatura e testado: leu o AGENTS.md corretamente.
+- Decisões: código com nomes em inglês e telas em português; commits e PRs em português;
+  o repositório é a casa oficial do PROGRESSO e do documento.
+- **Contas de API adiadas:** a etapa 4 começa com uma "IA simulada" (respostas falsas, custo zero).
+  Créditos (mínimo, ~US$5 cada, recarga automática DESLIGADA) e chaves só quando for conectar as IAs reais.
+  Gemini: plano grátis basta para testes (não enviar dados reais). Chaves nunca no chat; só no `.env.local`.
+
 ## Próximo passo
 
-Protótipo com 10 telas clicáveis: receitas, montar o time, time trabalhando, resultado,
-entrar, criar conta, meus projetos, histórico, novo projeto próprio, minhas chaves de API.
-Nome provisório na tela: "Multi-IA". Visual: fundo cinza claro, botões azuis (#2A3BD1),
-cor por IA (Claude laranja, GPT verde, Gemini azul), fontes Bricolage Grotesque + IBM Plex Sans.
-Telas aprovadas como referência (não serão detalhadas mais). Regras de funcionamento definidas.
-Próximo: etapa 3 (preparar ambiente) em uma conversa nova.
+Etapa 4 no **Claude Code**, no terminal do VS Code, dentro da pasta do repositório.
+Começar pelo plano da etapa em tarefas pequenas, com a IA simulada.
 
 ## Decisões em aberto
 
@@ -86,5 +101,11 @@ Próximo: etapa 3 (preparar ambiente) em uma conversa nova.
 
 ## Como retomar em uma conversa nova
 
-1. Conecte a pasta `plataforma-multi-ia`.
-2. Cole: "Estamos no projeto da plataforma multi-IA. Leia o PROGRESSO.md da pasta e continue de onde paramos."
+**No Claude Code (etapas de código):**
+1. Abra o VS Code na pasta `C:\Users\Luis\projetos\multi-ia` e abra o terminal (Ctrl + ').
+2. Rode `git pull` (traz a versão mais nova do GitHub) e depois `claude`.
+3. Cole: "Estamos no projeto Multi-IA. Leia o AGENTS.md e o docs/PROGRESSO.md e continue de onde paramos."
+
+**No Cowork (discussões, documentos, planejamento):**
+1. Conecte a pasta `C:\Users\Luis\projetos\multi-ia`.
+2. Cole: "Estamos no projeto da plataforma multi-IA. Leia o docs/PROGRESSO.md e continue de onde paramos."

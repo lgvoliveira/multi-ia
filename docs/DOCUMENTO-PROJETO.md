@@ -1,7 +1,7 @@
 # Plataforma Multi-IA — Documento do Projeto
 
-> Cópia do documento online (versão viva): https://claude.ai/code/artifact/2b5773d4-3ece-4278-9147-06cd89fda02d
-> Atualizada pelo Claude ao fim de cada etapa. Edite sempre o online.
+> **Versão oficial:** este arquivo, no repositório. Atualizado pelo Claude ao fim de cada etapa.
+> Versão online (para leitura e compartilhamento, pode ficar defasada): https://claude.ai/code/artifact/2b5773d4-3ece-4278-9147-06cd89fda02d
 
 Oct 8, 2026 · @Luis Gustavo Vilela Oliveira
 
@@ -194,10 +194,10 @@ O GitHub é o ponto de encontro: as duas IAs leem o mesmo repositório e convers
 
 **Próximos passos**
 
-- [ ] Desenhar as telas principais (receitas, editor do time, execução, resultado)
-- [ ] Criar conta no GitHub e o repositório do projeto
-- [ ] Criar contas de API (Anthropic, OpenAI, Google) com limite baixo de gasto, para testar as chamadas durante o desenvolvimento
-- [ ] Escrever o `AGENTS.md` com a stack e as regras
+- [x] Desenhar as telas principais (receitas, editor do time, execução, resultado)
+- [x] Criar conta no GitHub e o repositório do projeto
+- [ ] Criar contas de API (Anthropic, OpenAI, Google) com limite baixo de gasto — adiado para quando a etapa 4 conectar as IAs reais
+- [x] Escrever o `AGENTS.md` com a stack e as regras
 - [ ] Construir o primeiro fluxo ponta a ponta: uma receita, três IAs, resultado na tela
 - [ ] Testar com 5 a 10 pessoas (colegas do Insper, conhecidos) e anotar o que travou
 - [ ] Mapear players brasileiros de IA e automação
