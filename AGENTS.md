@@ -43,6 +43,7 @@ cada IA trabalhando na tela até o resultado final.
 | Login e banco de dados | Supabase |
 | Hospedagem | Vercel |
 | IAs | SDKs oficiais (Anthropic, OpenAI, Google) — ou OpenRouter: **decisão em aberto** |
+| Testes automáticos | Vitest (arquivos `*.test.ts` ao lado do código que testam) |
 | Gerenciador de pacotes | npm |
 | Node.js | 24 LTS |
 
@@ -70,7 +71,8 @@ Estrutura de pastas (criada na etapa 4, pode ser ajustada com aprovação):
 app/                 telas e rotas do Next.js
 components/          pedaços de tela reutilizáveis (cada um com seu .module.css)
 lib/engine/          motor: executa as etapas de um time
-lib/providers/       um adaptador por IA, todos com a mesma interface
+lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts). catalog.ts é só
+                     dados e pode ir para a tela; registry.ts entrega as IAs e é SÓ do servidor
 lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema)
 styles/tokens.css    TODAS as cores, fontes, espaçamentos e arredondamentos
 docs/                documento do projeto e diário de progresso
@@ -128,6 +130,7 @@ docs/                documento do projeto e diário de progresso
   |---------|-----------|
   | `npm run lint` | Procura erros comuns e código desleixado (ESLint) |
   | `npm run typecheck` | Confere os tipos do TypeScript |
+  | `npm test` | Roda os testes automáticos uma vez (`npm run test:watch` fica rodando a cada mudança) |
   | `npm run build` | Monta a versão de produção do site |
   | `npm run dev` | Roda o site na máquina, em http://localhost:3000 |
 
