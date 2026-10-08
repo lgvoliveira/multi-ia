@@ -20,5 +20,6 @@ Checagens (as mesmas que o GitHub roda em todo pull request):
 ```bash
 npm run lint        # procura erros comuns no código
 npm run typecheck   # confere os tipos do TypeScript
+npm test            # roda os testes automáticos
 npm run build       # monta a versão de produção
 ```
