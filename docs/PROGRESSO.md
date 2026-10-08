@@ -101,8 +101,8 @@ peças invisíveis com testes primeiro, telas depois. Cada tarefa = 1 issue + 1 
 |---|--------|--------|
 | T0 | Preparar o terreno: GitHub CLI (`gh`) + issues no GitHub | Concluída (issues #1 a #8, marco "Etapa 4") |
 | T1 | Esqueleto do site: Next.js, tokens visuais, topo, CI | Concluída (PR #9) |
-| T2 | IA simulada: contrato do "provedor", respostas em pedaços, testes (Vitest) | Em revisão (branch `feat/ia-simulada`) |
-| T3 | Receita "Criar um site" como dados (papéis, prompts, etapas) + 3 receitas "em breve" | A fazer |
+| T2 | IA simulada: contrato do "provedor", respostas em pedaços, testes (Vitest) | Concluída (PR #10) |
+| T3 | Receita "Criar um site" como dados (papéis, prompts, etapas) + 3 receitas "em breve" | Em revisão (branch `feat/receita-criar-site`) |
 | T4 | Motor de orquestração: executa as etapas e narra eventos | A fazer |
 | T5 | Telas: Receitas e Montar o time (trocar IA, pedido com contador de 4.000) | A fazer |
 | T6 | Execução ao vivo: rota `/api/runs` com streaming + tela "Seu time está trabalhando" | A fazer |
@@ -128,7 +128,7 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 
 ## Próximo passo
 
-Luis revisa e faz o merge do PR da T2. Depois, T3 (receita "Criar um site", issue #3).
+Luis lê os prompts, revisa e faz o merge do PR da T3. Depois, T4 (motor de orquestração, issue #4).
 As issues de cada tarefa têm o número igual ao da tarefa (T1 = #1 … T8 = #8).
 
 ## Decisões em aberto
