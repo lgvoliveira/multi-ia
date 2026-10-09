@@ -14,19 +14,39 @@ import styles from "./TeamBuilder.module.css";
 /** O que a tela precisa de cada papel. As instruções das IAs ficam no servidor. */
 export type TeamRole = Pick<Role, "id" | "name" | "description" | "suggestedProvider">;
 
+/** IA escolhida para cada papel (id do papel → IA). */
+export type Team = Record<string, ProviderId>;
+
 interface TeamBuilderProps {
   roles: TeamRole[];
   requestPlaceholder: string;
+  /** Time e pedido com que a tela abre (ex.: ao voltar de uma execução para mudar algo). */
+  initialTeam: Team;
+  initialRequest: string;
+  /** true enquanto o servidor ainda não respondeu: o botão fica travado. */
+  starting: boolean;
+  /** Problemas que o servidor apontou no último "Começar". */
+  problems: string[];
+  /** Chamado ao apertar "Começar" com o pedido escrito. */
+  onStart: (team: Team, request: string) => void;
 }
 
-/** "editing": escrevendo; "empty": tentou começar sem pedido; "ready": pedido pronto. */
-type FormStatus = "editing" | "empty" | "ready";
+/** "editing": escrevendo; "empty": tentou começar sem pedido; "submitted": pedido enviado ao servidor. */
+type FormStatus = "editing" | "empty" | "submitted";
 
-export function TeamBuilder({ roles, requestPlaceholder }: TeamBuilderProps) {
-  const [team, setTeam] = useState<Record<string, ProviderId>>(() =>
-    Object.fromEntries(roles.map((role) => [role.id, role.suggestedProvider])),
-  );
-  const [request, setRequest] = useState("");
+const EMPTY_REQUEST = "Escreva o que você quer que o time faça.";
+
+export function TeamBuilder({
+  roles,
+  requestPlaceholder,
+  initialTeam,
+  initialRequest,
+  starting,
+  problems,
+  onStart,
+}: TeamBuilderProps) {
+  const [team, setTeam] = useState<Team>(initialTeam);
+  const [request, setRequest] = useState(initialRequest);
   const [status, setStatus] = useState<FormStatus>("editing");
   const ids = useId();
   const requestId = `${ids}-request`;
@@ -36,10 +56,18 @@ export function TeamBuilder({ roles, requestPlaceholder }: TeamBuilderProps) {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus(request.trim() ? "ready" : "empty");
+    if (starting) return;
+    if (!request.trim()) {
+      setStatus("empty");
+      return;
+    }
+    setStatus("submitted");
+    onStart(team, request);
   }
 
   const atLimit = request.length >= MAX_REQUEST_CHARS;
+  // Os problemas do servidor somem assim que a pessoa mexe no pedido ou no time.
+  const errors = status === "empty" ? [EMPTY_REQUEST] : status === "submitted" ? problems : [];
 
   return (
     <form className={styles.layout} onSubmit={handleSubmit} noValidate>
@@ -54,7 +82,10 @@ export function TeamBuilder({ roles, requestPlaceholder }: TeamBuilderProps) {
               role={role}
               position={index + 1}
               provider={team[role.id]}
-              onChange={(provider) => setTeam((current) => ({ ...current, [role.id]: provider }))}
+              onChange={(provider) => {
+                setTeam((current) => ({ ...current, [role.id]: provider }));
+                setStatus("editing");
+              }}
             />
           ))}
         </ol>
@@ -79,27 +110,23 @@ export function TeamBuilder({ roles, requestPlaceholder }: TeamBuilderProps) {
             setStatus("editing");
           }}
           aria-invalid={status === "empty"}
-          aria-describedby={[hintId, counterId, status === "empty" && errorId].filter(Boolean).join(" ")}
+          aria-describedby={[hintId, counterId, errors.length > 0 && errorId].filter(Boolean).join(" ")}
         />
         <p id={counterId} className={atLimit ? `${styles.counter} ${styles.counterAtLimit}` : styles.counter}>
           {formatNumber(request.length)}/{formatNumber(MAX_REQUEST_CHARS)} caracteres
           {atLimit && " · limite atingido"}
         </p>
 
-        {status === "empty" && (
-          <p id={errorId} className={styles.error} role="alert">
-            Escreva o que você quer que o time faça.
-          </p>
-        )}
-        {status === "ready" && (
-          <p className={styles.notice} role="status">
-            Pedido pronto! A parte em que o time trabalha na tela ainda está em construção e chega
-            na próxima tarefa.
-          </p>
+        {errors.length > 0 && (
+          <div id={errorId} className={styles.error} role="alert">
+            {errors.map((error) => (
+              <p key={error}>{error}</p>
+            ))}
+          </div>
         )}
 
-        <button type="submit" className={styles.submit}>
-          Começar
+        <button type="submit" className={styles.submit} disabled={starting}>
+          {starting ? "Começando…" : "Começar"}
         </button>
       </section>
     </form>

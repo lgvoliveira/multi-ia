@@ -108,5 +108,7 @@
   --team-min-width: 560px;
   --request-min-width: 320px;
   --role-info-min-width: 160px;
+  /* Tela "Seu time está trabalhando": altura da caixa com o texto de cada etapa (depois disso, ela rola) */
+  --output-max-height: 260px;
   --page-gutter: var(--space-6);
 }

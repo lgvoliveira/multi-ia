@@ -38,10 +38,12 @@ export interface Step {
   maxOutputTokens: number;
   /** Resposta de exemplo, devolvida pela IA simulada. */
   sampleOutput: string;
+  /** O que a etapa escreve: texto comum ou um site (HTML). Diz à tela como mostrar a resposta. */
+  format: OutputFormat;
 }
 
-/** Como mostrar o resultado final (a saída da última etapa). */
-export type ResultFormat = "html" | "text";
+/** Formato da resposta de uma etapa. O da última etapa é o formato do resultado final. */
+export type OutputFormat = "html" | "text";
 
 export interface Recipe {
   id: string;
@@ -53,7 +55,6 @@ export interface Recipe {
   roles: Role[];
   /** Executadas em ordem. A saída da última é o resultado final. */
   steps: Step[];
-  resultFormat: ResultFormat;
 }
 
 /** O que aparece no cartão da receita, inclusive das que ainda não estão prontas. */

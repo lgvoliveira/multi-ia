@@ -68,15 +68,18 @@ MOTOR DE ORQUESTRAÇÃO  -- receitas e times, executor de etapas, créditos
 Estrutura de pastas (criada na etapa 4, pode ser ajustada com aprovação):
 
 ```
-app/                 telas e rotas do Next.js
+app/                 telas e rotas do Next.js. app/api/runs/ é a rota que roda o time e narra ao vivo
 components/          pedaços de tela reutilizáveis (cada um com seu .module.css)
 lib/engine/          motor: executa as etapas de um time e narra cada passo em eventos (types.ts).
                      Recebe as IAs prontas (getProvider), não as escolhe. O ESLint barra importar
-                     telas, Next.js ou React aqui, em lib/providers/ e em lib/recipes/
+                     telas, Next.js ou React aqui, em lib/providers/, lib/recipes/ e lib/runs/
 lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts). catalog.ts é só
                      dados e pode ir para a tela; registry.ts entrega as IAs e é SÓ do servidor
 lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema, etapas);
                      validate.ts confere toda receita nos testes
+lib/runs/            a execução vista de fora: o que dos eventos pode chegar ao usuário
+                     (public-events.ts), a conferência do pedido que chega pela internet
+                     (parse-request.ts, SÓ do servidor) e o envio dos eventos em linhas (ndjson.ts)
 styles/tokens.css    TODAS as cores, fontes, espaçamentos e arredondamentos
 docs/                documento do projeto e diário de progresso
 .github/workflows/   checagens automáticas (CI) que rodam em todo pull request

@@ -20,7 +20,6 @@ export const createSiteRecipe: Recipe = {
   description: "Um planeja, outro programa, outro revisa. Você recebe o site pronto.",
   requestPlaceholder:
     "Ex.: Um site de uma página para minha confeitaria, com cardápio, fotos, horário de funcionamento e botão para pedir pelo WhatsApp.",
-  resultFormat: "html",
 
   roles: [
     {
@@ -71,6 +70,7 @@ Seja direto: no máximo uma página de texto.`,
       inputs: [{ from: "request", label: "Pedido do cliente" }],
       maxOutputTokens: 1200,
       sampleOutput: SAMPLE_PLAN,
+      format: "text",
     },
     {
       id: "code",
@@ -88,6 +88,7 @@ Responda apenas com o código HTML, sem explicações e sem blocos de markdown.`
       ],
       maxOutputTokens: 6000,
       sampleOutput: SAMPLE_FIRST_SITE,
+      format: "html",
     },
     {
       id: "review",
@@ -114,6 +115,7 @@ Responda com uma lista numerada de até 10 problemas, do mais grave ao menos gra
       ],
       maxOutputTokens: 1200,
       sampleOutput: SAMPLE_REVIEW,
+      format: "text",
     },
     {
       id: "consolidate",
@@ -135,6 +137,7 @@ Responda apenas com o código HTML completo da versão final, sem explicações 
       ],
       maxOutputTokens: 6000,
       sampleOutput: SAMPLE_FINAL_SITE,
+      format: "html",
     },
   ],
 };

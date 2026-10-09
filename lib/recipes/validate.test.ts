@@ -16,7 +16,6 @@ describe("verificador de receitas", () => {
       name: "Receita com defeitos",
       description: "Só para teste.",
       requestPlaceholder: "",
-      resultFormat: "text",
       roles: [
         { id: "writer", name: "Redator", description: "", suggestedProvider: "claude", systemPrompt: "Escreva." },
         { id: "idle", name: "Parado", description: "", suggestedProvider: "gpt", systemPrompt: "Nada." },
@@ -31,6 +30,7 @@ describe("verificador de receitas", () => {
           inputs: [{ from: "step", stepId: "final", label: "Texto final" }],
           maxOutputTokens: 100,
           sampleOutput: "Rascunho.",
+          format: "text",
         },
         {
           id: "final",
@@ -41,6 +41,7 @@ describe("verificador de receitas", () => {
           inputs: [{ from: "request", label: "Pedido" }],
           maxOutputTokens: 100,
           sampleOutput: "Final.",
+          format: "text",
         },
       ],
     };
