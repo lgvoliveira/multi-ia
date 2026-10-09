@@ -34,11 +34,22 @@ describe('receita "Criar um site"', () => {
     expect(createSiteRecipe.resultFormat).toBe("html");
   });
 
-  it("os sites de exemplo são HTML completos, em português e sem JavaScript", () => {
+  it("os sites de exemplo são HTML completos, em português e sem carregar nada de fora", () => {
     for (const site of [SAMPLE_FIRST_SITE, SAMPLE_FINAL_SITE]) {
       expect(site.startsWith("<!DOCTYPE html>")).toBe(true);
       expect(site).toContain('<html lang="pt-BR">');
-      expect(site).not.toMatch(/<script/i);
+      expect(site).not.toMatch(/<script[^>]+src=/i); // script de outro lugar
+      expect(site).not.toMatch(/<link[^>]+stylesheet/i); // CSS de outro lugar
+      expect(site).not.toMatch(/src="http|url\(http|@import/i); // imagem, fonte ou CSS de fora
+    }
+  });
+
+  it("o JavaScript do exemplo é só enfeite: só esconde os cartões depois de marcar a página com 'js'", () => {
+    const hidingRules = SAMPLE_FINAL_SITE.split("\n").filter((line) => line.includes("opacity: 0;"));
+    const hidingOutsideAnimation = hidingRules.filter((line) => !line.includes("@keyframes"));
+    expect(hidingOutsideAnimation.length).toBeGreaterThan(0);
+    for (const rule of hidingOutsideAnimation) {
+      expect(rule.trim().startsWith(".js ")).toBe(true);
     }
   });
 
@@ -46,6 +57,8 @@ describe('receita "Criar um site"', () => {
     expect(SAMPLE_FIRST_SITE).not.toContain('role="img"');
     expect(SAMPLE_FINAL_SITE).toContain('role="img" aria-label="Foto do bolo de chocolate"');
     expect(SAMPLE_FINAL_SITE).toContain("padding-bottom: 96px");
+    expect(SAMPLE_FIRST_SITE).not.toContain("prefers-reduced-motion");
+    expect(SAMPLE_FINAL_SITE).toContain("prefers-reduced-motion: reduce");
   });
 
   it("as respostas de exemplo cabem no limite de cada etapa (1 token ≈ 4 caracteres)", () => {
