@@ -62,6 +62,15 @@
   color: var(--color-error-text);
 }
 
+/* Aviso de atenção: outra IA assumiu o papel, ou a IA está tentando de novo. */
+.notice {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-size: var(--text-sm);
+}
+
 /* Caixa com o texto da IA. Passou da altura máxima, ela rola por dentro. */
 .output {
   margin: 0;

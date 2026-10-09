@@ -36,6 +36,10 @@
   --color-error-text: #b42318;
   --color-error-bg: #fef3f2;
 
+  /* Cores: avisos de atenção, que não são erro (ex.: a IA está tentando de novo, outra IA assumiu o papel) */
+  --color-warning-text: #8a4b00;
+  --color-warning-bg: #fff6e5;
+
   /* Cores: bloco de código */
   --color-code-bg: #14161b;
   --color-code-text: #e8eaf0;

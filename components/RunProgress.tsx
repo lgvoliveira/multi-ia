@@ -6,7 +6,7 @@
 
 import { useEffect, useRef } from "react";
 import { getProviderInfo } from "@/lib/providers/catalog";
-import type { RunState, RunStatus } from "./run-state";
+import type { RunState, RunStatus, StepView } from "./run-state";
 import { StepCard } from "./StepCard";
 import styles from "./RunProgress.module.css";
 
@@ -91,10 +91,9 @@ function endMessage(run: RunState): { text: string; tone: Tone } | null {
       return { text: "Pronto! O resultado final está no último cartão.", tone: "messageDone" };
     case "failed": {
       const failed = run.steps.find((step) => step.status === "failed");
-      const who = failed ? `${failed.name} (${getProviderInfo(failed.provider).name})` : "Uma das IAs";
       return {
         text:
-          `${who} não conseguiu terminar a etapa. As etapas concluídas continuam aqui. ` +
+          `${failureText(failed)} As etapas concluídas continuam aqui. ` +
           "Tente começar de novo daqui a pouco.",
         tone: "messageError",
       };
@@ -109,9 +108,23 @@ function endMessage(run: RunState): { text: string; tone: Tone } | null {
   }
 }
 
+/** Qual etapa parou e por quê. Se outra IA tinha assumido o papel, as duas não conseguiram. */
+function failureText(failed: StepView | undefined): string {
+  if (!failed) return "Uma das IAs não conseguiu terminar a etapa.";
+  const providerName = getProviderInfo(failed.provider).name;
+  if (!failed.replacedProvider) return `${failed.name} (${providerName}) não conseguiu terminar a etapa.`;
+  const replacedName = getProviderInfo(failed.replacedProvider).name;
+  return `${failed.name}: nem o ${replacedName} nem o ${providerName} conseguiram terminar a etapa.`;
+}
+
 function announcement(run: RunState, message: string | undefined): string {
   if (run.status !== "running") return `${TITLES[run.status]}. ${message ?? ""}`;
   const working = run.steps.find((step) => step.status === "working");
   if (!working) return "Começando…";
-  return `${working.name} (${getProviderInfo(working.provider).name}) está trabalhando.`;
+  const who = `${working.name} (${getProviderInfo(working.provider).name})`;
+  if (working.retryAttempt) return `${who} teve um problema e está tentando de novo.`;
+  if (working.replacedProvider) {
+    return `${who} entrou no lugar do ${getProviderInfo(working.replacedProvider).name} e está trabalhando.`;
+  }
+  return `${who} está trabalhando.`;
 }

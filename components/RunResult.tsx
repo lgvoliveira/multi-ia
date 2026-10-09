@@ -79,6 +79,11 @@ export function RunResult({ request, run, site, onRestart }: RunResultProps) {
                   <AiDot provider={step.provider} />
                   {step.name} · {getProviderInfo(step.provider).name}
                 </span>
+                {step.replacedProvider && (
+                  <span className={styles.teamStepReplaced}>
+                    No lugar do {getProviderInfo(step.replacedProvider).name}, que não conseguiu responder
+                  </span>
+                )}
                 <span className={styles.teamStepSummary}>{step.doneSummary}</span>
               </li>
             ))}
