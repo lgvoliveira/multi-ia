@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { TeamBuilder } from "@/components/TeamBuilder";
+import { RecipeFlow } from "@/components/RecipeFlow";
 import { getRecipe, RECIPES } from "@/lib/recipes/catalog";
 import styles from "./page.module.css";
 
@@ -30,6 +30,13 @@ export default async function RecipePage(props: PageProps<"/recipes/[recipeId]">
     description,
     suggestedProvider,
   }));
+  const steps = recipe.steps.map(({ id, roleId, name, summary, format }) => ({
+    id,
+    roleId,
+    name,
+    summary,
+    format,
+  }));
 
   return (
     <main className={styles.main}>
@@ -43,14 +50,13 @@ export default async function RecipePage(props: PageProps<"/recipes/[recipeId]">
         </span>
       </nav>
 
-      <section className={styles.intro}>
-        <h1 className={styles.title}>{recipe.name}</h1>
-        <p className={styles.lead}>
-          Este é o time que recomendamos. Cada IA tem um papel; troque qualquer uma se preferir.
-        </p>
-      </section>
-
-      <TeamBuilder roles={roles} requestPlaceholder={recipe.requestPlaceholder} />
+      <RecipeFlow
+        recipeId={recipe.id}
+        recipeName={recipe.name}
+        roles={roles}
+        steps={steps}
+        requestPlaceholder={recipe.requestPlaceholder}
+      />
     </main>
   );
 }
