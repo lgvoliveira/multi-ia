@@ -1,0 +1,29 @@
+.window {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.bar {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-preview-bar);
+}
+
+.dot {
+  width: var(--size-preview-bar-dot);
+  height: var(--size-preview-bar-dot);
+  border-radius: var(--radius-pill);
+  background: var(--color-preview-bar-dot);
+}
+
+.frame {
+  display: block;
+  width: 100%;
+  height: var(--preview-height);
+  border: 0;
+  background: var(--color-surface);
+}
