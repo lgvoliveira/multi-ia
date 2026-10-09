@@ -102,11 +102,11 @@ peças invisíveis com testes primeiro, telas depois. Cada tarefa = 1 issue + 1 
 | T0 | Preparar o terreno: GitHub CLI (`gh`) + issues no GitHub | Concluída (issues #1 a #8, marco "Etapa 4") |
 | T1 | Esqueleto do site: Next.js, tokens visuais, topo, CI | Concluída (PR #9) |
 | T2 | IA simulada: contrato do "provedor", respostas em pedaços, testes (Vitest) | Concluída (PR #10) |
-| T3 | Receita "Criar um site" como dados (papéis, prompts, etapas) + 3 receitas "em breve" | Em revisão (branch `feat/receita-criar-site`) |
+| T3 | Receita "Criar um site" como dados (papéis, prompts, etapas) + 3 receitas "em breve" | Concluída (PR #11; JavaScript "de enfeite" no PR #12) |
 | T4 | Motor de orquestração: executa as etapas e narra eventos | A fazer |
 | T5 | Telas: Receitas e Montar o time (trocar IA, pedido com contador de 4.000) | A fazer |
 | T6 | Execução ao vivo: rota `/api/runs` com streaming + tela "Seu time está trabalhando" | A fazer |
-| T7 | Resultado: prévia do site (iframe isolado), código, baixar arquivo, resumo do time | A fazer |
+| T7 | Resultado: prévia do site em moldura isolada (o JS roda, mas sem acesso a nada), código, baixar arquivo, resumo do time | A fazer |
 | T8 | Quando uma IA falha: 2 tentativas, troca de IA, aviso na tela (pausar/retomar fica para a etapa 5) | A fazer |
 
 **Parte B — IAs de verdade (só depois da Parte A funcionando na tela):** decidir OpenRouter x APIs
@@ -123,12 +123,17 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 - Next.js **16.4** (gerado com `create-next-app`, sem pasta `src/`). Esta versão traz a própria documentação
   em `node_modules/next/dist/docs/` e mantém um bloco automático no fim do AGENTS.md.
 - Endereços das páginas com nomes em inglês (regra de nomes de arquivo do AGENTS.md).
+- **Sites gerados com JavaScript "de enfeite"** (decidido pelo Luis em 08/10, no PR #11): o site pode ter JS leve
+  (menu, fotos que passam, animações), mas precisa funcionar completo sem ele, e o visual deve ser caprichado.
+  A prévia roda o site num "quarto trancado" (moldura isolada, sem acesso à conta, aos créditos, à nossa página
+  nem à internet). Motivos: proteger contra código plantado via "injeção de prompt" (texto colado com instruções
+  escondidas) e contra erros, já que o revisor lê o código mas não roda o site.
 - **Codex como revisor:** ainda não confirmado se está conectado ao GitHub. Enquanto não estiver,
   o Luis revisa e faz o merge sozinho.
 
 ## Próximo passo
 
-Luis lê os prompts, revisa e faz o merge do PR da T3. Depois, T4 (motor de orquestração, issue #4).
+Luis faz o merge do PR #12 (JavaScript "de enfeite"). Depois, T4 (motor de orquestração, issue #4).
 As issues de cada tarefa têm o número igual ao da tarefa (T1 = #1 … T8 = #8).
 
 ## Decisões em aberto

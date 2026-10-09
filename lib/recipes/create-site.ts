@@ -5,8 +5,10 @@ import { SAMPLE_FINAL_SITE, SAMPLE_FIRST_SITE, SAMPLE_PLAN, SAMPLE_REVIEW } from
 import type { Recipe } from "./types";
 
 const SITE_RULES = `Regras do site:
-- Um único arquivo HTML completo, com o CSS dentro de uma tag <style>. Comece com <!DOCTYPE html> e use <html lang="pt-BR">.
-- Sem JavaScript e sem nada de fora (imagens, fontes ou bibliotecas de outros sites). No lugar de cada foto, use um bloco colorido com uma legenda, como "[Foto do bolo de chocolate]", marcado com role="img" e um aria-label que descreva a foto.
+- Um único arquivo HTML completo, com o CSS dentro de uma tag <style> e, se houver JavaScript, o código dentro de tags <script> no próprio arquivo. Comece com <!DOCTYPE html> e use <html lang="pt-BR">.
+- Nada de fora: sem imagens, fontes, bibliotecas ou scripts de outros sites. No lugar de cada foto, use um bloco colorido com uma legenda, como "[Foto do bolo de chocolate]", marcado com role="img" e um aria-label que descreva a foto.
+- Visual caprichado e vivo: animações suaves de entrada, efeitos ao passar o mouse ou tocar, rolagem suave até as seções. Prefira fazer isso com CSS. Desligue as animações para quem pediu menos movimento no aparelho (prefers-reduced-motion).
+- JavaScript só como enfeite, e pouco: menu que abre e fecha, fotos que passam, elementos que aparecem ao rolar a página. O site precisa ficar completo e usável mesmo se o JavaScript não rodar: todo o conteúdo já vem escrito no HTML. Se algo começa escondido para aparecer com animação, quem esconde é o próprio JavaScript; sem ele, tudo aparece normalmente.
 - Pensado primeiro para o celular e ajustado para telas grandes.
 - Acessível: bom contraste entre texto e fundo, letras de tamanho confortável e títulos em ordem (h1, h2, h3).
 - Links de contato prontos para usar: WhatsApp no formato https://wa.me/55 + DDD + número, telefone com tel: e e-mail com mailto:.
@@ -62,7 +64,7 @@ Organize o plano assim:
 1. Objetivo: em uma frase, para que serve o site.
 2. Público: quem vai visitar.
 3. Seções: na ordem em que aparecem, com o conteúdo de cada uma (títulos e textos sugeridos).
-4. Visual: o estilo, 2 ou 3 cores (em código hexadecimal, como #C2185B) e o tom dos textos.
+4. Visual: o estilo, 2 ou 3 cores (em código hexadecimal, como #C2185B), o tom dos textos e os toques de movimento (animações e efeitos) que deixam o site vivo.
 5. Informações que faltam: tudo o que o cliente não informou (telefone, endereço, preços...). O site vai usar marcadores entre colchetes, como [seu telefone]. Nunca invente esses dados.
 
 Seja direto: no máximo uma página de texto.`,
@@ -100,7 +102,9 @@ Verifique:
 - Os textos estão em português correto e claro?
 - Acessibilidade: contraste, tamanho das letras, ordem dos títulos e descrição das fotos.
 - Os links de contato (WhatsApp, telefone, e-mail) estão no formato certo?
-- Há dados inventados como se fossem reais, JavaScript ou algo carregado de outros sites?
+- Há dados inventados como se fossem reais, ou algo carregado de outros sites?
+- Se houver JavaScript: ele é só enfeite? O site continua completo sem ele? Há erros visíveis no código?
+- As animações respeitam quem pediu menos movimento no aparelho?
 
 Responda com uma lista numerada de até 10 problemas, do mais grave ao menos grave. Para cada um, diga o que está errado e como corrigir, em uma ou duas frases. Se o site estiver bom, diga isso e liste só os ajustes finos.`,
       inputs: [

@@ -117,6 +117,11 @@ docs/                documento do projeto e diário de progresso
 - Chaves de API são usadas **apenas no servidor**. Nada de chave em código que roda no navegador.
 - Chaves nunca aparecem em logs nem no histórico. Chaves de usuários (BYOK, fase futura) ficam guardadas à parte, criptografadas.
 - Toda entrada do usuário é validada no servidor (tamanho, formato).
+- **Conteúdo gerado por IA nunca roda solto dentro da nossa página.** Site gerado (HTML/CSS/JS) só é exibido
+  numa moldura isolada: `<iframe sandbox="allow-scripts">` **sem** `allow-same-origin` (não enxerga nossa página,
+  login, cookies nem créditos) e com uma política que bloqueia qualquer acesso à internet de dentro da moldura.
+  Motivo: um texto colado no pedido pode trazer instruções escondidas que levam a IA a escrever código malicioso
+  ("injeção de prompt"). Vale para qualquer pessoa que abrir o resultado, inclusive administradores.
 
 ## 7. Padrões de código
 
@@ -155,7 +160,8 @@ checagem cruzada, Comitê de investimento); trocar a IA de cada papel; execuçã
 contador de créditos.
 
 **Fica de fora por enquanto:** pagamento real (acesso por convite), "Traga sua chave", upload de arquivos,
-vídeo, execução de código, conector MCP, WhatsApp, projeto próprio totalmente livre.
+vídeo, execução de código no servidor ("oficina na nuvem"), conector MCP, WhatsApp, projeto próprio totalmente livre.
+(O JavaScript "de enfeite" dos sites gerados não conta como execução de código: ele só roda na prévia isolada, no navegador.)
 Não implemente nada desta lista sem pedido explícito.
 
 ## 10. Bloco automático do Next.js
