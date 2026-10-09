@@ -1,6 +1,7 @@
 // IA simulada: cumpre o mesmo contrato das IAs reais, mas não chama nenhuma API e não custa nada.
 // Serve para construir e testar o fluxo inteiro antes de ligar as IAs de verdade.
 
+import { isProviderId } from "./catalog";
 import {
   ProviderError,
   type AiProvider,
@@ -19,10 +20,12 @@ export interface MockProviderOptions {
   chunkDelayMs?: number;
   /** Quantas chamadas seguidas falham antes de a IA voltar a responder. Infinity = falha sempre. */
   failFirstCalls?: number;
+  /** Nas chamadas que falham, quantos pedaços a IA escreve antes de cair. 0 = falha antes de escrever. */
+  failAfterChunks?: number;
 }
 
 export function createMockProvider(options: MockProviderOptions): AiProvider {
-  const { id, chunkDelayMs = DEFAULT_CHUNK_DELAY_MS, failFirstCalls = 0 } = options;
+  const { id, chunkDelayMs = DEFAULT_CHUNK_DELAY_MS, failFirstCalls = 0, failAfterChunks = 0 } = options;
   let calls = 0;
 
   return {
@@ -36,20 +39,18 @@ export function createMockProvider(options: MockProviderOptions): AiProvider {
           retryable: false,
         });
       }
-      if (calls <= failFirstCalls) {
-        throw new ProviderError(`A IA simulada (${id}) falhou de propósito, para teste.`, {
-          retryable: true,
-        });
-      }
+      const failing = calls <= failFirstCalls;
 
       const fullText = request.sampleResponse ?? genericResponse(request);
       const { text, truncated } = limitToTokens(fullText, request.maxOutputTokens);
 
-      for (const piece of splitIntoChunks(text)) {
+      for (const [index, piece] of splitIntoChunks(text).entries()) {
+        if (failing && index >= failAfterChunks) throw intentionalFailure(id);
         await delay(chunkDelayMs);
         request.signal?.throwIfAborted();
         yield { type: "text", text: piece };
       }
+      if (failing) throw intentionalFailure(id);
 
       yield {
         type: "done",
@@ -62,6 +63,24 @@ export function createMockProvider(options: MockProviderOptions): AiProvider {
       };
     },
   };
+}
+
+/**
+ * Lê o interruptor de teste MOCK_AI_FAILURES (veja .env.example): quais IAs simuladas falham e em quantas chamadas.
+ * "gpt" = o GPT falha sempre; "gpt:2" = falha nas 2 primeiras chamadas; vários separados por vírgula ("gemini,claude").
+ * Valor que não dá para entender é erro, para o teste não rodar achando que o interruptor está ligado.
+ */
+export function parseMockFailures(value = ""): Partial<Record<ProviderId, number>> {
+  const failures: Partial<Record<ProviderId, number>> = {};
+  for (const entry of value.split(",").map((part) => part.trim().toLowerCase())) {
+    if (!entry) continue;
+    const [, id, count] = /^([a-z]+)(?::(\d+))?$/.exec(entry) ?? [];
+    if (!isProviderId(id)) {
+      throw new Error(`MOCK_AI_FAILURES: não entendi "${entry}". Use, por exemplo, "gpt" ou "gpt:2".`);
+    }
+    failures[id] = count === undefined ? Infinity : Number(count);
+  }
+  return failures;
 }
 
 /** Quebra o texto em pedaços de algumas palavras. Juntando os pedaços, volta o texto original. */
@@ -83,6 +102,10 @@ function limitToTokens(text: string, maxTokens: number): { text: string; truncat
   const maxChars = maxTokens * CHARS_PER_TOKEN;
   if (text.length <= maxChars) return { text, truncated: false };
   return { text: text.slice(0, maxChars), truncated: true };
+}
+
+function intentionalFailure(id: ProviderId): ProviderError {
+  return new ProviderError(`A IA simulada (${id}) falhou de propósito, para teste.`, { retryable: true });
 }
 
 function genericResponse(request: GenerateRequest): string {

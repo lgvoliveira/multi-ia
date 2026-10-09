@@ -33,18 +33,44 @@ export interface StepResult {
   usage: Usage;
   /** true quando a resposta foi cortada por atingir o limite de tamanho da etapa. */
   truncated: boolean;
+  /** Tempo da etapa inteira, contando as tentativas que falharam e as esperas entre elas. */
   durationMs: number;
 }
 
 /**
  * A narração. Toda execução começa com "run-started" e termina com exatamente um destes:
  * "run-finished", "run-failed" ou "run-cancelled".
+ * Cada etapa começa com "step-started" e termina com "step-finished". No meio vêm os pedaços de texto e, se a IA
+ * falhar, "step-retrying" ou "step-switched": a etapa recomeça do zero, e o texto escrito antes deles não vale mais.
  */
 export type RunEvent =
   | { type: "run-started"; recipeId: string; steps: PlannedStep[] }
   | { type: "step-started"; stepId: string; provider: ProviderId }
   /** Um pedaço da resposta, assim que a IA escreve. */
   | { type: "step-text"; stepId: string; text: string }
+  /** A IA falhou, mas vale tentar de novo: depois de `delayMs`, ela recomeça a etapa (tentativa número `attempt`). */
+  | {
+      type: "step-retrying";
+      stepId: string;
+      provider: ProviderId;
+      attempt: number;
+      delayMs: number;
+      /** Mensagem técnica do erro. Só interna. */
+      errorMessage: string;
+    }
+  /**
+   * A IA do papel não conseguiu fazer a etapa, e `to` assumiu o papel: recomeça a etapa agora e
+   * segue no papel nas próximas etapas dele.
+   */
+  | {
+      type: "step-switched";
+      stepId: string;
+      roleId: string;
+      from: ProviderId;
+      to: ProviderId;
+      /** Mensagem técnica do erro de `from`. Só interna. */
+      errorMessage: string;
+    }
   | ({ type: "step-finished" } & StepResult)
   | {
       type: "run-finished";
@@ -58,6 +84,7 @@ export type RunEvent =
   | {
       type: "run-failed";
       stepId: string;
+      /** A última IA que tentou fazer a etapa. */
       provider: ProviderId;
       /** Se vale a pena tentar de novo (ex.: IA sobrecarregada). */
       retryable: boolean;

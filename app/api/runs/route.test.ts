@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ProviderId } from "@/lib/providers/types";
 import { SAMPLE_FINAL_SITE } from "@/lib/recipes/create-site.samples";
 import { OFFLINE_PROBLEM, SERVER_PROBLEM, startRun } from "@/lib/runs/client";
@@ -7,10 +7,13 @@ import { POST } from "./route";
 
 // Guarda o "botão de parar" que cada IA recebeu, para conferir se ela foi mandada parar.
 const providerSignals = vi.hoisted(() => [] as (AbortSignal | undefined)[]);
+// IAs que recusam todo pedido (erro que não adianta repetir: a troca de IA é na hora, sem esperar).
+const refusingProviders = vi.hoisted(() => new Set<ProviderId>());
 
 // Na rota de verdade a IA simulada "digita" devagar; aqui ela responde na hora.
 vi.mock("@/lib/providers/registry", async () => {
   const { createMockProvider } = await import("@/lib/providers/mock");
+  const { ProviderError } = await import("@/lib/providers/types");
   return {
     getProvider: (id: ProviderId) => {
       const provider = createMockProvider({ id, chunkDelayMs: 0 });
@@ -18,11 +21,19 @@ vi.mock("@/lib/providers/registry", async () => {
         id,
         generate: (request: Parameters<typeof provider.generate>[0]) => {
           providerSignals.push(request.signal);
+          if (refusingProviders.has(id)) {
+            throw new ProviderError(`400: ${id} recusou o pedido`, { retryable: false });
+          }
           return provider.generate(request);
         },
       };
     },
   };
+});
+
+afterEach(() => {
+  refusingProviders.clear();
+  vi.restoreAllMocks();
 });
 
 const BODY = { recipeId: "create-site", request: "Quero um site para minha confeitaria." };
@@ -80,6 +91,41 @@ describe("rota POST /api/runs", () => {
     expect(response.headers.get("cache-control")).toBe("no-cache, no-transform");
     expect(text.split("\n").at(-1)).toBe(""); // toda linha termina com a quebra de linha
     expect(text).not.toMatch(/"(model|usage|inputTokens|outputTokens|errorMessage)"/);
+  });
+
+  it("quando uma IA falha, a tela fica sabendo da troca e o servidor anota a mensagem técnica", async () => {
+    refusingProviders.add("gpt");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const start = await startRun(BODY, { fetch: callRoute });
+    if (!start.ok) throw new Error(start.problems.join(" "));
+    const events = await collect(start.events);
+
+    expect(events).toContainEqual({
+      type: "step-switched",
+      stepId: "code",
+      roleId: "programmer",
+      from: "gpt",
+      to: "claude",
+    });
+    expect(events.at(-1)).toMatchObject({ type: "run-finished", result: SAMPLE_FINAL_SITE });
+    expect(JSON.stringify(events)).not.toContain("recusou o pedido");
+    expect(warn).toHaveBeenCalledWith(
+      '[api/runs] A etapa "code" falhou (gpt); claude assumiu o papel "programmer": 400: gpt recusou o pedido',
+    );
+  });
+
+  it("quando a IA reserva também falha, a tela recebe só em que etapa parou", async () => {
+    refusingProviders.add("gpt").add("claude");
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const start = await startRun(BODY, { fetch: callRoute });
+    if (!start.ok) throw new Error(start.problems.join(" "));
+    const events = await collect(start.events);
+
+    expect(events.at(-1)).toEqual({ type: "run-failed", stepId: "plan" });
+    expect(error).toHaveBeenCalledWith('[api/runs] A etapa "plan" falhou (gpt): 400: gpt recusou o pedido');
   });
 
   it("recusa pedido inválido na hora, com a mensagem em português", async () => {

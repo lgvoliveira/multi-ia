@@ -57,16 +57,35 @@ export async function POST(request: Request): Promise<Response> {
 async function* narrateToUser(events: AsyncIterable<RunEvent>): AsyncGenerator<PublicRunEvent> {
   try {
     for await (const event of events) {
-      if (event.type === "run-failed") {
-        console.error(
-          `[api/runs] A etapa "${event.stepId}" falhou (${event.provider}): ${event.errorMessage}`,
-        );
-      }
+      logFailure(event);
       yield toPublicEvent(event);
     }
   } catch (error) {
     // Defeito no nosso código. A narração acaba sem um evento de fim, e a tela avisa a pessoa.
     console.error("[api/runs] Erro inesperado durante a execução:", error);
+  }
+}
+
+/** Anota no registro do servidor cada falha de uma IA, com a mensagem técnica que a tela não recebe. */
+function logFailure(event: RunEvent) {
+  switch (event.type) {
+    case "step-retrying":
+      console.warn(
+        `[api/runs] A etapa "${event.stepId}" falhou (${event.provider}); ` +
+          `tentativa ${event.attempt} daqui a ${event.delayMs} ms: ${event.errorMessage}`,
+      );
+      return;
+    case "step-switched":
+      console.warn(
+        `[api/runs] A etapa "${event.stepId}" falhou (${event.from}); ` +
+          `${event.to} assumiu o papel "${event.roleId}": ${event.errorMessage}`,
+      );
+      return;
+    case "run-failed":
+      console.error(
+        `[api/runs] A etapa "${event.stepId}" falhou (${event.provider}): ${event.errorMessage}`,
+      );
+      return;
   }
 }
 
