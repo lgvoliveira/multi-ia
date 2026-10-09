@@ -32,6 +32,10 @@
   --color-status-waiting-text: #3a3f49;
   --color-status-waiting-bg: #eef0f3;
 
+  /* Cores: avisos de erro (ex.: pedido vazio) */
+  --color-error-text: #b42318;
+  --color-error-bg: #fef3f2;
+
   /* Cores: bloco de código */
   --color-code-bg: #14161b;
   --color-code-text: #e8eaf0;
@@ -88,10 +92,21 @@
   /* Tamanhos de controles (botões e campos) */
   --control-height: 44px;
   --control-height-lg: 48px;
+  --picker-width: 240px; /* lista de escolha da IA, com a bolinha de cor */
+
+  /* Tamanhos de peças pequenas */
+  --size-ai-dot: 8px; /* bolinha com a cor da IA */
+  --size-ai-dot-lg: 12px;
+  --size-badge: 40px; /* quadradinho com o número do papel */
 
   /* Larguras de página */
   --page-max-width: 1120px;
   --page-narrow-width: 880px;
   --text-max-width: 720px;
+  --card-min-width: 250px; /* largura mínima de um cartão de receita */
+  /* Tela "Montar o time": abaixo destas larguras, as peças passam para a linha de baixo */
+  --team-min-width: 560px;
+  --request-min-width: 320px;
+  --role-info-min-width: 160px;
   --page-gutter: var(--space-6);
 }
