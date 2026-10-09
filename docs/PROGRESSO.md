@@ -4,7 +4,7 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 08/10/2026 (noite, T4 pronta para revisão)
+**Última atualização:** 08/10/2026 (noite, T5 pronta para revisão)
 **Etapa atual:** 4 — Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela)
 
 ---
@@ -104,7 +104,7 @@ peças invisíveis com testes primeiro, telas depois. Cada tarefa = 1 issue + 1 
 | T2 | IA simulada: contrato do "provedor", respostas em pedaços, testes (Vitest) | Concluída (PR #10) |
 | T3 | Receita "Criar um site" como dados (papéis, prompts, etapas) + 3 receitas "em breve" | Concluída (PR #11; JavaScript "de enfeite" no PR #12) |
 | T4 | Motor de orquestração: executa as etapas e narra eventos | Concluída (PR #13) |
-| T5 | Telas: Receitas e Montar o time (trocar IA, pedido com contador de 4.000) | A fazer |
+| T5 | Telas: Receitas e Montar o time (trocar IA, pedido com contador de 4.000) | Concluída (PR #14) |
 | T6 | Execução ao vivo: rota `/api/runs` com streaming + tela "Seu time está trabalhando" | A fazer |
 | T7 | Resultado: prévia do site em moldura isolada (o JS roda, mas sem acesso a nada), código, baixar arquivo, resumo do time | A fazer |
 | T8 | Quando uma IA falha: 2 tentativas, troca de IA, aviso na tela (pausar/retomar fica para a etapa 5) | A fazer |
@@ -139,7 +139,19 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 - **Pedido** (T4): conferido no motor (vazio ou acima de 4.000 caracteres não começa; espaços nas pontas não contam).
   O limite fica em `MAX_REQUEST_CHARS`, que a tela da T5 usa no contador.
 
+- **Telas da T5:** a página inicial separa "Receitas prontas" de "Em breve" (as 3 receitas do MVP que faltam
+  aparecem apagadas, sem botão). Cada receita pronta tem seu endereço (`/recipes/create-site`); endereço
+  inexistente ou de receita "Em breve" mostra uma página "não encontrada" em português. Na lista de IAs, a
+  sugerida aparece como "(recomendada)". Para o navegador vai só o que a tela mostra: os prompts ficam no servidor.
+- **Deixado de fora na T5** (estava no protótipo): busca de receitas, "+ Adicionar papel", forma de pagamento,
+  custo estimado, receitas das fases 2 e 3 e "Criar projeto próprio". Entram quando chegar a vez delas.
+- **Como as telas foram conferidas:** um roteiro temporário comanda o Chrome do computador (sem instalar nada no
+  projeto), clica, digita e tira prints em tamanho de computador e de celular (390 e 320 px).
+
 **Anotado para as próximas tarefas**
+- T6: o botão "Começar" hoje só mostra o aviso "Pedido pronto!". Na T6 ele passa a chamar `/api/runs`
+  (o time escolhido já está guardado na tela, em `components/TeamBuilder.tsx`).
+- Falta o ícone da aba do navegador (favicon). Pequeno; entra quando definirmos nome e marca.
 - T6: a rota confere o pedido com `findRunProblems` antes de começar e não manda para o navegador os dados
   só internos dos eventos (modelo, tokens, mensagem técnica de erro).
 - T8: as novas tentativas e a troca de IA entram em volta de cada etapa do motor.
@@ -147,8 +159,8 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 
 ## Próximo passo
 
-Luis revisa e faz o merge do PR #13 (motor de orquestração). Depois, T5 (telas Receitas e Montar o time,
-issue #5): é a primeira tarefa que muda o que aparece na tela.
+Luis revisa e faz o merge do PR #14 (telas Receitas e Montar o time). Depois, T6 (execução ao vivo, issue #6):
+a rota `/api/runs` e a tela "Seu time está trabalhando". É ali que o fluxo fica visível de ponta a ponta.
 As issues de cada tarefa têm o número igual ao da tarefa (T1 = #1 … T8 = #8).
 
 ## Decisões em aberto
