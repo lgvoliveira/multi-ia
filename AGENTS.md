@@ -69,7 +69,8 @@ Estrutura de pastas (criada na etapa 4, pode ser ajustada com aprovação):
 
 ```
 app/                 telas e rotas do Next.js. app/api/runs/ é a rota que roda o time e narra ao vivo
-components/          pedaços de tela reutilizáveis (cada um com seu .module.css)
+components/          pedaços de tela reutilizáveis (cada um com seu .module.css). SitePreview.tsx e
+                     generated-site.ts são a prévia isolada do site feito pelas IAs (seção 6)
 lib/engine/          motor: executa as etapas de um time e narra cada passo em eventos (types.ts).
                      Recebe as IAs prontas (getProvider), não as escolhe. O ESLint barra importar
                      telas, Next.js ou React aqui, em lib/providers/, lib/recipes/ e lib/runs/
@@ -127,6 +128,10 @@ docs/                documento do projeto e diário de progresso
   login, cookies nem créditos) e com uma política que bloqueia qualquer acesso à internet de dentro da moldura.
   Motivo: um texto colado no pedido pode trazer instruções escondidas que levam a IA a escrever código malicioso
   ("injeção de prompt"). Vale para qualquer pessoa que abrir o resultado, inclusive administradores.
+  A política tem duas partes: regras no começo do próprio site (`components/generated-site.ts`) e o cabeçalho
+  `frame-src 'none'` das nossas páginas (`next.config.ts`), que não deixa a moldura ir para outro endereço.
+  **Nunca** abra o site gerado como página do nosso endereço (ex.: um link `blob:` aberto numa aba): ali ele
+  enxergaria tudo. Para baixar, o arquivo sai como `application/octet-stream`, que o navegador só salva.
 
 ## 7. Padrões de código
 

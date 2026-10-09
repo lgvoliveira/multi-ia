@@ -174,6 +174,7 @@ As regras abaixo valem para o MVP e entram no `AGENTS.md` como especificação p
 - O site entregue é um arquivo único, sem nada carregado de outros sites, com visual caprichado (animações e efeitos).
 - Pode ter JavaScript leve, só "de enfeite" (menu, fotos que passam, animações). O site precisa funcionar completo mesmo sem ele, porque o revisor lê o código mas ainda não roda o site.
 - A prévia mostra o site numa moldura isolada ("quarto trancado"): o código roda, mas não enxerga a conta, os créditos, a página da plataforma nem a internet. Isso protege usuários e administradores contra código malicioso plantado por instruções escondidas num texto colado no pedido ("injeção de prompt").
+- Na prévia, os links internos do site (ex.: "Cardápio") funcionam, mas os que levam para fora (WhatsApp, telefone, e-mail, outros sites) não abrem; um aviso embaixo da prévia explica isso. No arquivo baixado, todos funcionam.
 
 **Ideia guardada para depois:** "preço máximo garantido" (cobrar o consumo real até um teto e a plataforma absorver o excedente). Descartada por enquanto pelo risco de absorver diferenças grandes; reavaliar quando houver histórico de custos.
 
