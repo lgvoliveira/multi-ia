@@ -1,0 +1,163 @@
+"use client";
+
+// Tela "Montar o time": escolher a IA de cada papel e escrever o pedido.
+// Roda no navegador porque reage na hora a cada troca de IA e a cada letra digitada.
+
+import { useId, useState, type FormEvent } from "react";
+import { MAX_REQUEST_CHARS } from "@/lib/engine/validate";
+import { PROVIDERS, isProviderId } from "@/lib/providers/catalog";
+import type { ProviderId } from "@/lib/providers/types";
+import type { Role } from "@/lib/recipes/types";
+import { AiDot } from "./AiDot";
+import styles from "./TeamBuilder.module.css";
+
+/** O que a tela precisa de cada papel. As instruções das IAs ficam no servidor. */
+export type TeamRole = Pick<Role, "id" | "name" | "description" | "suggestedProvider">;
+
+interface TeamBuilderProps {
+  roles: TeamRole[];
+  requestPlaceholder: string;
+}
+
+/** "editing": escrevendo; "empty": tentou começar sem pedido; "ready": pedido pronto. */
+type FormStatus = "editing" | "empty" | "ready";
+
+export function TeamBuilder({ roles, requestPlaceholder }: TeamBuilderProps) {
+  const [team, setTeam] = useState<Record<string, ProviderId>>(() =>
+    Object.fromEntries(roles.map((role) => [role.id, role.suggestedProvider])),
+  );
+  const [request, setRequest] = useState("");
+  const [status, setStatus] = useState<FormStatus>("editing");
+  const ids = useId();
+  const requestId = `${ids}-request`;
+  const hintId = `${ids}-hint`;
+  const counterId = `${ids}-counter`;
+  const errorId = `${ids}-error`;
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStatus(request.trim() ? "ready" : "empty");
+  }
+
+  const atLimit = request.length >= MAX_REQUEST_CHARS;
+
+  return (
+    <form className={styles.layout} onSubmit={handleSubmit} noValidate>
+      <section className={styles.team} aria-labelledby={`${ids}-team`}>
+        <h2 id={`${ids}-team`} className={styles.sectionTitle}>
+          Seu time
+        </h2>
+        <ol className={styles.roles}>
+          {roles.map((role, index) => (
+            <RoleCard
+              key={role.id}
+              role={role}
+              position={index + 1}
+              provider={team[role.id]}
+              onChange={(provider) => setTeam((current) => ({ ...current, [role.id]: provider }))}
+            />
+          ))}
+        </ol>
+      </section>
+
+      <section className={styles.request}>
+        <label htmlFor={requestId} className={styles.requestLabel}>
+          O que você quer?
+        </label>
+        <p id={hintId} className={styles.hint}>
+          Escreva do seu jeito, em português. Quanto mais detalhes, melhor o resultado.
+        </p>
+        <textarea
+          id={requestId}
+          className={styles.textarea}
+          rows={7}
+          maxLength={MAX_REQUEST_CHARS}
+          placeholder={requestPlaceholder}
+          value={request}
+          onChange={(event) => {
+            setRequest(event.target.value);
+            setStatus("editing");
+          }}
+          aria-invalid={status === "empty"}
+          aria-describedby={[hintId, counterId, status === "empty" && errorId].filter(Boolean).join(" ")}
+        />
+        <p id={counterId} className={atLimit ? `${styles.counter} ${styles.counterAtLimit}` : styles.counter}>
+          {formatNumber(request.length)}/{formatNumber(MAX_REQUEST_CHARS)} caracteres
+          {atLimit && " · limite atingido"}
+        </p>
+
+        {status === "empty" && (
+          <p id={errorId} className={styles.error} role="alert">
+            Escreva o que você quer que o time faça.
+          </p>
+        )}
+        {status === "ready" && (
+          <p className={styles.notice} role="status">
+            Pedido pronto! A parte em que o time trabalha na tela ainda está em construção e chega
+            na próxima tarefa.
+          </p>
+        )}
+
+        <button type="submit" className={styles.submit}>
+          Começar
+        </button>
+      </section>
+    </form>
+  );
+}
+
+interface RoleCardProps {
+  role: TeamRole;
+  position: number;
+  provider: ProviderId;
+  onChange: (provider: ProviderId) => void;
+}
+
+function RoleCard({ role, position, provider, onChange }: RoleCardProps) {
+  const ids = useId();
+  const nameId = `${ids}-name`;
+  const labelId = `${ids}-label`;
+  const selectId = `${ids}-select`;
+
+  return (
+    <li className={styles.role}>
+      <span className={styles.position} aria-hidden="true">
+        {position}
+      </span>
+      <div className={styles.roleInfo}>
+        <span id={nameId} className={styles.roleName}>
+          {role.name}
+        </span>
+        <span className={styles.roleDescription}>{role.description}</span>
+      </div>
+      <div className={styles.picker}>
+        <label id={labelId} htmlFor={selectId} className={styles.pickerLabel}>
+          IA
+        </label>
+        <div className={styles.pickerRow}>
+          <AiDot provider={provider} size="large" />
+          <select
+            id={selectId}
+            className={styles.select}
+            value={provider}
+            // O nome lido em voz alta fica "IA Chefe", e não só "IA", para cada papel.
+            aria-labelledby={`${labelId} ${nameId}`}
+            onChange={(event) => {
+              if (isProviderId(event.target.value)) onChange(event.target.value);
+            }}
+          >
+            {PROVIDERS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.id === role.suggestedProvider ? `${option.name} (recomendada)` : option.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function formatNumber(value: number): string {
+  return value.toLocaleString("pt-BR");
+}
