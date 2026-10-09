@@ -1,18 +1,19 @@
 "use client";
 
-// Uma receita na tela, do começo ao fim: montar o time e, depois de "Começar",
-// acompanhar o time trabalhando ao vivo. (A tela de resultado entra aqui na T7.)
+// Uma receita na tela, do começo ao fim: montar o time, acompanhar o time trabalhando ao vivo
+// depois de "Começar" e, quando o site fica pronto, a tela de resultado.
 
 import { useEffect, useRef, useState } from "react";
 import type { Step } from "@/lib/recipes/types";
 import { startRun } from "@/lib/runs/client";
-import { createRunState, runReducer, type RunAction, type RunState } from "./run-state";
+import { createRunState, finishedSite, runReducer, type RunAction, type RunState } from "./run-state";
 import { RunProgress } from "./RunProgress";
+import { RunResult } from "./RunResult";
 import { TeamBuilder, type Team, type TeamRole } from "./TeamBuilder";
 import styles from "./RecipeFlow.module.css";
 
 /** O que a tela precisa de cada etapa. As instruções das IAs ficam no servidor. */
-export type FlowStep = Pick<Step, "id" | "roleId" | "name" | "summary" | "format">;
+export type FlowStep = Pick<Step, "id" | "roleId" | "name" | "summary" | "doneSummary" | "format">;
 
 interface RecipeFlowProps {
   recipeId: string;
@@ -73,6 +74,10 @@ export function RecipeFlow({ recipeId, recipeName, roles, steps, requestPlacehol
   }
 
   if (run) {
+    const site = finishedSite(run);
+    if (site !== null) {
+      return <RunResult request={request} run={run} site={site} onRestart={() => setRun(null)} />;
+    }
     return (
       <RunProgress
         recipeName={recipeName}

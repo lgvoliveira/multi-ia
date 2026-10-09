@@ -40,6 +40,14 @@
   --color-code-bg: #14161b;
   --color-code-text: #e8eaf0;
 
+  /* Cores: prévia do site, com uma barra imitando a janela do navegador */
+  --color-preview-bar: #f8f9fa;
+  --color-preview-bar-dot: #d3d7de;
+
+  /* Cores: aba escolhida (ex.: Prévia / Código) */
+  --color-tab-selected-bg: var(--color-text);
+  --color-tab-selected-text: var(--color-surface);
+
   /* Cores: uma por IA */
   --color-ai-claude: #d9622b;
   --color-ai-gpt: #0f8a5f;
@@ -92,12 +100,14 @@
   /* Tamanhos de controles (botões e campos) */
   --control-height: 44px;
   --control-height-lg: 48px;
+  --control-height-sm: 40px; /* abas */
   --picker-width: 240px; /* lista de escolha da IA, com a bolinha de cor */
 
   /* Tamanhos de peças pequenas */
   --size-ai-dot: 8px; /* bolinha com a cor da IA */
   --size-ai-dot-lg: 12px;
   --size-badge: 40px; /* quadradinho com o número do papel */
+  --size-preview-bar-dot: 10px; /* bolinhas da barra da prévia */
 
   /* Larguras de página */
   --page-max-width: 1120px;
@@ -110,5 +120,9 @@
   --role-info-min-width: 160px;
   /* Tela "Seu time está trabalhando": altura da caixa com o texto de cada etapa (depois disso, ela rola) */
   --output-max-height: 260px;
+  /* Tela de resultado: a prévia ao lado do resumo do time (abaixo destas larguras, o resumo vai para baixo) */
+  --result-main-min-width: 560px;
+  --result-aside-min-width: 300px;
+  --preview-height: clamp(420px, 70vh, 720px);
   --page-gutter: var(--space-6);
 }

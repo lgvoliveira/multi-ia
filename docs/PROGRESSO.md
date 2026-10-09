@@ -4,7 +4,7 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 08/10/2026 (noite, T6 pronta para revisão)
+**Última atualização:** 08/10/2026 (noite, T7 pronta para revisão)
 **Etapa atual:** 4 — Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela)
 
 ---
@@ -106,7 +106,7 @@ peças invisíveis com testes primeiro, telas depois. Cada tarefa = 1 issue + 1 
 | T4 | Motor de orquestração: executa as etapas e narra eventos | Concluída (PR #13) |
 | T5 | Telas: Receitas e Montar o time (trocar IA, pedido com contador de 4.000) | Concluída (PR #14) |
 | T6 | Execução ao vivo: rota `/api/runs` com streaming + tela "Seu time está trabalhando" | Concluída (PR #15) |
-| T7 | Resultado: prévia do site em moldura isolada (o JS roda, mas sem acesso a nada), código, baixar arquivo, resumo do time | A fazer |
+| T7 | Resultado: prévia do site em moldura isolada (o JS roda, mas sem acesso a nada), código, baixar arquivo, resumo do time | Concluída (PR #16) |
 | T8 | Quando uma IA falha: 2 tentativas, troca de IA, aviso na tela (pausar/retomar fica para a etapa 5) | A fazer |
 
 **Parte B — IAs de verdade (só depois da Parte A funcionando na tela):** decidir OpenRouter x APIs
@@ -172,11 +172,39 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
   chega pela internet e o envio em linhas). Está na "cerca" do ESLint, como o motor. AGENTS.md atualizado.
 - **Deixado de fora na T6** (estava no protótipo): "Ver resposta completa" (a caixa rola por dentro) e "Pausar".
 
+- **Tela de resultado** (T7): quando o time termina um site, a mesma página vira "Seu site está pronto" (sem endereço
+  novo, como na T6). No alto: "Concluído em 26 s", "Começar de novo" (no lugar do "Salvar em projetos" do protótipo) e
+  "Baixar arquivo". Abas Prévia e Código (dá para trocar com as setas do teclado). Ao lado, "Como o time chegou aqui":
+  uma frase por etapa, escrita na receita (campo novo `doneSummary`, no passado: "Leu o código e apontou o que
+  precisava ser corrigido"). "Ver todas as etapas" abre embaixo os mesmos cartões da execução, para ler do começo.
+  Se o resultado final for texto (receitas futuras), continua a tela da execução, com o texto no último cartão.
+- **Prévia em "quarto trancado", três camadas** (T7): (1) moldura com `sandbox="allow-scripts"` e sem
+  `allow-same-origin`; (2) regras no começo do próprio site que barram tudo o que viria da internet
+  (`components/generated-site.ts`); (3) o cabeçalho `frame-src 'none'` nas nossas páginas (`next.config.ts`), que
+  impede o site de levar a moldura para outro endereço. Sem a camada 3, o experimento mostrou que um código malicioso
+  conseguia mandar dados para fora trocando o endereço da moldura. Um teste automático garante que ninguém acrescente
+  `allow-same-origin` sem perceber.
+- **Links na prévia** (T7): "#cardapio" rola a prévia (precisou de `<base href="about:srcdoc">`; sem isso, o clique
+  carregava a nossa página dentro da moldura). Links para fora (WhatsApp, telefone, e-mail) não abrem na prévia, e um
+  aviso embaixo dela explica; no arquivo baixado funcionam.
+- **Baixar arquivo** (T7): o nome vem do título do site ("doce-encanto-confeitaria.html"; sem título, "meu-site.html").
+  O arquivo sai como `application/octet-stream`: o navegador só salva, nunca abre o site como página do nosso endereço.
+- **Como a segurança foi testada** (T7): um roteiro temporário fez o "time" devolver um site malicioso na tela de
+  verdade (inclusive na versão de produção), com ~30 tentativas de vazar dados (buscar na internet, imagens, scripts,
+  fontes, WebSocket, formulário, janela nova, trocar o endereço da moldura, ler cookies e armazenamento, uma "tela de
+  login" falsa...). Um servidor espião anotava qualquer acesso: **nenhum pedido chegou**, e cookies e armazenamento da
+  nossa página não foram lidos. Sem as proteções, o mesmo site fez 23 pedidos.
+- **Limite conhecido** (T7): quando o código tenta trocar o endereço da moldura (ou abrir uma moldura de outro site
+  dentro dela), o Chrome "aquece" uma conexão com o site de destino antes de a regra bloquear. Nenhum dado do site vai
+  junto, mas o nome do site de destino é consultado na internet, e um atacante poderia esconder alguns caracteres
+  nesse nome. Não há como impedir isso de dentro da página (o recurso do navegador que permitiria cancelar antes vem
+  desligado em molduras isoladas). Risco baixo; reavaliar antes do lançamento público.
+- **Testado só no Chrome** (T7; o Edge usa o mesmo motor). Firefox e Safari ficam para a rodada de testes com usuários.
+- **Deixado de fora na T7** (estava no protótipo): "Salvar em projetos", "Pedir ajuste", créditos usados e a lista de
+  problemas do revisor no resumo (a revisão inteira está em "Ver todas as etapas").
+
 **Anotado para as próximas tarefas**
 - Falta o ícone da aba do navegador (favicon). Pequeno; entra quando definirmos nome e marca.
-- T7: o resultado final chega no evento `run-finished` e já fica guardado no estado da tela (`run.result`, em
-  `components/run-state.ts`). O recado provisório "Pronto! A tela de resultado..." (`components/RunProgress.tsx`)
-  sai na T7. A caixa de código mostra o HTML só como texto; a prévia de verdade precisa da moldura isolada.
 - T8: as novas tentativas e a troca de IA entram em volta de cada etapa do motor. A tela já aguenta uma etapa
   começar de novo com outra IA (zera o texto e troca a cor); falta o aviso "trocamos a IA".
 - T9: IAs reais às vezes cercam o HTML com marcas de código (` ```html `); limpar antes da prévia.
@@ -188,8 +216,8 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 
 ## Próximo passo
 
-Luis revisa e faz o merge do PR #15 (execução ao vivo). Depois, T7 (tela de resultado, issue #7): a prévia do site
-numa moldura isolada, o código, o botão de baixar e o resumo do time.
+Luis revisa e faz o merge do PR #16 (tela de resultado). Depois, T8 (quando uma IA falha, issue #8): 2 novas
+tentativas, troca de IA e o aviso "trocamos a IA" na tela.
 As issues de cada tarefa têm o número igual ao da tarefa (T1 = #1 … T8 = #8).
 
 ## Decisões em aberto

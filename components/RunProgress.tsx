@@ -1,18 +1,13 @@
 "use client";
 
 // Tela "Seu time está trabalhando": um cartão por etapa, com a cor da IA, o status
-// e o texto aparecendo enquanto a IA escreve.
+// e o texto aparecendo enquanto a IA escreve. Quando o time termina um site, entra a tela de resultado
+// (RunResult); esta fica na tela se o time parar no meio do caminho ou se o resultado for texto.
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { getProviderInfo } from "@/lib/providers/catalog";
-import { AiDot } from "./AiDot";
-import {
-  formatDuration,
-  type RunState,
-  type RunStatus,
-  type StepStatus,
-  type StepView,
-} from "./run-state";
+import type { RunState, RunStatus } from "./run-state";
+import { StepCard } from "./StepCard";
 import styles from "./RunProgress.module.css";
 
 interface RunProgressProps {
@@ -29,24 +24,6 @@ const TITLES: Record<RunStatus, string> = {
   failed: "O time parou no meio do caminho",
   cancelled: "Você cancelou",
   interrupted: "A conexão caiu",
-};
-
-const STATUS_LABELS: Record<StepStatus, string> = {
-  waiting: "Aguardando",
-  working: "Trabalhando…",
-  done: "Concluído",
-  failed: "Falhou",
-  stopped: "Interrompido",
-  skipped: "Não começou",
-};
-
-const BADGE_CLASSES: Record<StepStatus, string> = {
-  waiting: styles.badgeWaiting,
-  working: styles.badgeWorking,
-  done: styles.badgeDone,
-  failed: styles.badgeFailed,
-  stopped: styles.badgeWaiting,
-  skipped: styles.badgeWaiting,
 };
 
 export function RunProgress({ recipeName, request, run, onCancel, onRestart }: RunProgressProps) {
@@ -103,71 +80,6 @@ export function RunProgress({ recipeName, request, run, onCancel, onRestart }: R
   );
 }
 
-function StepCard({ step }: { step: StepView }) {
-  const providerName = getProviderInfo(step.provider).name;
-  const hasOutput = step.status === "working" || step.text.length > 0;
-  const label =
-    step.status === "done" && step.durationMs !== undefined
-      ? `Concluído em ${formatDuration(step.durationMs)}`
-      : STATUS_LABELS[step.status];
-
-  return (
-    <li
-      className={step.status === "working" ? `${styles.step} ${styles.stepWorking}` : styles.step}
-      aria-current={step.status === "working" ? "step" : undefined}
-    >
-      <div className={styles.stepHeader}>
-        <AiDot provider={step.provider} size="large" />
-        <h2 className={styles.stepName}>
-          {step.name} · {providerName}
-        </h2>
-        {!hasOutput && <span className={styles.stepSummary}>{step.summary}</span>}
-        <span className={`${styles.badge} ${BADGE_CLASSES[step.status]}`}>{label}</span>
-      </div>
-      {hasOutput && <StepOutput step={step} label={`Resposta de ${step.name} (${providerName})`} />}
-    </li>
-  );
-}
-
-/** Distância do fim (em pixels) em que a caixa ainda conta como "lá embaixo". */
-const FOLLOW_MARGIN_PX = 24;
-
-/** Caixa com o texto da etapa. Código do site aparece em fundo escuro, com letra de código. */
-function StepOutput({ step, label }: { step: StepView; label: string }) {
-  const boxRef = useRef<HTMLPreElement>(null);
-  const followRef = useRef(true);
-  const live = step.status === "working";
-
-  // A cada pedaço novo, a caixa acompanha o fim do texto, a não ser que a pessoa tenha subido para ler.
-  // Vale também quando a etapa termina: o último pedaço costuma chegar junto com o "terminou".
-  useLayoutEffect(() => {
-    const box = boxRef.current;
-    if (box && followRef.current) box.scrollTop = box.scrollHeight;
-  }, [live, step.text]);
-
-  function handleScroll() {
-    const box = boxRef.current;
-    if (box) followRef.current = box.scrollHeight - box.scrollTop - box.clientHeight < FOLLOW_MARGIN_PX;
-  }
-
-  const formatClass = step.format === "html" ? styles.outputCode : styles.outputText;
-
-  return (
-    // A caixa rola sozinha; tabIndex deixa rolar também pelo teclado.
-    <pre
-      ref={boxRef}
-      className={`${styles.output} ${formatClass}`}
-      tabIndex={0}
-      role="region"
-      aria-label={label}
-      onScroll={handleScroll}
-    >
-      {step.text}
-      {live && <span className={styles.caret} aria-hidden="true" />}
-    </pre>
-  );
-}
-
 type Tone = "messageDone" | "messageError" | "messageNeutral";
 
 /** Recado que aparece no alto da tela quando a execução acaba. */
@@ -176,12 +88,7 @@ function endMessage(run: RunState): { text: string; tone: Tone } | null {
     case "running":
       return null;
     case "finished":
-      return {
-        text:
-          "Pronto! A tela de resultado, com a prévia do site, ainda está em construção e chega na " +
-          "próxima tarefa. Por enquanto, o resultado final aparece no último cartão.",
-        tone: "messageDone",
-      };
+      return { text: "Pronto! O resultado final está no último cartão.", tone: "messageDone" };
     case "failed": {
       const failed = run.steps.find((step) => step.status === "failed");
       const who = failed ? `${failed.name} (${getProviderInfo(failed.provider).name})` : "Uma das IAs";
