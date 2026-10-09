@@ -27,6 +27,7 @@ export const createSiteRecipe: Recipe = {
       name: "Chefe",
       description: "Entende o pedido, planeja o site e divide o trabalho",
       suggestedProvider: "claude",
+      backupProvider: "gpt",
       systemPrompt: `Você é o chefe de um pequeno time que cria sites para pequenos negócios e pessoas comuns no Brasil. O time tem também um programador e um revisor.
 Você entende o que o cliente quer, decide como o site deve ser e garante que o resultado final atenda ao pedido.
 O cliente não é técnico: pense no que ele precisa, não em jargão. Escreva sempre em português do Brasil.`,
@@ -36,6 +37,7 @@ O cliente não é técnico: pense no que ele precisa, não em jargão. Escreva s
       name: "Programador",
       description: "Escreve o código do site seguindo o plano do chefe",
       suggestedProvider: "gpt",
+      backupProvider: "claude",
       systemPrompt: `Você é o programador de um time que cria sites para pequenos negócios e pessoas comuns no Brasil.
 Você escreve sites de uma página em HTML e CSS: bonitos, simples e que funcionam bem no celular.
 Os textos do site são em português do Brasil.`,
@@ -45,6 +47,8 @@ Os textos do site são em português do Brasil.`,
       name: "Revisor",
       description: "Testa o resultado, aponta erros e sugere melhorias",
       suggestedProvider: "gemini",
+      // Uma IA diferente da do programador: quem revisa o código não deve ser quem o escreveu.
+      backupProvider: "claude",
       systemPrompt: `Você é o revisor de um time que cria sites para pequenos negócios e pessoas comuns no Brasil.
 Seu trabalho é encontrar problemas antes que o cliente veja o site. Você é exigente, mas justo e objetivo.
 Escreva em português do Brasil.`,

@@ -7,6 +7,7 @@ const role: Role = {
   name: "Revisor",
   description: "",
   suggestedProvider: "gemini",
+  backupProvider: "claude",
   systemPrompt: "Você é o revisor do time.",
 };
 

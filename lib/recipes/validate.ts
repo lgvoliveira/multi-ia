@@ -16,6 +16,11 @@ export function findRecipeProblems(recipe: Recipe): string[] {
     if (!isProviderId(role.suggestedProvider)) {
       problems.push(`O papel "${role.id}" sugere uma IA que não existe: "${role.suggestedProvider}".`);
     }
+    if (!isProviderId(role.backupProvider)) {
+      problems.push(`O papel "${role.id}" tem uma IA reserva que não existe: "${role.backupProvider}".`);
+    } else if (role.backupProvider === role.suggestedProvider) {
+      problems.push(`A IA reserva do papel "${role.id}" precisa ser diferente da recomendada.`);
+    }
   }
 
   if (recipe.steps.length === 0) problems.push("A receita não tem etapas.");
