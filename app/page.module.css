@@ -27,10 +27,20 @@
   color: var(--color-text-muted);
 }
 
-.notice {
-  background: var(--color-surface-muted);
-  border-radius: var(--radius-card);
-  padding: var(--space-5) var(--space-6);
-  color: var(--color-text-soft);
-  font-size: var(--text-md);
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sectionTitle {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+}
+
+/* Quantos cartões couberem por linha; no celular, um por linha. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min-width), 100%), 1fr));
+  gap: var(--space-5);
 }

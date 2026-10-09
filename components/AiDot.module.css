@@ -1,0 +1,25 @@
+.dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--size-ai-dot);
+  height: var(--size-ai-dot);
+  border-radius: var(--radius-pill);
+}
+
+.large {
+  width: var(--size-ai-dot-lg);
+  height: var(--size-ai-dot-lg);
+}
+
+/* Uma classe por IA, com o mesmo nome do identificador (ProviderId). */
+.claude {
+  background: var(--color-ai-claude);
+}
+
+.gpt {
+  background: var(--color-ai-gpt);
+}
+
+.gemini {
+  background: var(--color-ai-gemini);
+}
