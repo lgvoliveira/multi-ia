@@ -5,6 +5,28 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // Cerca: o motor, as IAs e as receitas não podem depender de telas nem do Next.js.
+  // Assim a mesma base serve para a web, o conector MCP e o WhatsApp (regra do AGENTS.md).
+  {
+    files: ["lib/engine/**", "lib/providers/**", "lib/recipes/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/app", "@/app/**", "@/components", "@/components/**", "**/app/**", "**/components/**"],
+              message: "O motor não pode depender de telas (app/ ou components/).",
+            },
+            {
+              group: ["next", "next/**", "react", "react/**", "react-dom", "react-dom/**"],
+              message: "O motor não pode depender do Next.js nem do React.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

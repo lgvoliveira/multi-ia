@@ -70,7 +70,9 @@ Estrutura de pastas (criada na etapa 4, pode ser ajustada com aprovação):
 ```
 app/                 telas e rotas do Next.js
 components/          pedaços de tela reutilizáveis (cada um com seu .module.css)
-lib/engine/          motor: executa as etapas de um time
+lib/engine/          motor: executa as etapas de um time e narra cada passo em eventos (types.ts).
+                     Recebe as IAs prontas (getProvider), não as escolhe. O ESLint barra importar
+                     telas, Next.js ou React aqui, em lib/providers/ e em lib/recipes/
 lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts). catalog.ts é só
                      dados e pode ir para a tela; registry.ts entrega as IAs e é SÓ do servidor
 lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema, etapas);
