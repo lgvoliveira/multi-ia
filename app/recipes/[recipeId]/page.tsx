@@ -30,11 +30,12 @@ export default async function RecipePage(props: PageProps<"/recipes/[recipeId]">
     description,
     suggestedProvider,
   }));
-  const steps = recipe.steps.map(({ id, roleId, name, summary, format }) => ({
+  const steps = recipe.steps.map(({ id, roleId, name, summary, doneSummary, format }) => ({
     id,
     roleId,
     name,
     summary,
+    doneSummary,
     format,
   }));
 

@@ -1,0 +1,250 @@
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.kicker {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-status-done-text);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-title);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-title);
+}
+
+/* O foco vai para os títulos só para avisar o leitor de tela; ali o contorno não ajuda ninguém. */
+.title:focus,
+.stepsTitle:focus {
+  outline: none;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.button,
+.primaryButton {
+  min-height: var(--control-height);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.button {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.button:hover {
+  background: var(--color-surface-subtle);
+}
+
+.primaryButton {
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.primaryButton:hover {
+  background: var(--color-primary-hover);
+}
+
+/* Duas colunas no computador (site à esquerda, time à direita); uma embaixo da outra no celular.
+   O site cresce muito mais que o resumo do time (999 contra 1) e quebra a linha quando não cabe. */
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+.main {
+  flex: 999 1 var(--result-main-min-width);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tabList {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.tab {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: var(--color-surface-subtle);
+}
+
+.tab[aria-selected="true"] {
+  border-color: var(--color-tab-selected-bg);
+  background: var(--color-tab-selected-bg);
+  color: var(--color-tab-selected-text);
+}
+
+/* Código do site, na mesma altura da prévia. Passou disso, rola por dentro. */
+.code {
+  margin: 0;
+  max-height: var(--preview-height);
+  overflow: auto;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-card);
+  background: var(--color-code-bg);
+  color: var(--color-code-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--line-height-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.team {
+  flex: 1 1 var(--result-aside-min-width);
+  min-width: 0;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.teamTitle {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}
+
+.teamSteps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.teamStep {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.teamStepName {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.teamStepSummary {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Botão com cara de link. A altura mínima deixa fácil de tocar no celular. */
+.linkButton {
+  align-self: flex-start;
+  min-height: var(--control-height);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  color: var(--color-primary-hover);
+}
+
+/* Todas as etapas: a mesma coluna estreita da tela do time trabalhando. */
+.allSteps {
+  max-width: var(--page-narrow-width);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.allSteps[hidden] {
+  display: none;
+}
+
+.stepsTitle {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+}
+
+.request {
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  font-size: var(--text-md);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.requestLabel {
+  font-weight: var(--weight-semibold);
+}
+
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}

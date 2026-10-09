@@ -1,5 +1,5 @@
-// Estado da tela "Seu time está trabalhando": o que cada cartão de etapa mostra, atualizado a cada
-// evento da narração. Só dados e funções puras, para os testes conferirem cada passagem.
+// Estado da execução na tela: o que cada cartão de etapa mostra, atualizado a cada evento da narração,
+// e o resultado no fim. Só dados e funções puras, para os testes conferirem cada passagem.
 
 import type { ProviderId } from "@/lib/providers/types";
 import type { OutputFormat } from "@/lib/recipes/types";
@@ -16,6 +16,7 @@ export interface StepView {
   id: string;
   name: string;
   summary: string;
+  doneSummary: string;
   format: OutputFormat;
   provider: ProviderId;
   status: StepStatus;
@@ -25,7 +26,10 @@ export interface StepView {
 }
 
 /** O que a tela já sabe de cada etapa antes de a execução começar. */
-export type PlannedStepView = Pick<StepView, "id" | "name" | "summary" | "format" | "provider">;
+export type PlannedStepView = Pick<
+  StepView,
+  "id" | "name" | "summary" | "doneSummary" | "format" | "provider"
+>;
 
 /**
  * running: o time está trabalhando. Os outros são o fim: terminou, uma IA falhou,
@@ -38,6 +42,8 @@ export interface RunState {
   steps: StepView[];
   /** O resultado final, quando o time termina. */
   result?: string;
+  /** Quanto tempo o time levou, quando termina. */
+  durationMs?: number;
 }
 
 export type RunAction =
@@ -91,7 +97,7 @@ function applyEvent(state: RunState, event: PublicRunEvent): RunState {
         durationMs: event.durationMs,
       }));
     case "run-finished":
-      return { ...state, status: "finished", result: event.result };
+      return { ...state, status: "finished", result: event.result, durationMs: event.durationMs };
     case "run-failed":
       return endRun(
         updateStep(state, event.stepId, (step) => ({ ...step, status: "failed" })),
@@ -118,6 +124,13 @@ function mapSteps(state: RunState, change: (step: StepView) => StepView): RunSta
 
 function updateStep(state: RunState, stepId: string, change: (step: StepView) => StepView): RunState {
   return mapSteps(state, (step) => (step.id === stepId ? change(step) : step));
+}
+
+/** O site pronto, quando o time terminou e o resultado final é um site. Senão, null. */
+export function finishedSite(state: RunState): string | null {
+  const finalStep = state.steps.at(-1);
+  if (state.status !== "finished" || state.result === undefined || finalStep?.format !== "html") return null;
+  return state.result;
 }
 
 /** Tempo de uma etapa, do jeito que se fala: "menos de 1 s", "12 s", "1 min 5 s". */

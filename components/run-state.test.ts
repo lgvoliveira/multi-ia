@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PublicRunEvent } from "@/lib/runs/public-events";
 import {
   createRunState,
+  finishedSite,
   formatDuration,
   runReducer,
   type PlannedStepView,
@@ -10,9 +11,9 @@ import {
 } from "./run-state";
 
 const PLANNED: PlannedStepView[] = [
-  { id: "plan", name: "Chefe", summary: "Vai planejar", format: "text", provider: "claude" },
-  { id: "code", name: "Programador", summary: "Vai programar", format: "html", provider: "gpt" },
-  { id: "review", name: "Revisor", summary: "Vai revisar", format: "text", provider: "gemini" },
+  { id: "plan", name: "Chefe", summary: "Vai planejar", doneSummary: "Planejou", format: "text", provider: "claude" },
+  { id: "code", name: "Programador", summary: "Vai programar", doneSummary: "Programou", format: "html", provider: "gpt" },
+  { id: "review", name: "Revisor", summary: "Vai revisar", doneSummary: "Revisou", format: "text", provider: "gemini" },
 ];
 
 function event(publicEvent: PublicRunEvent): RunAction {
@@ -71,11 +72,12 @@ describe("estado da tela do time trabalhando", () => {
     expect(state.steps.map((step) => step.provider)).toEqual(["claude", "claude", "gpt"]);
   });
 
-  it("quando o time termina, guarda o resultado final", () => {
+  it("quando o time termina, guarda o resultado final e o tempo total", () => {
     const state = play(...PLAN_DONE, event({ type: "run-finished", result: "<!DOCTYPE html>", durationMs: 9000 }));
 
     expect(state.status).toBe("finished");
     expect(state.result).toBe("<!DOCTYPE html>");
+    expect(state.durationMs).toBe(9000);
   });
 
   it("quando uma IA falha, marca a etapa, e as seguintes ficam como não começadas", () => {
@@ -122,6 +124,26 @@ describe("estado da tela do time trabalhando", () => {
     const late = runReducer(cancelled, event({ type: "step-text", stepId: "plan", text: "atrasado" }));
 
     expect(late).toBe(cancelled);
+  });
+});
+
+describe("site pronto", () => {
+  // Mesmas etapas, mas terminando com o programador: o resultado final é um site.
+  const ENDS_WITH_SITE = PLANNED.slice(0, 2);
+  const SITE = "<!DOCTYPE html><title>Doce Encanto</title>";
+
+  it("quando o time termina e a última etapa escreve HTML, o resultado é o site", () => {
+    const state = runReducer(createRunState(ENDS_WITH_SITE), event({ type: "run-finished", result: SITE, durationMs: 1 }));
+
+    expect(finishedSite(state)).toBe(SITE);
+  });
+
+  it("não há site se o resultado final é texto ou se o time não terminou", () => {
+    const textResult = play(event({ type: "run-finished", result: "Texto final.", durationMs: 1 }));
+    const cancelled = runReducer(createRunState(ENDS_WITH_SITE), { type: "cancel" });
+
+    expect(finishedSite(textResult)).toBeNull();
+    expect(finishedSite(cancelled)).toBeNull();
   });
 });
 
