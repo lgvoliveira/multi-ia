@@ -30,6 +30,8 @@ export interface Step {
   name: string;
   /** Frase mostrada enquanto a etapa espera a vez (ex.: "Vai testar o site e apontar erros"). */
   summary: string;
+  /** Frase mostrada no resultado, depois que a etapa terminou (ex.: "Testou o site e apontou o que corrigir"). */
+  doneSummary: string;
   /** Tarefa desta etapa. Somada ao prompt de sistema do papel. */
   instruction: string;
   /** O que a etapa recebe: o pedido do usuário e/ou o que etapas anteriores produziram. */

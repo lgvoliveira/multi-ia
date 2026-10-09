@@ -15,6 +15,7 @@ const step: Step = {
   roleId: "reviewer",
   name: "Revisor",
   summary: "",
+  doneSummary: "",
   instruction: "Aponte os erros do site.",
   inputs: [
     { from: "request", label: "Pedido do cliente" },

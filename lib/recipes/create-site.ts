@@ -57,6 +57,7 @@ Escreva em português do Brasil.`,
       roleId: "chief",
       name: "Chefe",
       summary: "Vai entender o pedido e planejar o site",
+      doneSummary: "Entendeu o pedido e planejou as seções e o visual do site",
       instruction: `Nesta etapa, faça o plano do site para o programador seguir. Não escreva código.
 
 Organize o plano assim:
@@ -77,6 +78,7 @@ Seja direto: no máximo uma página de texto.`,
       roleId: "programmer",
       name: "Programador",
       summary: "Vai escrever o site seguindo o plano",
+      doneSummary: "Escreveu a primeira versão do site, seguindo o plano",
       instruction: `Nesta etapa, escreva o site seguindo o plano do chefe.
 
 ${SITE_RULES}
@@ -95,6 +97,7 @@ Responda apenas com o código HTML, sem explicações e sem blocos de markdown.`
       roleId: "reviewer",
       name: "Revisor",
       summary: "Vai testar o site e apontar erros",
+      doneSummary: "Leu o código e apontou o que precisava ser corrigido",
       instruction: `Nesta etapa, revise o site que o programador escreveu, comparando com o pedido do cliente e com o plano do chefe. Não reescreva o código.
 
 Verifique:
@@ -122,6 +125,7 @@ Responda com uma lista numerada de até 10 problemas, do mais grave ao menos gra
       roleId: "chief",
       name: "Consolidação",
       summary: "O chefe junta tudo e entrega o resultado",
+      doneSummary: "Aplicou as correções e entregou a versão final",
       instruction: `Nesta etapa, entregue a versão final do site.
 
 Parta do site do programador e aplique as correções do revisor que fazem sentido para o cliente. Se discordar de alguma, fique com o que for melhor para o cliente.
