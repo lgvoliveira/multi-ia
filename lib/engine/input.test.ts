@@ -22,6 +22,7 @@ const step: Step = {
   ],
   maxOutputTokens: 100,
   sampleOutput: "Tudo certo.",
+  format: "text",
 };
 
 describe("montagem do que a IA recebe", () => {

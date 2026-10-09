@@ -30,8 +30,13 @@ describe('receita "Criar um site"', () => {
     expect(inputsOf("consolidate")).toEqual(["request", "plan", "code", "review"]);
   });
 
-  it("entrega o resultado como HTML", () => {
-    expect(createSiteRecipe.resultFormat).toBe("html");
+  it("o programador e a consolidação escrevem o site, e o resultado final é HTML", () => {
+    expect(createSiteRecipe.steps.map((step) => [step.id, step.format])).toEqual([
+      ["plan", "text"],
+      ["code", "html"],
+      ["review", "text"],
+      ["consolidate", "html"],
+    ]);
   });
 
   it("os sites de exemplo são HTML completos, em português e sem carregar nada de fora", () => {
