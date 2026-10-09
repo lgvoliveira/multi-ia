@@ -4,7 +4,7 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 08/10/2026 (noite, início da etapa 4)
+**Última atualização:** 08/10/2026 (noite, T4 pronta para revisão)
 **Etapa atual:** 4 — Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela)
 
 ---
@@ -103,7 +103,7 @@ peças invisíveis com testes primeiro, telas depois. Cada tarefa = 1 issue + 1 
 | T1 | Esqueleto do site: Next.js, tokens visuais, topo, CI | Concluída (PR #9) |
 | T2 | IA simulada: contrato do "provedor", respostas em pedaços, testes (Vitest) | Concluída (PR #10) |
 | T3 | Receita "Criar um site" como dados (papéis, prompts, etapas) + 3 receitas "em breve" | Concluída (PR #11; JavaScript "de enfeite" no PR #12) |
-| T4 | Motor de orquestração: executa as etapas e narra eventos | A fazer |
+| T4 | Motor de orquestração: executa as etapas e narra eventos | Concluída (PR #13) |
 | T5 | Telas: Receitas e Montar o time (trocar IA, pedido com contador de 4.000) | A fazer |
 | T6 | Execução ao vivo: rota `/api/runs` com streaming + tela "Seu time está trabalhando" | A fazer |
 | T7 | Resultado: prévia do site em moldura isolada (o JS roda, mas sem acesso a nada), código, baixar arquivo, resumo do time | A fazer |
@@ -130,10 +130,25 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
   escondidas) e contra erros, já que o revisor lê o código mas não roda o site.
 - **Codex como revisor:** ainda não confirmado se está conectado ao GitHub. Enquanto não estiver,
   o Luis revisa e faz o merge sozinho.
+- **Motor como "narrador"** (T4): o motor (`lib/engine/`) roda as etapas em ordem e devolve eventos
+  (execução começou, etapa começou, pedaço de texto, etapa terminou, execução terminou, falhou, cancelada).
+  Ele recebe as IAs prontas e não escolhe nenhuma. Uma regra no ESLint barra importar telas, Next.js ou React
+  no motor, nas IAs e nas receitas.
+- **O que cada IA recebe** (T4): prompt de sistema = papel + tarefa da etapa; entrada = o pedido e as respostas
+  anteriores que a receita indica, cada parte marcada com `<parte nome="...">`.
+- **Pedido** (T4): conferido no motor (vazio ou acima de 4.000 caracteres não começa; espaços nas pontas não contam).
+  O limite fica em `MAX_REQUEST_CHARS`, que a tela da T5 usa no contador.
+
+**Anotado para as próximas tarefas**
+- T6: a rota confere o pedido com `findRunProblems` antes de começar e não manda para o navegador os dados
+  só internos dos eventos (modelo, tokens, mensagem técnica de erro).
+- T8: as novas tentativas e a troca de IA entram em volta de cada etapa do motor.
+- T9: IAs reais às vezes cercam o HTML com marcas de código (` ```html `); limpar antes da prévia.
 
 ## Próximo passo
 
-Luis faz o merge do PR #12 (JavaScript "de enfeite"). Depois, T4 (motor de orquestração, issue #4).
+Luis revisa e faz o merge do PR #13 (motor de orquestração). Depois, T5 (telas Receitas e Montar o time,
+issue #5): é a primeira tarefa que muda o que aparece na tela.
 As issues de cada tarefa têm o número igual ao da tarefa (T1 = #1 … T8 = #8).
 
 ## Decisões em aberto
