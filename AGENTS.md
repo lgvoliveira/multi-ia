@@ -73,7 +73,8 @@ components/          pedaços de tela reutilizáveis (cada um com seu .module.cs
 lib/engine/          motor: executa as etapas de um time
 lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts). catalog.ts é só
                      dados e pode ir para a tela; registry.ts entrega as IAs e é SÓ do servidor
-lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema)
+lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema, etapas);
+                     validate.ts confere toda receita nos testes
 styles/tokens.css    TODAS as cores, fontes, espaçamentos e arredondamentos
 docs/                documento do projeto e diário de progresso
 .github/workflows/   checagens automáticas (CI) que rodam em todo pull request
