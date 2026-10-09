@@ -11,9 +11,9 @@ import {
 } from "./run-state";
 
 const PLANNED: PlannedStepView[] = [
-  { id: "plan", name: "Chefe", summary: "Vai planejar", doneSummary: "Planejou", format: "text", provider: "claude" },
-  { id: "code", name: "Programador", summary: "Vai programar", doneSummary: "Programou", format: "html", provider: "gpt" },
-  { id: "review", name: "Revisor", summary: "Vai revisar", doneSummary: "Revisou", format: "text", provider: "gemini" },
+  { id: "plan", roleId: "chief", name: "Chefe", summary: "Vai planejar", doneSummary: "Planejou", format: "text", provider: "claude" },
+  { id: "code", roleId: "programmer", name: "Programador", summary: "Vai programar", doneSummary: "Programou", format: "html", provider: "gpt" },
+  { id: "review", roleId: "reviewer", name: "Revisor", summary: "Vai revisar", doneSummary: "Revisou", format: "text", provider: "gemini" },
 ];
 
 function event(publicEvent: PublicRunEvent): RunAction {
@@ -80,7 +80,7 @@ describe("estado da tela do time trabalhando", () => {
     expect(state.durationMs).toBe(9000);
   });
 
-  it("quando uma IA falha, marca a etapa, e as seguintes ficam como não começadas", () => {
+  it("quando uma IA falha, marca a etapa, as concluídas continuam com o texto e as seguintes não começam", () => {
     const state = play(
       ...PLAN_DONE,
       event({ type: "step-started", stepId: "code", provider: "gpt" }),
@@ -90,7 +90,59 @@ describe("estado da tela do time trabalhando", () => {
 
     expect(state.status).toBe("failed");
     expect(statuses(state)).toEqual(["plan done", "code failed", "review skipped"]);
+    expect(state.steps[0]).toMatchObject({ text: "Plano: 4 seções.", durationMs: 3200 });
     expect(state.steps[1].text).toBe("<html>");
+  });
+
+  it("quando a IA tenta de novo, o texto da tentativa que falhou some e a etapa mostra a tentativa", () => {
+    const retrying = play(
+      ...PLAN_DONE,
+      event({ type: "step-started", stepId: "code", provider: "gpt" }),
+      event({ type: "step-text", stepId: "code", text: "<html><bo" }),
+      event({ type: "step-retrying", stepId: "code", attempt: 2 }),
+    );
+    expect(retrying.steps[1]).toMatchObject({ status: "working", text: "", retryAttempt: 2, provider: "gpt" });
+
+    const done = play(
+      ...PLAN_DONE,
+      event({ type: "step-started", stepId: "code", provider: "gpt" }),
+      event({ type: "step-retrying", stepId: "code", attempt: 2 }),
+      event({ type: "step-text", stepId: "code", text: "<html></html>" }),
+      event({ type: "step-finished", stepId: "code", durationMs: 4000 }),
+    );
+    // Deu certo na nova tentativa: o aviso some.
+    expect(done.steps[1]).toMatchObject({ status: "done", text: "<html></html>", retryAttempt: undefined });
+  });
+
+  it("quando outra IA assume o papel, a etapa recomeça com ela, e as próximas etapas do papel também passam para ela", () => {
+    const consolidate: PlannedStepView = { ...PLANNED[0], id: "consolidate", name: "Consolidação" };
+    const state = [
+      event({ type: "step-started", stepId: "plan", provider: "claude" }),
+      event({ type: "step-text", stepId: "plan", text: "Plano pela met" }),
+      event({ type: "step-retrying", stepId: "plan", attempt: 3 }),
+      event({ type: "step-switched", stepId: "plan", roleId: "chief", from: "claude", to: "gpt" }),
+    ].reduce(runReducer, createRunState([...PLANNED, consolidate]));
+
+    expect(state.steps.map((step) => [step.id, step.provider, step.replacedProvider])).toEqual([
+      ["plan", "gpt", "claude"],
+      ["code", "gpt", undefined],
+      ["review", "gemini", undefined],
+      ["consolidate", "gpt", "claude"],
+    ]);
+    expect(state.steps[0]).toMatchObject({ status: "working", text: "", retryAttempt: undefined });
+  });
+
+  it("a troca não muda uma etapa do mesmo papel que já terminou", () => {
+    const consolidate: PlannedStepView = { ...PLANNED[0], id: "consolidate", name: "Consolidação" };
+    const state = [
+      ...PLAN_DONE,
+      event({ type: "step-started", stepId: "consolidate", provider: "claude" }),
+      event({ type: "step-switched", stepId: "consolidate", roleId: "chief", from: "claude", to: "gpt" }),
+    ].reduce(runReducer, createRunState([...PLANNED, consolidate]));
+
+    expect(state.steps[0]).toMatchObject({ provider: "claude", status: "done" });
+    expect(state.steps[0].replacedProvider).toBeUndefined();
+    expect(state.steps[3]).toMatchObject({ provider: "gpt", replacedProvider: "claude" });
   });
 
   it("ao cancelar, a etapa que trabalhava fica interrompida e guarda o que já tinha escrito", () => {

@@ -137,8 +137,10 @@ As regras abaixo valem para o MVP e entram no `AGENTS.md` como especificação p
 
 **Erro de uma IA no meio da execução**
 
-1. Tenta de novo automaticamente, até 2 vezes, com uma pequena espera.
+1. Tenta de novo automaticamente, até 2 vezes, com uma pequena espera (1 s e depois 2 s).
 2. Se persistir, troca de IA naquele papel e avisa o usuário. Vem ligado por padrão nas receitas e pode ser desligado.
+   Quem assume é a IA recomendada pela receita ou, se foi ela que falhou, a IA reserva definida na receita para aquele papel.
+   A IA que assumiu continua no papel até o fim da execução.
 3. Se ainda falhar, pausa sem perder nada: as etapas concluídas ficam salvas, e o usuário escolhe tentar de novo, trocar a IA ou cancelar. Ao retomar, continua da etapa que falhou.
 4. Etapa que falhou não é cobrada.
 5. Erro na chave do próprio usuário: avisa e não passa a usar créditos da plataforma sem autorização.

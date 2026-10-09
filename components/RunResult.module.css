@@ -191,6 +191,12 @@
   color: var(--color-text-muted);
 }
 
+/* Outra IA assumiu o papel no meio do caminho. */
+.teamStepReplaced {
+  font-size: var(--text-sm);
+  color: var(--color-warning-text);
+}
+
 /* Botão com cara de link. A altura mínima deixa fácil de tocar no celular. */
 .linkButton {
   align-self: flex-start;

@@ -14,6 +14,8 @@ export type StepStatus = "waiting" | "working" | "done" | "failed" | "stopped" |
 /** Uma etapa como a tela mostra. */
 export interface StepView {
   id: string;
+  /** Papel que faz a etapa. Quando outra IA assume um papel, ela fica com as próximas etapas dele. */
+  roleId: string;
   name: string;
   summary: string;
   doneSummary: string;
@@ -23,12 +25,16 @@ export interface StepView {
   /** O que a IA escreveu até agora. */
   text: string;
   durationMs?: number;
+  /** IA que não conseguiu fazer a etapa (ou uma anterior do mesmo papel); `provider` entrou no lugar dela. */
+  replacedProvider?: ProviderId;
+  /** Número da tentativa, quando a IA teve um problema e está tentando de novo. */
+  retryAttempt?: number;
 }
 
 /** O que a tela já sabe de cada etapa antes de a execução começar. */
 export type PlannedStepView = Pick<
   StepView,
-  "id" | "name" | "summary" | "doneSummary" | "format" | "provider"
+  "id" | "roleId" | "name" | "summary" | "doneSummary" | "format" | "provider"
 >;
 
 /**
@@ -90,11 +96,23 @@ function applyEvent(state: RunState, event: PublicRunEvent): RunState {
       }));
     case "step-text":
       return updateStep(state, event.stepId, (step) => ({ ...step, text: step.text + event.text }));
+    case "step-retrying":
+      // A IA recomeça a etapa do zero: o que ela tinha escrito sai da tela.
+      return updateStep(state, event.stepId, (step) => ({ ...step, text: "", retryAttempt: event.attempt }));
+    case "step-switched":
+      // Outra IA assume o papel: recomeça esta etapa do zero e fica com as próximas etapas do papel.
+      return mapSteps(state, (step) => {
+        const replaced = { ...step, provider: event.to, replacedProvider: event.from };
+        if (step.id === event.stepId) return { ...replaced, text: "", retryAttempt: undefined };
+        if (step.roleId === event.roleId && step.status === "waiting") return replaced;
+        return step;
+      });
     case "step-finished":
       return updateStep(state, event.stepId, (step) => ({
         ...step,
         status: "done",
         durationMs: event.durationMs,
+        retryAttempt: undefined,
       }));
     case "run-finished":
       return { ...state, status: "finished", result: event.result, durationMs: event.durationMs };

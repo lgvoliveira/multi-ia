@@ -12,6 +12,11 @@ export interface Role {
   description: string;
   /** IA recomendada para o papel. O usuário pode trocar. */
   suggestedProvider: ProviderId;
+  /**
+   * IA reserva: assume o papel quando a recomendada falha (precisa ser outra).
+   * Se o usuário escolheu outra IA e é ela que falha, quem assume é a recomendada.
+   */
+  backupProvider: ProviderId;
   /** Quem a IA é neste papel: a base do prompt de sistema, igual em todas as etapas do papel. */
   systemPrompt: string;
 }

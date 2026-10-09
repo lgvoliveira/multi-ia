@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMockProvider, estimateTokens } from "@/lib/providers/mock";
-import type { AiProvider, GenerateRequest, ProviderId } from "@/lib/providers/types";
+import { ProviderError, type AiProvider, type GenerateRequest, type ProviderId } from "@/lib/providers/types";
 import { createSiteRecipe } from "@/lib/recipes/create-site";
 import {
   SAMPLE_FINAL_SITE,
@@ -13,13 +13,16 @@ import type { RunEvent } from "./types";
 
 const recipe = createSiteRecipe;
 const REQUEST = "Quero um site para minha confeitaria, com cardápio e botão de WhatsApp.";
+const MOCK_FAILURE = (id: ProviderId) => `A IA simulada (${id}) falhou de propósito, para teste.`;
 
 /**
  * IAs simuladas que respondem na hora e anotam cada chamada, para o teste conferir o que cada uma recebeu.
  * `replacements` troca a IA de um identificador por outra (ex.: uma que falha).
+ * `wait` é uma espera de mentira: anota quanto o motor mandou esperar entre as tentativas e segue na hora.
  */
 function createTestProviders(replacements: Partial<Record<ProviderId, AiProvider>> = {}) {
   const calls: { provider: ProviderId; request: GenerateRequest }[] = [];
+  const waits: number[] = [];
   const getProvider = (id: ProviderId): AiProvider => {
     const provider = replacements[id] ?? createMockProvider({ id, chunkDelayMs: 0 });
     return {
@@ -30,7 +33,16 @@ function createTestProviders(replacements: Partial<Record<ProviderId, AiProvider
       },
     };
   };
-  return { calls, getProvider };
+  const wait = async (ms: number, signal?: AbortSignal) => {
+    waits.push(ms);
+    signal?.throwIfAborted();
+  };
+  return { calls, waits, getProvider, wait };
+}
+
+/** IA simulada que falha nas primeiras chamadas (Infinity = sempre). */
+function failing(id: ProviderId, failFirstCalls = Infinity, failAfterChunks = 0): AiProvider {
+  return createMockProvider({ id, chunkDelayMs: 0, failFirstCalls, failAfterChunks });
 }
 
 async function collect(events: AsyncIterable<RunEvent>): Promise<RunEvent[]> {
@@ -211,64 +223,6 @@ describe("motor de orquestração", () => {
     ]);
   });
 
-  it("quando uma IA falha, avisa em qual etapa e para sem chamar as próximas", async () => {
-    const { calls, getProvider } = createTestProviders({
-      gpt: createMockProvider({ id: "gpt", chunkDelayMs: 0, failFirstCalls: Infinity }),
-    });
-
-    const events = await collect(runRecipe({ recipe, request: REQUEST }, { getProvider }));
-
-    expect(events.at(-1)).toEqual({
-      type: "run-failed",
-      stepId: "code",
-      provider: "gpt",
-      retryable: true,
-      errorMessage: "A IA simulada (gpt) falhou de propósito, para teste.",
-    });
-    expect(calls).toHaveLength(2);
-    expect(ofType(events, "run-finished")).toEqual([]);
-  });
-
-  it("IA que para de responder sem avisar que terminou conta como falha", async () => {
-    const stopsHalfway: AiProvider = {
-      id: "gpt",
-      async *generate() {
-        yield { type: "text", text: "<!DOCTYPE html>" };
-      },
-    };
-    const { getProvider } = createTestProviders({ gpt: stopsHalfway });
-
-    const events = await collect(runRecipe({ recipe, request: REQUEST }, { getProvider }));
-
-    expect(events.at(-1)).toEqual({
-      type: "run-failed",
-      stepId: "code",
-      provider: "gpt",
-      retryable: true,
-      errorMessage: "A IA parou de responder antes de terminar.",
-    });
-  });
-
-  it("erro ao preparar a IA (ex.: falta a chave) também vira falha da etapa", async () => {
-    const { getProvider } = createTestProviders();
-    const getProviderWithoutGemini = (id: ProviderId) => {
-      if (id === "gemini") throw new Error("Falta a chave do Gemini.");
-      return getProvider(id);
-    };
-
-    const events = await collect(
-      runRecipe({ recipe, request: REQUEST }, { getProvider: getProviderWithoutGemini }),
-    );
-
-    expect(events.at(-1)).toEqual({
-      type: "run-failed",
-      stepId: "review",
-      provider: "gemini",
-      retryable: false,
-      errorMessage: "Falta a chave do Gemini.",
-    });
-  });
-
   it("quando o usuário cancela no meio de uma etapa, para e avisa qual etapa estava rodando", async () => {
     const { calls, getProvider } = createTestProviders();
     const controller = new AbortController();
@@ -319,6 +273,287 @@ describe("motor de orquestração", () => {
     await collect(runRecipe({ recipe, request: `\n  ${REQUEST}  \n` }, { getProvider }));
 
     expect(calls[0].request.input).toBe(`<parte nome="Pedido do cliente">\n${REQUEST}\n</parte>`);
+  });
+});
+
+describe("quando uma IA falha", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Quem trocou de IA em cada etapa: [etapa, IA que falhou, IA que assumiu]. */
+  function switches(events: RunEvent[]) {
+    return ofType(events, "step-switched").map(({ stepId, from, to }) => [stepId, from, to]);
+  }
+
+  function finishedStep(events: RunEvent[], stepId: string) {
+    return ofType(events, "step-finished").find((step) => step.stepId === stepId);
+  }
+
+  it("tenta de novo com a mesma IA depois de 1 s e, se ela acerta na 2ª tentativa, o time segue", async () => {
+    const { calls, waits, getProvider, wait } = createTestProviders({ gpt: failing("gpt", 1) });
+
+    const events = await collect(runRecipe({ recipe, request: REQUEST }, { getProvider, wait }));
+
+    expect(ofType(events, "step-retrying")).toEqual([
+      {
+        type: "step-retrying",
+        stepId: "code",
+        provider: "gpt",
+        attempt: 2,
+        delayMs: 1000,
+        errorMessage: MOCK_FAILURE("gpt"),
+      },
+    ]);
+    expect(waits).toEqual([1000]);
+    expect(calls.map((call) => call.provider)).toEqual(["claude", "gpt", "gpt", "gemini", "claude"]);
+    expect(switches(events)).toEqual([]);
+    expect(finishedStep(events, "code")?.provider).toBe("gpt");
+    expect(events.at(-1)?.type).toBe("run-finished");
+  });
+
+  it("tenta de novo até 2 vezes, esperando 1 s e depois 2 s", async () => {
+    const { waits, getProvider, wait } = createTestProviders({ gpt: failing("gpt", 2) });
+
+    const events = await collect(runRecipe({ recipe, request: REQUEST }, { getProvider, wait }));
+
+    expect(ofType(events, "step-retrying").map((event) => event.attempt)).toEqual([2, 3]);
+    expect(waits).toEqual([1000, 2000]);
+    expect(finishedStep(events, "code")?.provider).toBe("gpt");
+    expect(events.at(-1)?.type).toBe("run-finished");
+  });
+
+  it("depois de 3 falhas, a IA reserva assume o papel, avisa e faz a etapa do zero", async () => {
+    const { calls, waits, getProvider, wait } = createTestProviders({ gpt: failing("gpt") });
+
+    const events = await collect(runRecipe({ recipe, request: REQUEST }, { getProvider, wait }));
+
+    expect(outline(events).filter((line) => line.endsWith(" code"))).toEqual([
+      "step-started code",
+      "step-retrying code",
+      "step-retrying code",
+      "step-switched code",
+      "step-text code",
+      "step-finished code",
+    ]);
+    expect(ofType(events, "step-switched")).toEqual([
+      {
+        type: "step-switched",
+        stepId: "code",
+        roleId: "programmer",
+        from: "gpt",
+        to: "claude",
+        errorMessage: MOCK_FAILURE("gpt"),
+      },
+    ]);
+    // Troca na hora, sem esperar: a outra IA não estava com problema.
+    expect(waits).toEqual([1000, 2000]);
+    expect(calls.map((call) => call.provider)).toEqual([
+      "claude",
+      ...["gpt", "gpt", "gpt"],
+      "claude",
+      "gemini",
+      "claude",
+    ]);
+    expect(finishedStep(events, "code")).toMatchObject({ provider: "claude", output: SAMPLE_FIRST_SITE });
+    expect(events.at(-1)).toMatchObject({ type: "run-finished", result: SAMPLE_FINAL_SITE });
+  });
+
+  it("a IA que assumiu segue no papel nas próximas etapas dele", async () => {
+    const { calls, getProvider, wait } = createTestProviders({ claude: failing("claude") });
+
+    const events = await collect(runRecipe({ recipe, request: REQUEST }, { getProvider, wait }));
+
+    // O Chefe (Claude) falha no plano e o GPT assume. A consolidação, também do Chefe, já começa com o GPT.
+    expect(switches(events)).toEqual([["plan", "claude", "gpt"]]);
+    expect(ofType(events, "step-started").at(-1)).toEqual({
+      type: "step-started",
+      stepId: "consolidate",
+      provider: "gpt",
+    });
+    expect(calls.map((call) => call.provider)).toEqual([
+      ...["claude", "claude", "claude"],
+      "gpt",
+      "gpt",
+      "gemini",
+      "gpt",
+    ]);
+    expect(events.at(-1)?.type).toBe("run-finished");
+  });
+
+  it("se a IA que falhou foi escolhida pelo usuário, quem assume é a recomendada pela receita", async () => {
+    const { getProvider, wait } = createTestProviders({ gemini: failing("gemini") });
+
+    const events = await collect(
+      runRecipe({ recipe, request: REQUEST, team: { programmer: "gemini" } }, { getProvider, wait }),
+    );
+
+    // Programador: o usuário trocou o GPT (recomendado) pelo Gemini. O Gemini falha, e volta o GPT.
+    // Revisor: o Gemini é o recomendado. Ele falha, e entra a reserva da receita, o Claude.
+    expect(switches(events)).toEqual([
+      ["code", "gemini", "gpt"],
+      ["review", "gemini", "claude"],
+    ]);
+    expect(events.at(-1)?.type).toBe("run-finished");
+  });
+
+  it("para quando a IA reserva também falha, sem chamar as próximas etapas", async () => {
+    const { calls, waits, getProvider, wait } = createTestProviders({
+      gemini: failing("gemini"),
+      claude: failing("claude"),
+    });
+
+    const events = await collect(runRecipe({ recipe, request: REQUEST }, { getProvider, wait }));
+
+    // O GPT assume o Chefe e faz o plano; o Revisor (Gemini) e a reserva dele (Claude) falham.
+    expect(outline(events)).toEqual([
+      "run-started",
+      ...["step-started plan", "step-retrying plan", "step-retrying plan", "step-switched plan"],
+      ...["step-text plan", "step-finished plan"],
+      ...["step-started code", "step-text code", "step-finished code"],
+      ...["step-started review", "step-retrying review", "step-retrying review", "step-switched review"],
+      ...["step-retrying review", "step-retrying review", "run-failed review"],
+    ]);
+    expect(events.at(-1)).toEqual({
+      type: "run-failed",
+      stepId: "review",
+      provider: "claude",
+      retryable: true,
+      errorMessage: MOCK_FAILURE("claude"),
+    });
+    expect(calls).toHaveLength(3 + 1 + 1 + 3 + 3);
+    expect(waits).toEqual([1000, 2000, 1000, 2000, 1000, 2000]);
+  });
+
+  it("erro que não adianta repetir (ex.: a IA recusou o pedido) troca de IA na hora, sem novas tentativas", async () => {
+    const refuses: AiProvider = {
+      id: "gpt",
+      generate() {
+        throw new ProviderError("400: pedido recusado", { retryable: false });
+      },
+    };
+    const { waits, getProvider, wait } = createTestProviders({ gpt: refuses });
+
+    const events = await collect(runRecipe({ recipe, request: REQUEST }, { getProvider, wait }));
+
+    expect(ofType(events, "step-retrying")).toEqual([]);
+    expect(waits).toEqual([]);
+    expect(switches(events)).toEqual([["code", "gpt", "claude"]]);
+    expect(events.at(-1)?.type).toBe("run-finished");
+  });
+
+  it("o texto da tentativa que falhou não entra na resposta da etapa", async () => {
+    // O GPT escreve 3 pedaços e cai. Na 2ª tentativa, escreve o site inteiro.
+    const { calls, getProvider, wait } = createTestProviders({ gpt: failing("gpt", 1, 3) });
+
+    const events = await collect(runRecipe({ recipe, request: REQUEST }, { getProvider, wait }));
+
+    const retry = events.findIndex((event) => event.type === "step-retrying");
+    const codeText = (part: RunEvent[]) =>
+      ofType(part, "step-text").filter((event) => event.stepId === "code");
+    expect(codeText(events.slice(0, retry))).toHaveLength(3);
+    expect(codeText(events.slice(retry)).map((event) => event.text).join("")).toBe(SAMPLE_FIRST_SITE);
+    expect(finishedStep(events, "code")?.output).toBe(SAMPLE_FIRST_SITE);
+    const reviewer = calls.find((call) => call.provider === "gemini");
+    expect(reviewer?.request.input).toContain(
+      `<parte nome="Site do programador">\n${SAMPLE_FIRST_SITE}\n</parte>`,
+    );
+  });
+
+  it("IA que para de responder sem avisar que terminou conta como falha passageira", async () => {
+    const stopsHalfway: AiProvider = {
+      id: "gpt",
+      async *generate() {
+        yield { type: "text", text: "<!DOCTYPE html>" };
+      },
+    };
+    const { getProvider, wait } = createTestProviders({ gpt: stopsHalfway });
+
+    const events = await collect(runRecipe({ recipe, request: REQUEST }, { getProvider, wait }));
+
+    expect(ofType(events, "step-retrying")[0]).toEqual({
+      type: "step-retrying",
+      stepId: "code",
+      provider: "gpt",
+      attempt: 2,
+      delayMs: 1000,
+      errorMessage: "A IA parou de responder antes de terminar.",
+    });
+    expect(switches(events)).toEqual([["code", "gpt", "claude"]]);
+  });
+
+  it("defeito no nosso código não é falha da IA: para na hora, sem tentar de novo nem trocar de IA", async () => {
+    const { waits, getProvider, wait } = createTestProviders();
+    const brokenGetProvider = (id: ProviderId) => {
+      if (id === "gemini") throw new Error("Configuração do Gemini com defeito.");
+      return getProvider(id);
+    };
+
+    const events = await collect(
+      runRecipe({ recipe, request: REQUEST }, { getProvider: brokenGetProvider, wait }),
+    );
+
+    expect(outline(events).slice(-2)).toEqual(["step-started review", "run-failed review"]);
+    expect(events.at(-1)).toEqual({
+      type: "run-failed",
+      stepId: "review",
+      provider: "gemini",
+      retryable: false,
+      errorMessage: "Configuração do Gemini com defeito.",
+    });
+    expect(waits).toEqual([]);
+  });
+
+  it("o tempo da etapa conta as tentativas que falharam e as esperas", async () => {
+    let clock = 0;
+    const failsOnce = failing("gpt", 1);
+    const slowGpt: AiProvider = {
+      id: "gpt",
+      async *generate(request) {
+        clock += 5000; // cada tentativa leva 5 s
+        yield* failsOnce.generate(request);
+      },
+    };
+    const { getProvider } = createTestProviders({ gpt: slowGpt });
+    const wait = async (ms: number) => {
+      clock += ms;
+    };
+
+    const events = await collect(
+      runRecipe({ recipe, request: REQUEST }, { getProvider, wait, now: () => clock }),
+    );
+
+    expect(finishedStep(events, "code")?.durationMs).toBe(5000 + 1000 + 5000);
+  });
+
+  it("espera de verdade antes de tentar de novo", async () => {
+    vi.useFakeTimers();
+    const { calls, getProvider } = createTestProviders({ gpt: failing("gpt", 1) });
+    const gptCalls = () => calls.filter((call) => call.provider === "gpt").length;
+
+    const done = collect(runRecipe({ recipe, request: REQUEST }, { getProvider }));
+
+    await vi.advanceTimersByTimeAsync(999);
+    expect(gptCalls()).toBe(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(gptCalls()).toBe(2);
+    expect((await done).at(-1)?.type).toBe("run-finished");
+  });
+
+  it("se o usuário cancela durante a espera, para na hora, sem tentar de novo", async () => {
+    // Relógio parado: se a espera não parasse com o cancelamento, este teste nunca terminaria.
+    vi.useFakeTimers();
+    const { calls, getProvider } = createTestProviders({ gpt: failing("gpt") });
+    const controller = new AbortController();
+    const run = runRecipe({ recipe, request: REQUEST }, { getProvider, signal: controller.signal });
+    while ((await run.next()).value?.type !== "step-retrying");
+
+    const next = run.next(); // o motor começa a esperar 1 s
+    await vi.advanceTimersByTimeAsync(500);
+    controller.abort();
+
+    expect((await next).value).toEqual({ type: "run-cancelled", stepId: "code" });
+    expect(calls.filter((call) => call.provider === "gpt")).toHaveLength(1);
   });
 });
 

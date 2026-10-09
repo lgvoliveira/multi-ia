@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createMockProvider, estimateTokens, splitIntoChunks } from "./mock";
+import { createMockProvider, estimateTokens, parseMockFailures, splitIntoChunks } from "./mock";
 import { ProviderError, type GenerateChunk, type GenerateRequest } from "./types";
 
 const baseRequest: GenerateRequest = {
@@ -80,6 +80,20 @@ describe("IA simulada", () => {
     expect(chunks.at(-1)).toMatchObject({ type: "done" });
   });
 
+  it("pode cair no meio da resposta, depois de escrever alguns pedaços", async () => {
+    const provider = createMockProvider({ id: "gpt", chunkDelayMs: 0, failFirstCalls: 1, failAfterChunks: 2 });
+    const sampleResponse = "um dois três quatro cinco seis sete oito nove";
+    const received: GenerateChunk[] = [];
+
+    const error = await (async () => {
+      for await (const chunk of provider.generate({ ...baseRequest, sampleResponse })) received.push(chunk);
+    })().catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ProviderError);
+    expect(textOf(received)).toBe("um dois três quatro cinco seis ");
+    expect(textOf(await collect(provider.generate({ ...baseRequest, sampleResponse })))).toBe(sampleResponse);
+  });
+
   it("recusa limite de resposta menor que 1, sem sugerir nova tentativa", async () => {
     const provider = createMockProvider({ id: "claude", chunkDelayMs: 0 });
 
@@ -109,6 +123,25 @@ describe("IA simulada", () => {
 
     await expect(run).rejects.toThrow();
     expect(received).toHaveLength(1);
+  });
+});
+
+describe("interruptor de teste MOCK_AI_FAILURES", () => {
+  it("vazio ou ausente: nenhuma IA falha", () => {
+    expect(parseMockFailures(undefined)).toEqual({});
+    expect(parseMockFailures("")).toEqual({});
+    expect(parseMockFailures("  ")).toEqual({});
+  });
+
+  it("só o nome: a IA falha sempre; com número: falha nessa quantidade de chamadas", () => {
+    expect(parseMockFailures("gpt")).toEqual({ gpt: Infinity });
+    expect(parseMockFailures("gpt:2")).toEqual({ gpt: 2 });
+    expect(parseMockFailures(" Gemini , claude:1 ")).toEqual({ gemini: Infinity, claude: 1 });
+  });
+
+  it("valor que não dá para entender é erro, com um exemplo do jeito certo", () => {
+    expect(() => parseMockFailures("chatgpt")).toThrow('MOCK_AI_FAILURES: não entendi "chatgpt"');
+    expect(() => parseMockFailures("gpt:duas")).toThrow('Use, por exemplo, "gpt" ou "gpt:2".');
   });
 });
 

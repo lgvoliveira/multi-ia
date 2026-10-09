@@ -11,6 +11,14 @@ describe('receita "Criar um site"', () => {
     ]);
   });
 
+  it("cada papel tem uma IA reserva, e o revisor reserva não é a IA do programador", () => {
+    expect(createSiteRecipe.roles.map((role) => [role.name, role.backupProvider])).toEqual([
+      ["Chefe", "gpt"],
+      ["Programador", "claude"],
+      ["Revisor", "claude"],
+    ]);
+  });
+
   it("roda 4 etapas na ordem: planejar, programar, revisar e consolidar", () => {
     expect(createSiteRecipe.steps.map((step) => [step.id, step.roleId])).toEqual([
       ["plan", "chief"],

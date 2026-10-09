@@ -56,11 +56,30 @@ export function StepCard({ step, followText = true, headingLevel: Heading = "h2"
         {!hasOutput && <span className={styles.stepSummary}>{step.summary}</span>}
         <span className={`${styles.badge} ${BADGE_CLASSES[step.status]}`}>{label}</span>
       </div>
+      {stepNotices(step).map((notice) => (
+        <p key={notice} className={styles.notice}>
+          {notice}
+        </p>
+      ))}
       {hasOutput && (
         <StepOutput step={step} follow={followText} label={`Resposta de ${step.name} (${providerName})`} />
       )}
     </li>
   );
+}
+
+/** Avisos do cartão: outra IA assumiu o papel e a IA que está trabalhando teve um problema e tenta de novo. */
+function stepNotices(step: StepView): string[] {
+  const notices: string[] = [];
+  const providerName = getProviderInfo(step.provider).name;
+  if (step.replacedProvider) {
+    const replacedName = getProviderInfo(step.replacedProvider).name;
+    notices.push(`O ${providerName} entrou no lugar do ${replacedName}, que não conseguiu responder.`);
+  }
+  if (step.status === "working" && step.retryAttempt) {
+    notices.push(`O ${providerName} teve um problema e está tentando de novo (${step.retryAttempt}ª tentativa)…`);
+  }
+  return notices;
 }
 
 /** Distância do fim (em pixels) em que a caixa ainda conta como "lá embaixo". */

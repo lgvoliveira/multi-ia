@@ -4,7 +4,7 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 08/10/2026 (noite, T7 pronta para revisão)
+**Última atualização:** 09/10/2026 (noite, T8 pronta para revisão; Parte A da etapa 4 completa)
 **Etapa atual:** 4 — Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela)
 
 ---
@@ -107,7 +107,7 @@ peças invisíveis com testes primeiro, telas depois. Cada tarefa = 1 issue + 1 
 | T5 | Telas: Receitas e Montar o time (trocar IA, pedido com contador de 4.000) | Concluída (PR #14) |
 | T6 | Execução ao vivo: rota `/api/runs` com streaming + tela "Seu time está trabalhando" | Concluída (PR #15) |
 | T7 | Resultado: prévia do site em moldura isolada (o JS roda, mas sem acesso a nada), código, baixar arquivo, resumo do time | Concluída (PR #16) |
-| T8 | Quando uma IA falha: 2 tentativas, troca de IA, aviso na tela (pausar/retomar fica para a etapa 5) | A fazer |
+| T8 | Quando uma IA falha: 2 tentativas, troca de IA, aviso na tela (pausar/retomar fica para a etapa 5) | Pronta para revisão (PR #17) |
 
 **Parte B — IAs de verdade (só depois da Parte A funcionando na tela):** decidir OpenRouter x APIs
 diretas; comprar créditos mínimos (~US$ 5, recarga automática desligada) e criar chaves no `.env.local`;
@@ -203,11 +203,40 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 - **Deixado de fora na T7** (estava no protótipo): "Salvar em projetos", "Pedir ajuste", créditos usados e a lista de
   problemas do revisor no resumo (a revisão inteira está em "Ver todas as etapas").
 
+- **Novas tentativas** (T8): quando uma IA falha com um erro passageiro (sobrecarga, conexão que cai, resposta pela
+  metade), ela recomeça a etapa do zero depois de 1 s e, se falhar de novo, depois de mais 2 s. O texto da tentativa que
+  falhou sai da tela e não vai para a próxima etapa. Erro que não adianta repetir (ex.: a IA recusou o pedido) pula
+  direto para a troca. Defeito no nosso código para na hora, sem tentar de novo nem trocar.
+- **Troca de IA** (T8): depois de 3 falhas, outra IA assume o papel e faz a etapa do zero. Quem assume é a IA
+  recomendada pela receita; se foi ela que falhou, a **IA reserva** do papel, um campo novo da receita
+  (`backupProvider`). Na receita "Criar um site": Chefe Claude → reserva GPT; Programador GPT → reserva Claude;
+  Revisor Gemini → reserva Claude (não o GPT, para quem revisa não ser quem escreveu o código).
+  A IA que assumiu **segue no papel** até o fim (se o Claude falha no plano, o GPT também faz a consolidação), para não
+  perder tempo de novo com uma IA que está com problema. Se a substituta também falhar, o time para.
+- **Avisos na tela** (T8): faixa âmbar no cartão ("O GPT teve um problema e está tentando de novo (2ª tentativa)…" e
+  "O Claude entrou no lugar do GPT, que não conseguiu responder."); o segundo fica também em "Como o time chegou aqui".
+  Se o time para: "Revisor: nem o Gemini nem o Claude conseguiram terminar a etapa. As etapas concluídas continuam aqui."
+  O leitor de tela também ouve cada aviso. Cores novas nos tokens: `--color-warning-text` e `--color-warning-bg`.
+- **O tempo da etapa** (T8) conta as tentativas que falharam e as esperas: é o tempo que a pessoa esperou.
+- **Registro do servidor** (T8): cada falha aparece no terminal do `npm run dev` com a mensagem técnica
+  (`[api/runs] A etapa "code" falhou (gpt); tentativa 2 daqui a 1000 ms: ...`). A tela nunca recebe essa mensagem.
+- **Interruptor de teste** (T8): `MOCK_AI_FAILURES` no `.env.local` faz a IA simulada falhar de propósito (ela escreve
+  um pouco e "cai", como uma conexão que cai no meio). Exemplos no `.env.example`, que passou a existir. O `npm run dev`
+  percebe a mudança sozinho ao salvar o arquivo.
+- **Conferido na tela** (T8) com o roteiro temporário no Chrome, nos três casos (acerta na 3ª tentativa, o Claude assume
+  o Programador, o time para no Revisor), em tamanho de computador e de celular (320 px).
+- **Deixado de fora na T8**: o interruptor para o usuário desligar a troca de IA (a regra diz "pode ser desligado"; entra
+  quando houver onde mostrar a opção) e "tentar de novo a partir da etapa que falhou" (precisa do banco, etapa 5).
+
 **Anotado para as próximas tarefas**
 - Falta o ícone da aba do navegador (favicon). Pequeno; entra quando definirmos nome e marca.
-- T8: as novas tentativas e a troca de IA entram em volta de cada etapa do motor. A tela já aguenta uma etapa
-  começar de novo com outra IA (zera o texto e troca a cor); falta o aviso "trocamos a IA".
 - T9: IAs reais às vezes cercam o HTML com marcas de código (` ```html `); limpar antes da prévia.
+- T9: nos adaptadores reais, separar bem os erros: sobrecarga, limite de uso e conexão caída são "passageiros"
+  (`retryable: true`); chave errada ou faltando e pedido recusado não são. Chave faltando deve ser um `ProviderError`
+  (assim a troca de IA entra); um `Error` comum é tratado como defeito nosso e para na hora. Se a IA disser quanto
+  esperar (cabeçalho `retry-after`), considerar.
+- Etapa 5 (créditos): uma tentativa que caiu no meio já consumiu tokens, que pagamos mas não cobramos do usuário
+  (regra "etapa que falhou não é cobrada"). Registrar esse custo no histórico interno.
 - Antes de ligar IAs reais fora do computador do Luis: a rota `/api/runs` está aberta (sem login). Com a IA simulada
   não custa nada, mas com IAs reais qualquer um gastaria nossos créditos. Entra junto com o login
   (e o limite de 1 execução simultânea no plano grátis).
@@ -216,8 +245,9 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 
 ## Próximo passo
 
-Luis revisa e faz o merge do PR #16 (tela de resultado). Depois, T8 (quando uma IA falha, issue #8): 2 novas
-tentativas, troca de IA e o aviso "trocamos a IA" na tela.
+Luis testa e faz o merge do PR #17 (T8). Com isso, a **Parte A da etapa 4 termina**: o fluxo inteiro funciona na tela
+com a IA simulada. Depois, **Parte B** numa conversa nova do Claude Code: decidir OpenRouter x APIs diretas, comprar os
+créditos mínimos (recarga automática desligada), criar as chaves no `.env.local` e fazer a T9 (adaptadores reais).
 As issues de cada tarefa têm o número igual ao da tarefa (T1 = #1 … T8 = #8).
 
 ## Decisões em aberto

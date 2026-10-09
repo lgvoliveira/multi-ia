@@ -10,6 +10,10 @@ export type PublicRunEvent =
   | { type: "run-started"; steps: PlannedStep[] }
   | { type: "step-started"; stepId: string; provider: ProviderId }
   | { type: "step-text"; stepId: string; text: string }
+  /** A IA teve um problema e vai recomeçar a etapa (tentativa número `attempt`). */
+  | { type: "step-retrying"; stepId: string; attempt: number }
+  /** A IA `from` não conseguiu, e `to` assumiu o papel, nesta etapa e nas próximas dele. */
+  | { type: "step-switched"; stepId: string; roleId: string; from: ProviderId; to: ProviderId }
   | { type: "step-finished"; stepId: string; durationMs: number }
   | { type: "run-finished"; result: string; durationMs: number }
   | { type: "run-failed"; stepId: string }
@@ -30,6 +34,16 @@ export function toPublicEvent(event: RunEvent): PublicRunEvent {
       return { type: event.type, stepId: event.stepId, provider: event.provider };
     case "step-text":
       return { type: event.type, stepId: event.stepId, text: event.text };
+    case "step-retrying":
+      return { type: event.type, stepId: event.stepId, attempt: event.attempt };
+    case "step-switched":
+      return {
+        type: event.type,
+        stepId: event.stepId,
+        roleId: event.roleId,
+        from: event.from,
+        to: event.to,
+      };
     case "step-finished":
       return { type: event.type, stepId: event.stepId, durationMs: event.durationMs };
     case "run-finished":

@@ -89,8 +89,11 @@ docs/                documento do projeto e diário de progresso
 ## 5. Regras de funcionamento (especificação do MVP)
 
 ### Erro de uma IA no meio da execução
-1. Tenta de novo automaticamente, até **2 vezes**, com uma pequena espera.
+1. Tenta de novo automaticamente, até **2 vezes**, com uma pequena espera (1 s e depois 2 s). Erro que não adianta
+   repetir (ex.: a IA recusou o pedido) pula direto para a troca; defeito no nosso código para na hora.
 2. Se persistir, **troca de IA** naquele papel e avisa o usuário (ligado por padrão nas receitas; pode ser desligado).
+   Quem assume é a IA recomendada pela receita; se foi ela que falhou, a **IA reserva** do papel (`backupProvider`).
+   A IA que assumiu segue no papel nas próximas etapas dele.
 3. Se ainda falhar, **pausa sem perder nada**: etapas concluídas ficam salvas; o usuário escolhe tentar de novo, trocar a IA ou cancelar. Ao retomar, continua da etapa que falhou.
 4. Etapa que falhou **não é cobrada**.
 5. Erro na chave do próprio usuário: avisa e **não** passa a usar créditos da plataforma sem autorização.
