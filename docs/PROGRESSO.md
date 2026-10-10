@@ -4,7 +4,7 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 09/10/2026 (noite, Parte A da etapa 4 concluída; Parte B começou: APIs diretas)
+**Última atualização:** 09/10/2026 (noite, Parte A da etapa 4 concluída; Parte B começou: APIs diretas; chaves de teste chegam em 10/10)
 **Etapa atual:** 4 — Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela)
 
 ---
@@ -58,6 +58,10 @@ revisor) e a IA recomendada para cada um. Pode editar ou criar projeto próprio.
 
 - Disponibilidade: ~1 h por dia útil + sessões mais longas no sábado e domingo.
 - Está aprendendo; prefere explicações claras quando o tema é novo.
+- Tem um amigo como parceiro no projeto (papel ainda a registrar). É quem passa as chaves de teste das IAs em 10/10.
+- Ajustes de detalhe (visual, textos, pequenos comportamentos) ficam numa lista para depois de ter o MVP palpável
+  (issues com a etiqueta "ajuste"). Exceções, resolvidas na hora: defeitos e o que muda a base (dados, segurança,
+  créditos). Os ajustes que mais valem virão dos testes com usuários (etapa 6).
 - Modelo: Opus 5.5 em esforço Alto como padrão; Extra alto para sessões longas de código.
 - Regra de troca de conversa: o Claude avisa quando for hora de abrir uma conversa nova e diz
   onde abrir (Cowork ou Claude Code), qual mensagem colar e qual nível de esforço usar.
@@ -112,12 +116,16 @@ peças invisíveis com testes primeiro, telas depois. Cada tarefa = 1 issue + 1 
 **Parte B — IAs de verdade (começou em 09/10/2026, com a Parte A concluída)**
 
 1. Decidir OpenRouter x APIs diretas — **concluído: APIs diretas** (motivos abaixo).
-2. Luis cria o e-mail do projeto, as contas (Anthropic, OpenAI, Google AI Studio) e uma chave de teste de cada,
-   guardada no `.env.local`, com o Claude guiando — **em andamento**.
+2. Chaves de teste — **em andamento**: o amigo e parceiro do Luis no projeto já tem chaves com crédito e as passa em
+   10/10, só para os testes (o ideal é uma chave nova, só para este computador, com limite de gasto e recarga
+   automática desligada). Ficam no `.env.local`, nunca no chat. As contas definitivas, com o e-mail do projeto, ficam
+   para antes da publicação.
 3. **T9** adaptadores reais, por partes: primeiro o Claude (que trabalha em duas etapas da receita), depois GPT e Gemini.
    IA com chave no `.env.local` = real; sem chave = simulada. A IA simulada continua nos testes automáticos, que
    nunca gastam dinheiro. Inclui escolher o modelo de cada papel.
 4. Medir: rodar a receita 3 a 5 vezes com pedidos diferentes; olhar qualidade, tempo e custo em dólar; ajustar os prompts.
+   E comparar com uma IA sozinha: o mesmo pedido feito só a uma IA, e os dois sites mostrados a algumas pessoas sem
+   dizer qual é qual. É o primeiro teste da ideia central do produto, antes mesmo da etapa 6.
 
 **Por que fazer a Parte B antes de login, histórico e créditos** (conversa de 09/10): o MVP existe para provar que um
 leigo acha o resultado de um time de IAs melhor que o de uma IA só, e só IAs de verdade respondem isso. A IA simulada
@@ -278,11 +286,20 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 - Ideia para depois: marcar os arquivos "só do servidor" com `import "server-only"` (o Next.js barra se forem parar
   no navegador). Exige instalar o pacote `server-only` para os testes; propor antes.
 
+**Ideias de produto para discutir** (anotadas em 09/10; bom tema para o Cowork)
+- **O maior concorrente é "abrir o ChatGPT e pedir".** Muita gente já usa uma IA sozinha, às vezes de graça, e ela já
+  faz um site de um arquivo. O time de IAs precisa entregar um resultado claramente melhor ou dar muito menos trabalho.
+- **Resultado que um leigo consegue usar:** um arquivo `.html` baixado não serve para quem não sabe o que fazer com ele.
+  Na receita de site, o que facilita a vida é "publicar com um clique" (um endereço para mandar aos clientes).
+  Cuidado de segurança: os sites publicados teriam de ficar num endereço separado do nosso (seção 6 do AGENTS.md).
+- **Perguntas guiadas no lugar da caixa em branco:** a receita perguntaria o que importa (nome do negócio, o que vende,
+  WhatsApp, cores) em vez de exigir que a pessoa saiba escrever um bom pedido.
+
 ## Próximo passo
 
-Luis cria o e-mail do projeto e, seguindo o passo a passo do Claude, as contas e as chaves de teste no `.env.local`
-(nunca no chat). O Claude confere as chaves com um teste que não gasta crédito nem mostra a chave. Depois: issue e PR
-da **T9**, começando pelo adaptador do Claude.
+Em 10/10 (sábado), o amigo do Luis passa as chaves de teste e o Luis as coloca no `.env.local` (nunca no chat).
+O Claude confere as chaves com um teste que não gasta crédito nem mostra a chave. Depois: issue e PR da **T9**,
+começando pelo adaptador do Claude (sessão longa: esforço Extra alto).
 As issues T1 a T8 têm o número da tarefa (#1 a #8); a T9 fica com o próximo número livre no GitHub.
 
 ## Decisões em aberto
