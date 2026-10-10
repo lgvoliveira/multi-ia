@@ -42,7 +42,7 @@ cada IA trabalhando na tela até o resultado final.
 | Estilos | CSS Modules (um `.module.css` por componente) usando só os tokens de `styles/tokens.css`. Sem Tailwind |
 | Login e banco de dados | Supabase |
 | Hospedagem | Vercel |
-| IAs | SDKs oficiais (Anthropic, OpenAI, Google) — ou OpenRouter: **decisão em aberto** |
+| IAs | SDKs oficiais de cada empresa (Anthropic, OpenAI, Google), ligação direta, sem intermediário (decidido em 09/10/2026; motivos no `docs/PROGRESSO.md`) |
 | Testes automáticos | Vitest (arquivos `*.test.ts` ao lado do código que testam) |
 | Gerenciador de pacotes | npm |
 | Node.js | 24 LTS |

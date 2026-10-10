@@ -37,6 +37,8 @@ O produto é geral, mas a porta de entrada é concreta: o usuário escolhe um ob
    - Revisor (critica e aponta erros): Gemini
 3. **Ajusta se quiser**: troca a IA de um papel, adiciona ou remove papéis.
 4. **Descreve a tarefa** em português.
+   - Ideia aprovada pelo Luis em 09/10, ainda sem data: em vez de uma caixa em branco, a receita faz perguntas guiadas
+     (ex.: nome do negócio, o que vende, WhatsApp, cores), para a pessoa não precisar saber escrever um bom pedido.
 5. **Acompanha o trabalho**: cada IA aparece trabalhando em sequência, e o chefe consolida o resultado.
 6. **Recebe o resultado** e pode pedir ajustes.
 
@@ -74,7 +76,7 @@ CANAIS (onde o usuário entra)      MOTOR DE ORQUESTRAÇÃO            IAs VIA A
 
 Como o motor é separado da interface, o conector MCP e o WhatsApp entram depois sem reconstruir nada. A oficina na nuvem (servidor com ffmpeg e afins) só entra quando houver receitas de vídeo ou de execução de código.
 
-**Stack sugerida:** Next.js com TypeScript (interface e servidor), Supabase (login e banco de dados), Vercel (hospedagem) e os SDKs oficiais das IAs ou o OpenRouter.
+**Stack:** Next.js com TypeScript (interface e servidor), Supabase (login e banco de dados), Vercel (hospedagem) e os SDKs oficiais de cada IA, ligadas diretamente, sem intermediário como o OpenRouter (decidido em 09/10/2026: o plano “Traga sua chave” exige a ligação direta com cada empresa, a troca de IA funciona melhor quando as IAs falham separadas e não há taxa de intermediário).
 
 ## Modelo de negócio e precificação
 
@@ -205,7 +207,7 @@ O GitHub é o ponto de encontro: as duas IAs leem o mesmo repositório e convers
 
 - [x] Desenhar as telas principais (receitas, editor do time, execução, resultado)
 - [x] Criar conta no GitHub e o repositório do projeto
-- [ ] Criar contas de API (Anthropic, OpenAI, Google) com limite baixo de gasto — adiado: o fluxo é construído primeiro com uma IA simulada (custo zero) e só é ligado às IAs reais quando já estiver funcionando visivelmente na tela
+- [ ] Criar contas de API (Anthropic, OpenAI, Google) com limite baixo de gasto — em andamento (09/10): o fluxo já funciona na tela com a IA simulada; as contas são criadas com um e-mail só do projeto, crédito mínimo e recarga automática desligada
 - [x] Escrever o `AGENTS.md` com a stack e as regras
 - [ ] Construir o primeiro fluxo ponta a ponta: uma receita, três IAs, resultado na tela
 - [ ] Testar com 5 a 10 pessoas (colegas do Insper, conhecidos) e anotar o que travou
@@ -215,5 +217,4 @@ O GitHub é o ponto de encontro: as duas IAs leem o mesmo repositório e convers
 
 - Nome e marca da plataforma
 - Preço dos planos e quantidade de créditos
-- Usar o OpenRouter ou as APIs de cada empresa diretamente
 - Cronograma do MVP, considerando o ritmo de cerca de 1 h por dia útil e sessões mais longas no fim de semana

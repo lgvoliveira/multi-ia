@@ -4,7 +4,7 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 09/10/2026 (noite, T8 pronta para revisão; Parte A da etapa 4 completa)
+**Última atualização:** 09/10/2026 (noite, Parte A da etapa 4 concluída; Parte B começou: APIs diretas; chaves de teste chegam em 10/10)
 **Etapa atual:** 4 — Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela)
 
 ---
@@ -41,8 +41,8 @@ revisor) e a IA recomendada para cada um. Pode editar ou criar projeto próprio.
 - MVP só com receitas de texto/código. Vídeo fica para a fase 3 (precisa de "oficina na nuvem").
 - Receitas do MVP: Criar site simples; Escrever e revisar texto; Pesquisa com checagem cruzada;
   Comitê de investimento.
-- Stack sugerida: Next.js + TypeScript, Supabase (login e banco), Vercel (hospedagem),
-  SDKs oficiais das IAs ou OpenRouter.
+- Stack: Next.js + TypeScript, Supabase (login e banco), Vercel (hospedagem),
+  SDKs oficiais de cada IA, ligadas diretamente (decidido em 09/10; motivos na Parte B da etapa 4).
 - Desenvolvimento: Claude como programador principal. Codex entra depois como revisor
   de pull requests. Comunicação entre as IAs pelo GitHub (AGENTS.md, issues, PRs).
 
@@ -58,6 +58,10 @@ revisor) e a IA recomendada para cada um. Pode editar ou criar projeto próprio.
 
 - Disponibilidade: ~1 h por dia útil + sessões mais longas no sábado e domingo.
 - Está aprendendo; prefere explicações claras quando o tema é novo.
+- Tem um amigo como parceiro no projeto (papel ainda a registrar). É quem passa as chaves de teste das IAs em 10/10.
+- Ajustes de detalhe (visual, textos, pequenos comportamentos) ficam numa lista para depois de ter o MVP palpável
+  (issues com a etiqueta "ajuste"). Exceções, resolvidas na hora: defeitos e o que muda a base (dados, segurança,
+  créditos). Os ajustes que mais valem virão dos testes com usuários (etapa 6).
 - Modelo: Opus 5.5 em esforço Alto como padrão; Extra alto para sessões longas de código.
 - Regra de troca de conversa: o Claude avisa quando for hora de abrir uma conversa nova e diz
   onde abrir (Cowork ou Claude Code), qual mensagem colar e qual nível de esforço usar.
@@ -107,11 +111,50 @@ peças invisíveis com testes primeiro, telas depois. Cada tarefa = 1 issue + 1 
 | T5 | Telas: Receitas e Montar o time (trocar IA, pedido com contador de 4.000) | Concluída (PR #14) |
 | T6 | Execução ao vivo: rota `/api/runs` com streaming + tela "Seu time está trabalhando" | Concluída (PR #15) |
 | T7 | Resultado: prévia do site em moldura isolada (o JS roda, mas sem acesso a nada), código, baixar arquivo, resumo do time | Concluída (PR #16) |
-| T8 | Quando uma IA falha: 2 tentativas, troca de IA, aviso na tela (pausar/retomar fica para a etapa 5) | Pronta para revisão (PR #17) |
+| T8 | Quando uma IA falha: 2 tentativas, troca de IA, aviso na tela (pausar/retomar fica para a etapa 5) | Concluída (PR #17) |
 
-**Parte B — IAs de verdade (só depois da Parte A funcionando na tela):** decidir OpenRouter x APIs
-diretas; comprar créditos mínimos (~US$ 5, recarga automática desligada) e criar chaves no `.env.local`;
-**T9** adaptadores reais (a IA simulada continua para testes); medir o custo real em dólar.
+**Parte B — IAs de verdade (começou em 09/10/2026, com a Parte A concluída)**
+
+1. Decidir OpenRouter x APIs diretas — **concluído: APIs diretas** (motivos abaixo).
+2. Chaves de teste — **em andamento**: o amigo e parceiro do Luis no projeto já tem chaves com crédito e as passa em
+   10/10, só para os testes (o ideal é uma chave nova, só para este computador, com limite de gasto e recarga
+   automática desligada). Ficam no `.env.local`, nunca no chat. As contas definitivas, com o e-mail do projeto, ficam
+   para antes da publicação.
+3. **T9** adaptadores reais, por partes: primeiro o Claude (que trabalha em duas etapas da receita), depois GPT e Gemini.
+   IA com chave no `.env.local` = real; sem chave = simulada. A IA simulada continua nos testes automáticos, que
+   nunca gastam dinheiro. Inclui escolher o modelo de cada papel.
+4. Medir: rodar a receita 3 a 5 vezes com pedidos diferentes; olhar qualidade, tempo e custo em dólar; ajustar os prompts.
+   E comparar com uma IA sozinha: o mesmo pedido feito só a uma IA, e os dois sites mostrados a algumas pessoas sem
+   dizer qual é qual. É o primeiro teste da ideia central do produto, antes mesmo da etapa 6.
+
+**Por que fazer a Parte B antes de login, histórico e créditos** (conversa de 09/10): o MVP existe para provar que um
+leigo acha o resultado de um time de IAs melhor que o de uma IA só, e só IAs de verdade respondem isso. A IA simulada
+esconde as três maiores incógnitas: qualidade (os prompts geram um site bom?), tempo (a simulada leva 26 s; as reais,
+alguns minutos, porque o site é escrito duas vezes) e custo (sem ele não dá para decidir preço dos planos e créditos).
+Créditos e histórico guardam consumo e custo de cada etapa, então é melhor saber o formato real antes de construí-los.
+
+**Decisões da Parte B**
+- **APIs diretas, sem OpenRouter** (Luis, 09/10): o código fala direto com a Anthropic, a OpenAI e o Google, com as
+  bibliotecas oficiais de cada uma. Motivos: (1) o plano "Traga sua chave" exige a ligação direta (o usuário traz a
+  chave de cada empresa), então essas peças existiriam de qualquer jeito; (2) a troca de IA da T8 supõe que as IAs
+  falham separadas, e com um intermediário as três cairiam juntas; (3) sem a taxa do intermediário (~5% sobre cada
+  crédito comprado), que sairia da margem; (4) o preço por uso é o mesmo, então medir pelas diretas já dá o custo final.
+  O preço da escolha: três contas e três adaptadores em vez de um. O OpenRouter continua possível no futuro como mais
+  um adaptador (ex.: testar modelos baratos de outras empresas em papéis simples).
+- **E-mail só do projeto** (Luis, 09/10): as contas das IAs (e, na etapa 5, Supabase e Vercel) usam um Gmail novo e
+  neutro, não o e-mail pessoal. Separa cobranças da vida pessoal e facilita a entrada de sócio ou funcionário. Quando
+  houver marca e domínio, o e-mail novo vira administrador e o antigo sai, sem recriar contas. Verificação em duas
+  etapas em todas. Cartão pessoal por enquanto; com CNPJ, trocar cartão e dados de cobrança (perguntar ao contador sobre
+  impostos de serviço do exterior). O GitHub segue na conta pessoal (dá para passar para uma organização depois).
+- **A conta é definitiva, as chaves são descartáveis:** agora só chaves de teste (computador do Luis). Na publicação,
+  chaves separadas para o site no ar; se uma vazar, apaga-se só ela.
+- **Nomes no `.env.local`:** `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` e `GEMINI_API_KEY` (os que as bibliotecas oficiais
+  procuram). Chaves nunca no chat.
+- **Cuidados conferidos em 09/10:** crédito mínimo de US$ 5 na Anthropic e na OpenAI, que vale por 1 ano e não é
+  devolvido. Na OpenAI a recarga automática vem **ligada** e precisa ser desligada. A OpenAI pode pedir a "verificação da
+  organização" (foto de documento + selfie, por uma empresa parceira) para os modelos mais novos escreverem ao vivo.
+  Gemini no plano grátis: só pedidos inventados (o Google usa o conteúdo para melhorar os produtos) e só modelos Flash
+  e o 2.5 Pro (o Pro mais novo exige plano pago). Antes de usuários reais, passar o Gemini para o plano pago.
 
 **Fora da etapa 4:** login, créditos, histórico, banco e publicação na Vercel (publicar com IAs reais
 sem login deixaria qualquer um gastar nossos créditos; a publicação entra junto com o login).
@@ -243,18 +286,28 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 - Ideia para depois: marcar os arquivos "só do servidor" com `import "server-only"` (o Next.js barra se forem parar
   no navegador). Exige instalar o pacote `server-only` para os testes; propor antes.
 
+**Ideias de produto para discutir** (anotadas em 09/10; bom tema para o Cowork)
+- **O maior concorrente é "abrir o ChatGPT e pedir".** Muita gente já usa uma IA sozinha, às vezes de graça, e ela já
+  faz um site de um arquivo. O time de IAs precisa entregar um resultado claramente melhor ou dar muito menos trabalho.
+- **Resultado que um leigo consegue usar:** um arquivo `.html` baixado não serve para quem não sabe o que fazer com ele.
+  Na receita de site, o que facilita a vida é "publicar com um clique" (um endereço para mandar aos clientes).
+  Cuidado de segurança: os sites publicados teriam de ficar num endereço separado do nosso (seção 6 do AGENTS.md).
+- **Perguntas guiadas no lugar da caixa em branco:** a receita perguntaria o que importa (nome do negócio, o que vende,
+  WhatsApp, cores) em vez de exigir que a pessoa saiba escrever um bom pedido. **O Luis gostou (09/10)**: entra no
+  produto (já está no DOCUMENTO-PROJETO); falta decidir quando. As respostas viram o pedido que vai para o time.
+
 ## Próximo passo
 
-Luis testa e faz o merge do PR #17 (T8). Com isso, a **Parte A da etapa 4 termina**: o fluxo inteiro funciona na tela
-com a IA simulada. Depois, **Parte B** numa conversa nova do Claude Code: decidir OpenRouter x APIs diretas, comprar os
-créditos mínimos (recarga automática desligada), criar as chaves no `.env.local` e fazer a T9 (adaptadores reais).
-As issues de cada tarefa têm o número igual ao da tarefa (T1 = #1 … T8 = #8).
+Em 10/10 (sábado), o amigo do Luis passa as chaves de teste e o Luis as coloca no `.env.local` (nunca no chat).
+O Claude confere as chaves com um teste que não gasta crédito nem mostra a chave. Depois: issue e PR da **T9**,
+começando pelo adaptador do Claude (sessão longa: esforço Extra alto).
+As issues T1 a T8 têm o número da tarefa (#1 a #8); a T9 fica com o próximo número livre no GitHub.
 
 ## Decisões em aberto
 
 - Nome e marca da plataforma
 - Preço dos planos e quantidade de créditos
-- OpenRouter ou APIs diretas de cada empresa
+- Modelo de cada papel (melhor e mais caro x mais barato): proposta na T9
 - Cronograma do MVP
 
 ## Como retomar em uma conversa nova
