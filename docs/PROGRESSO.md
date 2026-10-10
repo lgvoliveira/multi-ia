@@ -293,7 +293,8 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
   Na receita de site, o que facilita a vida é "publicar com um clique" (um endereço para mandar aos clientes).
   Cuidado de segurança: os sites publicados teriam de ficar num endereço separado do nosso (seção 6 do AGENTS.md).
 - **Perguntas guiadas no lugar da caixa em branco:** a receita perguntaria o que importa (nome do negócio, o que vende,
-  WhatsApp, cores) em vez de exigir que a pessoa saiba escrever um bom pedido.
+  WhatsApp, cores) em vez de exigir que a pessoa saiba escrever um bom pedido. **O Luis gostou (09/10)**: entra no
+  produto (já está no DOCUMENTO-PROJETO); falta decidir quando. As respostas viram o pedido que vai para o time.
 
 ## Próximo passo
 

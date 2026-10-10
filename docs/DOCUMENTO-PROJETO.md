@@ -37,6 +37,8 @@ O produto é geral, mas a porta de entrada é concreta: o usuário escolhe um ob
    - Revisor (critica e aponta erros): Gemini
 3. **Ajusta se quiser**: troca a IA de um papel, adiciona ou remove papéis.
 4. **Descreve a tarefa** em português.
+   - Ideia aprovada pelo Luis em 09/10, ainda sem data: em vez de uma caixa em branco, a receita faz perguntas guiadas
+     (ex.: nome do negócio, o que vende, WhatsApp, cores), para a pessoa não precisar saber escrever um bom pedido.
 5. **Acompanha o trabalho**: cada IA aparece trabalhando em sequência, e o chefe consolida o resultado.
 6. **Recebe o resultado** e pode pedir ajustes.
 
