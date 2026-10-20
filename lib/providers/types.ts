@@ -4,6 +4,23 @@
 /** As IAs disponíveis na plataforma. */
 export type ProviderId = "claude" | "gpt" | "gemini";
 
+/**
+ * Quanto a IA "pensa" antes de responder. É a maior alavanca de custo e de tempo:
+ * - low: vai direto ao ponto, sem raciocínio extra. Mais rápido e barato (tarefas simples/montagem).
+ * - medium: um pouco de raciocínio. Bom padrão.
+ * - high: raciocina bastante antes de escrever. Mais caro e lento (casos difíceis, back-end, revisão a fundo).
+ * O Chefe pode ajustar isso por etapa (otimização de tempo+tokens).
+ */
+export type Effort = "low" | "medium" | "high";
+
+/**
+ * Nível do MODELO dentro de uma mesma IA, do mais barato ao mais forte:
+ * - economico: modelo pequeno/barato (tarefas simples). Ex.: Claude Haiku.
+ * - padrao: modelo equilibrado (a maioria das tarefas). Ex.: Claude Sonnet.
+ * - potente: modelo top (tarefas difíceis, só quando precisa). Ex.: Claude Opus.
+ */
+export type ModelTier = "economico" | "padrao" | "potente";
+
 /** O que o motor manda para uma IA em cada etapa. */
 export interface GenerateRequest {
   /** Instrução do papel (prompt de sistema). */
@@ -12,6 +29,12 @@ export interface GenerateRequest {
   input: string;
   /** Tamanho máximo da resposta, em tokens. Controla o custo. */
   maxOutputTokens: number;
+  /** Quanto a IA deve "pensar" nesta etapa. Sem valor, o adaptador usa "medium". */
+  effort?: Effort;
+  /** Nível do modelo (econômico/padrão/potente). Sem valor, o adaptador usa "padrao". */
+  tier?: ModelTier;
+  /** Imagens para a IA "enxergar" (visão). Cada uma com o tipo (ex.: image/png) e o conteúdo em base64. */
+  images?: { mime: string; base64: string }[];
   /**
    * Exemplo de resposta definido na receita. Só a IA simulada usa;
    * os adaptadores das IAs reais ignoram este campo.

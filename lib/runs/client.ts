@@ -1,8 +1,8 @@
-// O lado do navegador: pede ao servidor para começar uma execução e entrega a narração, evento por evento.
+// O lado do navegador: pede ao servidor para CRIAR uma execução e devolve o id dela.
+// A execução roda no servidor, persistida, em chamadas curtas e separadas; o navegador acompanha
+// depois pelo Realtime/replay (ver lib/runs/live-client.ts). Aqui não há mais transmissão ao vivo.
 
-import { readNdjson } from "./ndjson";
 import type { RunRefusalBody, RunRequestBody } from "./parse-request";
-import type { PublicRunEvent } from "./public-events";
 
 export const RUNS_URL = "/api/runs";
 
@@ -10,19 +10,23 @@ export const OFFLINE_PROBLEM =
   "Não conseguimos falar com o servidor. Confira sua internet e tente de novo.";
 export const SERVER_PROBLEM = "Algo deu errado do nosso lado. Tente de novo daqui a pouco.";
 
-export type RunStart =
-  | { ok: true; events: AsyncGenerator<PublicRunEvent> }
-  | { ok: false; problems: string[] };
+/** O corpo que o navegador manda: o pedido, o time, as chaves conectadas e o token do dono. */
+export interface StartRunBody extends RunRequestBody {
+  /** Identidade anônima de quem iniciou, para poder cancelar depois (ver lib/runs/owner.ts). */
+  ownerToken: string;
+}
+
+export type RunStart = { ok: true; runId: string } | { ok: false; problems: string[] };
 
 export interface StartRunOptions {
-  /** Cancela a execução: a conexão cai e o servidor manda as IAs pararem. */
+  /** Cancela só o pedido de criação (não a execução, que já roda no servidor). */
   signal?: AbortSignal;
   /** Quem faz o pedido pela internet. Os testes trocam pela rota do servidor, sem precisar de rede. */
   fetch?: typeof fetch;
 }
 
-/** Começa uma execução. Se o servidor recusar o pedido, devolve os problemas que ele apontou. */
-export async function startRun(body: RunRequestBody, options: StartRunOptions = {}): Promise<RunStart> {
+/** Cria uma execução. Devolve o id, ou os problemas que o servidor apontou. */
+export async function startRun(body: StartRunBody, options: StartRunOptions = {}): Promise<RunStart> {
   const send = options.fetch ?? fetch;
   let response: Response;
   try {
@@ -36,10 +40,19 @@ export async function startRun(body: RunRequestBody, options: StartRunOptions = 
     return { ok: false, problems: [OFFLINE_PROBLEM] };
   }
 
-  if (!response.ok || !response.body) {
+  if (!response.ok) {
     return { ok: false, problems: await readProblems(response) };
   }
-  return { ok: true, events: readNdjson<PublicRunEvent>(response.body) };
+  try {
+    const data: unknown = await response.json();
+    if (typeof data === "object" && data !== null && "runId" in data) {
+      const { runId } = data as { runId: unknown };
+      if (typeof runId === "string" && runId) return { ok: true, runId };
+    }
+  } catch {
+    // A resposta não veio no formato combinado.
+  }
+  return { ok: false, problems: [SERVER_PROBLEM] };
 }
 
 async function readProblems(response: Response): Promise<string[]> {

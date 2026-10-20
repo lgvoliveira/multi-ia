@@ -14,8 +14,9 @@ describe("catálogo de receitas", () => {
   it("o cartão de uma receita pronta mostra o time sugerido", () => {
     expect(listRecipeSummaries()[0].team).toEqual([
       { roleName: "Chefe", provider: "claude" },
-      { roleName: "Programador", provider: "gpt" },
-      { roleName: "Revisor", provider: "gemini" },
+      { roleName: "Pesquisador", provider: "gemini" },
+      { roleName: "Front-end", provider: "gpt" },
+      { roleName: "Back-end", provider: "claude" },
     ]);
   });
 

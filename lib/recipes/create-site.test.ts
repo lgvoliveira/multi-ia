@@ -1,54 +1,115 @@
 import { describe, expect, it } from "vitest";
 import { createSiteRecipe } from "./create-site";
-import { SAMPLE_FINAL_SITE, SAMPLE_FIRST_SITE } from "./create-site.samples";
+import { SAMPLE_FINAL_SITE, SAMPLE_FRONT } from "./create-site.samples";
+import { stageSteps, type Stage, type Step } from "./types";
+
+const recipe = createSiteRecipe;
+
+/** A fase pelo identificador. */
+function stage(id: string): Stage {
+  const found = recipe.stages.find((candidate) => candidate.id === id);
+  if (!found) throw new Error(`Fase não encontrada: ${id}`);
+  return found;
+}
+
+/** A etapa pelo identificador, procurando em todas as fases. */
+function step(id: string): Step {
+  const found = recipe.stages.flatMap(stageSteps).find((candidate) => candidate.id === id);
+  if (!found) throw new Error(`Etapa não encontrada: ${id}`);
+  return found;
+}
+
+/** De onde cada entrada de uma etapa vem, no formato "request" | "review" | id da etapa. */
+function inputsOf(stepId: string): string[] {
+  return step(stepId).inputs.map((input) => (input.from === "step" ? input.stepId : input.from));
+}
 
 describe('receita "Criar um site"', () => {
-  it("tem o time do protótipo: Chefe com Claude, Programador com GPT e Revisor com Gemini", () => {
-    expect(createSiteRecipe.roles.map((role) => [role.name, role.suggestedProvider])).toEqual([
+  it("tem o time: Chefe/Claude, Pesquisador/Gemini, Front-end/GPT e Back-end/Claude", () => {
+    expect(recipe.roles.map((role) => [role.name, role.suggestedProvider])).toEqual([
       ["Chefe", "claude"],
-      ["Programador", "gpt"],
-      ["Revisor", "gemini"],
+      ["Pesquisador", "gemini"],
+      ["Front-end", "gpt"],
+      ["Back-end", "claude"],
     ]);
   });
 
-  it("cada papel tem uma IA reserva, e o revisor reserva não é a IA do programador", () => {
-    expect(createSiteRecipe.roles.map((role) => [role.name, role.backupProvider])).toEqual([
+  it("cada papel tem uma IA reserva, diferente da recomendada", () => {
+    expect(recipe.roles.map((role) => [role.name, role.backupProvider])).toEqual([
       ["Chefe", "gpt"],
-      ["Programador", "claude"],
-      ["Revisor", "claude"],
+      ["Pesquisador", "claude"],
+      ["Front-end", "claude"],
+      ["Back-end", "gpt"],
     ]);
   });
 
-  it("roda 4 etapas na ordem: planejar, programar, revisar e consolidar", () => {
-    expect(createSiteRecipe.steps.map((step) => [step.id, step.roleId])).toEqual([
-      ["plan", "chief"],
-      ["code", "programmer"],
-      ["review", "reviewer"],
-      ["consolidate", "chief"],
+  it("roda 4 fases: planejar (sozinho), construir (em paralelo), revisar e consolidar", () => {
+    expect(recipe.stages.map((s) => [s.id, s.kind])).toEqual([
+      ["brief", "sequential"],
+      ["build", "parallel"],
+      ["review", "review"],
+      ["final", "sequential"],
     ]);
   });
 
-  it("o programador recebe o plano do chefe, e a consolidação recebe tudo o que veio antes", () => {
-    const inputsOf = (stepId: string) =>
-      createSiteRecipe.steps
-        .find((step) => step.id === stepId)
-        ?.inputs.map((input) => (input.from === "step" ? input.stepId : "request"));
-
-    expect(inputsOf("code")).toEqual(["request", "plan"]);
-    expect(inputsOf("consolidate")).toEqual(["request", "plan", "code", "review"]);
+  it("na fase em paralelo, Front-end, Back-end e Pesquisador trabalham ao mesmo tempo", () => {
+    const build = stage("build");
+    expect(build.kind).toBe("parallel");
+    expect(stageSteps(build).map((s) => [s.id, s.roleId])).toEqual([
+      ["front", "frontend"],
+      ["back", "backend"],
+      ["research", "researcher"],
+    ]);
   });
 
-  it("o programador e a consolidação escrevem o site, e o resultado final é HTML", () => {
-    expect(createSiteRecipe.steps.map((step) => [step.id, step.format])).toEqual([
-      ["plan", "text"],
-      ["code", "html"],
+  it("os três que trabalham em paralelo têm papéis diferentes e não dependem um do outro", () => {
+    const build = stageSteps(stage("build"));
+    const roles = build.map((s) => s.roleId);
+    expect(new Set(roles).size).toBe(roles.length);
+
+    const siblingIds = new Set(build.map((s) => s.id));
+    for (const s of build) {
+      for (const input of s.inputs) {
+        if (input.from === "step") expect(siblingIds.has(input.stepId)).toBe(false);
+      }
+    }
+  });
+
+  it("o Front-end e o Back-end recebem o que a revisão pediu; só eles usam from:\"review\"", () => {
+    expect(inputsOf("front")).toEqual(["request", "brief", "review"]);
+    expect(inputsOf("back")).toEqual(["request", "brief", "review"]);
+    expect(inputsOf("research")).toEqual(["request", "brief"]);
+    // "review" aqui é a entrada from:"review" (o recado da revisão), não a etapa de revisão.
+    expect(step("front").inputs.some((input) => input.from === "review")).toBe(true);
+    expect(step("research").inputs.some((input) => input.from === "review")).toBe(false);
+  });
+
+  it("a revisão manda refazer a fase em paralelo, em 1 rodada (por velocidade)", () => {
+    const review = stage("review");
+    expect(review.kind).toBe("review");
+    if (review.kind !== "review") return;
+    expect(review.reworkStageId).toBe("build");
+    expect(review.maxRounds).toBe(1);
+    expect(review.step.roleId).toBe("chief");
+  });
+
+  it("a consolidação recebe tudo o que veio antes", () => {
+    expect(inputsOf("consolidate")).toEqual(["request", "brief", "front", "back", "research", "review"]);
+  });
+
+  it("o Front-end e a consolidação escrevem HTML; os demais escrevem texto", () => {
+    expect(recipe.stages.flatMap(stageSteps).map((s) => [s.id, s.format])).toEqual([
+      ["brief", "text"],
+      ["front", "html"],
+      ["back", "text"],
+      ["research", "text"],
       ["review", "text"],
       ["consolidate", "html"],
     ]);
   });
 
   it("os sites de exemplo são HTML completos, em português e sem carregar nada de fora", () => {
-    for (const site of [SAMPLE_FIRST_SITE, SAMPLE_FINAL_SITE]) {
+    for (const site of [SAMPLE_FRONT, SAMPLE_FINAL_SITE]) {
       expect(site.startsWith("<!DOCTYPE html>")).toBe(true);
       expect(site).toContain('<html lang="pt-BR">');
       expect(site).not.toMatch(/<script[^>]+src=/i); // script de outro lugar
@@ -66,17 +127,17 @@ describe('receita "Criar um site"', () => {
     }
   });
 
-  it("o site final corrige o que a revisão apontou no primeiro site", () => {
-    expect(SAMPLE_FIRST_SITE).not.toContain('role="img"');
+  it("o site final corrige o que o rascunho do visual deixou pendente", () => {
+    expect(SAMPLE_FRONT).not.toContain('role="img"');
     expect(SAMPLE_FINAL_SITE).toContain('role="img" aria-label="Foto do bolo de chocolate"');
     expect(SAMPLE_FINAL_SITE).toContain("padding-bottom: 96px");
-    expect(SAMPLE_FIRST_SITE).not.toContain("prefers-reduced-motion");
+    expect(SAMPLE_FRONT).not.toContain("prefers-reduced-motion");
     expect(SAMPLE_FINAL_SITE).toContain("prefers-reduced-motion: reduce");
   });
 
   it("as respostas de exemplo cabem no limite de cada etapa (1 token ≈ 4 caracteres)", () => {
-    for (const step of createSiteRecipe.steps) {
-      expect(step.sampleOutput.length, step.id).toBeLessThanOrEqual(step.maxOutputTokens * 4);
+    for (const s of recipe.stages.flatMap(stageSteps)) {
+      expect(s.sampleOutput.length, s.id).toBeLessThanOrEqual(s.maxOutputTokens * 4);
     }
   });
 });

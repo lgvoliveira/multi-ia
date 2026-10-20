@@ -46,11 +46,12 @@ describe("narração para o usuário", () => {
     const events = await publicNarration(["gpt"]);
     const json = JSON.stringify(events);
 
-    expect(events).toContainEqual({ type: "step-retrying", stepId: "code", attempt: 2 });
+    // O Front-end (GPT) falha; o Claude (reserva do papel) assume.
+    expect(events).toContainEqual({ type: "step-retrying", stepId: "front", attempt: 2 });
     expect(events).toContainEqual({
       type: "step-switched",
-      stepId: "code",
-      roleId: "programmer",
+      stepId: "front",
+      roleId: "frontend",
       from: "gpt",
       to: "claude",
     });
@@ -58,20 +59,30 @@ describe("narração para o usuário", () => {
     expect(json).not.toContain("falhou de propósito");
   });
 
-  it("mantém o que a tela precisa: etapas, IAs, texto, tempo e o resultado final", async () => {
+  it("mantém o que a tela precisa: fases, IAs, texto, revisão e o resultado final", async () => {
     const events = await publicNarration();
 
     expect(events[0]).toEqual({
       type: "run-started",
-      steps: [
-        { stepId: "plan", provider: "claude" },
-        { stepId: "code", provider: "gpt" },
-        { stepId: "review", provider: "gemini" },
-        { stepId: "consolidate", provider: "claude" },
+      stages: [
+        { stageId: "brief", kind: "sequential", steps: [{ stepId: "brief", provider: "claude" }] },
+        {
+          stageId: "build",
+          kind: "parallel",
+          steps: [
+            { stepId: "front", provider: "gpt" },
+            { stepId: "back", provider: "claude" },
+            { stepId: "research", provider: "gemini" },
+          ],
+        },
+        { stageId: "review", kind: "review", steps: [{ stepId: "review", provider: "claude" }] },
+        { stageId: "final", kind: "sequential", steps: [{ stepId: "consolidate", provider: "gpt" }] },
       ],
     });
-    expect(events).toContainEqual({ type: "step-started", stepId: "code", provider: "gpt" });
-    expect(events).toContainEqual({ type: "step-finished", stepId: "code", durationMs: expect.any(Number) });
+    expect(events).toContainEqual({ type: "stage-started", stageId: "build", round: 1 });
+    expect(events).toContainEqual({ type: "step-started", stepId: "front", provider: "gpt" });
+    expect(events).toContainEqual({ type: "step-finished", stepId: "front", durationMs: expect.any(Number) });
+    expect(events).toContainEqual({ type: "review-result", stageId: "review", round: 1, approved: true });
     expect(events.at(-1)).toEqual({
       type: "run-finished",
       result: SAMPLE_FINAL_SITE,
@@ -82,18 +93,44 @@ describe("narração para o usuário", () => {
   it("de uma falha, conta só em que etapa foi", () => {
     const failure: RunEvent = {
       type: "run-failed",
-      stepId: "code",
+      stepId: "front",
       provider: "gpt",
       retryable: true,
       errorMessage: "529 Overloaded",
     };
 
-    expect(toPublicEvent(failure)).toEqual({ type: "run-failed", stepId: "code" });
+    expect(toPublicEvent(failure)).toEqual({ type: "run-failed", stepId: "front" });
+  });
+
+  it("repassa a fase, o veredito da revisão e a rodada", () => {
+    expect(toPublicEvent({ type: "stage-started", stageId: "build", round: 2 })).toEqual({
+      type: "stage-started",
+      stageId: "build",
+      round: 2,
+    });
+    expect(toPublicEvent({ type: "review-result", stageId: "review", round: 1, approved: false })).toEqual({
+      type: "review-result",
+      stageId: "review",
+      round: 1,
+      approved: false,
+    });
+    // A rodada vai junto quando existe, e fica de fora na primeira rodada (implícita).
+    expect(toPublicEvent({ type: "step-started", stepId: "front", provider: "gpt", round: 2 })).toEqual({
+      type: "step-started",
+      stepId: "front",
+      provider: "gpt",
+      round: 2,
+    });
+    expect(toPublicEvent({ type: "step-started", stepId: "front", provider: "gpt" })).toEqual({
+      type: "step-started",
+      stepId: "front",
+      provider: "gpt",
+    });
   });
 
   it("um campo interno novo no motor não vaza sem ninguém perceber", () => {
-    const event = { type: "step-started", stepId: "plan", provider: "claude", model: "claude-x" } as RunEvent;
+    const event = { type: "step-started", stepId: "brief", provider: "claude", model: "claude-x" } as RunEvent;
 
-    expect(toPublicEvent(event)).toEqual({ type: "step-started", stepId: "plan", provider: "claude" });
+    expect(toPublicEvent(event)).toEqual({ type: "step-started", stepId: "brief", provider: "claude" });
   });
 });

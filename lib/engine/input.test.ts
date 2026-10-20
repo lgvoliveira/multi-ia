@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Role, Step } from "@/lib/recipes/types";
-import { buildStepInput, buildSystemPrompt } from "./input";
+import { buildStepInput, buildSystemPrompt, REVIEW_FEEDBACK_KEY } from "./input";
 
 const role: Role = {
   id: "reviewer",
@@ -46,5 +46,24 @@ describe("montagem do que a IA recebe", () => {
 
   it("dá erro se falta a resposta de uma etapa anterior", () => {
     expect(() => buildStepInput(step, "Quero um site.", new Map())).toThrow('"code"');
+  });
+
+  it("a entrada from:\"review\" traz o recado da revisão, e fica vazia na primeira rodada", () => {
+    const reworkStep: Step = {
+      ...step,
+      id: "front",
+      inputs: [{ from: "review", label: "O que revisar" }],
+    };
+
+    // Primeira rodada: ainda não houve revisão, então chega vazio.
+    expect(buildStepInput(reworkStep, "Quero um site.", new Map())).toBe(
+      '<parte nome="O que revisar">\n\n</parte>',
+    );
+
+    // Depois da revisão: o recado guardado pelo motor aparece na entrada.
+    const outputs = new Map([[REVIEW_FEEDBACK_KEY, "REVISAR:\n- Aumente o contraste."]]);
+    expect(buildStepInput(reworkStep, "Quero um site.", outputs)).toBe(
+      '<parte nome="O que revisar">\nREVISAR:\n- Aumente o contraste.\n</parte>',
+    );
   });
 });

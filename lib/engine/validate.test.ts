@@ -10,7 +10,7 @@ describe("conferência do pedido de execução", () => {
   it("aceita um pedido normal, com ou sem troca de IA", () => {
     expect(findRunProblems({ recipe, request: "Quero um site para minha confeitaria." })).toEqual([]);
     expect(
-      findRunProblems({ recipe, request: "Quero um site.", team: { programmer: "claude" } }),
+      findRunProblems({ recipe, request: "Quero um site.", team: { frontend: "claude" } }),
     ).toEqual([]);
   });
 
@@ -34,11 +34,11 @@ describe("conferência do pedido de execução", () => {
 
   it("recusa papel que a receita não tem e IA que não existe", () => {
     // Simula um pedido adulterado vindo do navegador.
-    const team: TeamChoice = { designer: "claude", reviewer: "llama" as ProviderId };
+    const team: TeamChoice = { designer: "claude", frontend: "llama" as ProviderId };
 
     expect(findRunProblems({ recipe, request: "Quero um site.", team })).toEqual([
       'A receita não tem o papel "designer".',
-      'IA desconhecida para o papel "reviewer": "llama".',
+      'IA desconhecida para o papel "frontend": "llama".',
     ]);
   });
 });

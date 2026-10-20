@@ -2,7 +2,7 @@
 // no futuro) manda um RunInput e recebe uma sequência de RunEvent: a "narração" da execução.
 
 import type { ProviderId, Usage } from "@/lib/providers/types";
-import type { Recipe } from "@/lib/recipes/types";
+import type { Recipe, StageKind } from "@/lib/recipes/types";
 
 /** IA escolhida pelo usuário para cada papel (id do papel → IA). Papel ausente usa a IA sugerida pela receita. */
 export type TeamChoice = Partial<Record<string, ProviderId>>;
@@ -15,10 +15,48 @@ export interface RunInput {
   team?: TeamChoice;
 }
 
+/**
+ * Onde a execução está, para poder parar e continuar depois.
+ * `stageIndex` é a fase atual em `recipe.stages`; igual a `recipe.stages.length` quer dizer "acabou".
+ * `round` é a rodada da revisão (1 nas outras fases).
+ */
+export interface RunCursor {
+  stageIndex: number;
+  round: number;
+}
+
+/**
+ * O estado inteiro de uma execução num instante: dá para guardar, recarregar e continuar de onde parou.
+ * Por enquanto só vive na memória; um commit futuro vai persistir isto para retomar entre chamadas do servidor.
+ */
+export interface RunSnapshot {
+  recipeId: string;
+  /** O pedido do usuário, já sem espaços nas pontas. */
+  request: string;
+  /** IA atual de cada papel. Muda quando uma IA falha e outra assume. */
+  team: Record<string, ProviderId>;
+  /** A resposta de cada etapa já concluída, por identificador (inclui o veredito da revisão). */
+  outputs: Record<string, string>;
+  /** Cada etapa concluída, na ordem em que terminou. */
+  results: StepResult[];
+  cursor: RunCursor;
+  /** true quando a execução terminou (por sucesso, falha ou cancelamento). */
+  done: boolean;
+  /** Como a execução terminou. Ausente enquanto ela ainda não acabou. */
+  status?: "finished" | "failed" | "cancelled";
+}
+
 /** Uma etapa como ela vai rodar, já com a IA decidida. */
 export interface PlannedStep {
   stepId: string;
   provider: ProviderId;
+}
+
+/** Uma fase como ela vai rodar: o tipo dela e as etapas, já com a IA de cada uma decidida. */
+export interface PlannedStage {
+  stageId: string;
+  kind: StageKind;
+  steps: PlannedStep[];
 }
 
 /** O que uma etapa concluída produziu. */
@@ -40,14 +78,18 @@ export interface StepResult {
 /**
  * A narração. Toda execução começa com "run-started" e termina com exatamente um destes:
  * "run-finished", "run-failed" ou "run-cancelled".
- * Cada etapa começa com "step-started" e termina com "step-finished". No meio vêm os pedaços de texto e, se a IA
- * falhar, "step-retrying" ou "step-switched": a etapa recomeça do zero, e o texto escrito antes deles não vale mais.
+ * Cada fase começa com "stage-started". Cada etapa começa com "step-started" e termina com "step-finished".
+ * No meio vêm os pedaços de texto e, se a IA falhar, "step-retrying" ou "step-switched": a etapa recomeça do zero,
+ * e o texto escrito antes deles não vale mais. Numa revisão, as etapas podem rodar mais de uma rodada (`round`):
+ * a revisão pode mandar refazer a fase e, nessa nova rodada, as etapas recomeçam com o que ela pediu.
  */
 export type RunEvent =
-  | { type: "run-started"; recipeId: string; steps: PlannedStep[] }
-  | { type: "step-started"; stepId: string; provider: ProviderId }
+  | { type: "run-started"; recipeId: string; stages: PlannedStage[] }
+  /** Uma fase começou (rodada `round`; vale mais de 1 quando a revisão mandou refazer a fase). */
+  | { type: "stage-started"; stageId: string; round: number }
+  | { type: "step-started"; stepId: string; provider: ProviderId; round?: number }
   /** Um pedaço da resposta, assim que a IA escreve. */
-  | { type: "step-text"; stepId: string; text: string }
+  | { type: "step-text"; stepId: string; text: string; round?: number }
   /** A IA falhou, mas vale tentar de novo: depois de `delayMs`, ela recomeça a etapa (tentativa número `attempt`). */
   | {
       type: "step-retrying";
@@ -55,6 +97,7 @@ export type RunEvent =
       provider: ProviderId;
       attempt: number;
       delayMs: number;
+      round?: number;
       /** Mensagem técnica do erro. Só interna. */
       errorMessage: string;
     }
@@ -71,7 +114,9 @@ export type RunEvent =
       /** Mensagem técnica do erro de `from`. Só interna. */
       errorMessage: string;
     }
-  | ({ type: "step-finished" } & StepResult)
+  /** O veredito de uma rodada de revisão: aprovou ou mandou refazer. */
+  | { type: "review-result"; stageId: string; round: number; approved: boolean }
+  | ({ type: "step-finished"; round?: number } & StepResult)
   | {
       type: "run-finished";
       /** O resultado final: a resposta da última etapa. */

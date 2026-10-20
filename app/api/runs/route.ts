@@ -1,24 +1,24 @@
-// POST /api/runs: começa uma execução e manda a narração ao navegador enquanto as IAs trabalham,
-// uma linha por evento (veja lib/runs/ndjson.ts). Pedido inválido não começa: volta na hora,
-// com a lista de problemas em português.
+// POST /api/runs: cria uma execução PERSISTIDA e dispara o primeiro segmento. Não roda nada aqui dentro
+// nem transmite narração: devolve só o id da execução. O navegador acompanha depois pelo Realtime/replay
+// (ver lib/runs/live-client.ts). A execução roda em chamadas curtas e separadas em /api/runs/[id]/continue,
+// sobrevivendo ao navegador sair e cabendo no teto de tempo da função.
+// Pedido inválido não começa: volta na hora, com a lista de problemas em português.
 
-import { runRecipe } from "@/lib/engine/run";
-import type { RunEvent } from "@/lib/engine/types";
-import { getProvider } from "@/lib/providers/registry";
-import { toNdjsonStream } from "@/lib/runs/ndjson";
+import { createHash } from "node:crypto";
+import { resolveTeam } from "@/lib/engine/run";
+import type { ProviderId } from "@/lib/providers/types";
+import { stageSteps, type Recipe } from "@/lib/recipes/types";
+import { encryptKeys } from "@/lib/runs/crypto";
 import { parseRunRequest, type RunRefusalBody } from "@/lib/runs/parse-request";
-import { toPublicEvent, type PublicRunEvent } from "@/lib/runs/public-events";
+import type { PublicPlannedStage } from "@/lib/runs/public-events";
+import { createRun, saveSecret } from "@/lib/runs/store";
+import { originFromRequest, triggerContinue } from "@/lib/runs/trigger";
+
+// Esta chamada só cria a execução e dispara o primeiro segmento: é curta por natureza.
+export const maxDuration = 15;
 
 /** Tamanho máximo do corpo do pedido. Folga grande: um pedido de 4.000 caracteres ocupa bem menos. */
 const MAX_BODY_SIZE = 64 * 1024;
-
-const STREAM_HEADERS = {
-  "Content-Type": "application/x-ndjson; charset=utf-8",
-  // Sem guardar cópia e sem compactar: a compactação junta os pedaços e a narração deixaria de chegar ao vivo.
-  "Cache-Control": "no-cache, no-transform",
-  "X-Accel-Buffering": "no",
-  "X-Content-Type-Options": "nosniff",
-};
 
 export async function POST(request: Request): Promise<Response> {
   // Só aceita JSON. Isso também impede que outro site dispare execuções pelo navegador de alguém.
@@ -43,50 +43,56 @@ export async function POST(request: Request): Promise<Response> {
   const parsed = parseRunRequest(body);
   if (!parsed.ok) return refuse(400, parsed.problems);
 
-  // As IAs param se a conexão cair: a pessoa cancelou, fechou a página ou perdeu a internet.
-  const stop = new AbortController();
-  const signal = AbortSignal.any([request.signal, stop.signal]);
-  const events = runRecipe(parsed.input, { getProvider, signal });
+  const { recipe, request: userRequest, team: teamChoice } = parsed.input;
+  // IA de cada papel já decidida (a escolhida ou a sugerida): guardada e usada do começo ao fim.
+  const team = resolveTeam(recipe, teamChoice);
+  const plan = buildPlan(recipe, team);
+  // Só guardamos o hash do token do dono: dá para conferir quem pode cancelar, sem guardar o token em si.
+  const ownerToken = readOwnerToken(body);
 
-  return new Response(toNdjsonStream(narrateToUser(events), { onCancel: () => stop.abort() }), {
-    headers: STREAM_HEADERS,
-  });
-}
-
-/** A narração na versão do usuário. O que é só interno vai para o registro do servidor. */
-async function* narrateToUser(events: AsyncIterable<RunEvent>): AsyncGenerator<PublicRunEvent> {
+  let runId: string;
   try {
-    for await (const event of events) {
-      logFailure(event);
-      yield toPublicEvent(event);
+    runId = await createRun({
+      owner_token: sha256(ownerToken),
+      recipe_id: recipe.id,
+      request: userRequest.trim(),
+      team,
+      plan,
+    });
+    // Chaves do usuário só quando ele conectou alguma: guardadas criptografadas e apagadas ao fim da execução.
+    if (Object.keys(parsed.keys).length > 0) {
+      await saveSecret(runId, encryptKeys(parsed.keys));
     }
   } catch (error) {
-    // Defeito no nosso código. A narração acaba sem um evento de fim, e a tela avisa a pessoa.
-    console.error("[api/runs] Erro inesperado durante a execução:", error);
+    console.error("[api/runs] Não consegui criar a execução:", error);
+    return refuse(500, ["Algo deu errado do nosso lado. Tente de novo daqui a pouco."]);
   }
+
+  // Dispara o primeiro segmento (dispara e esquece); se a chamada se perder, o varredor retoma depois.
+  triggerContinue(runId, originFromRequest(request));
+  return Response.json({ runId }, { status: 201 });
 }
 
-/** Anota no registro do servidor cada falha de uma IA, com a mensagem técnica que a tela não recebe. */
-function logFailure(event: RunEvent) {
-  switch (event.type) {
-    case "step-retrying":
-      console.warn(
-        `[api/runs] A etapa "${event.stepId}" falhou (${event.provider}); ` +
-          `tentativa ${event.attempt} daqui a ${event.delayMs} ms: ${event.errorMessage}`,
-      );
-      return;
-    case "step-switched":
-      console.warn(
-        `[api/runs] A etapa "${event.stepId}" falhou (${event.from}); ` +
-          `${event.to} assumiu o papel "${event.roleId}": ${event.errorMessage}`,
-      );
-      return;
-    case "run-failed":
-      console.error(
-        `[api/runs] A etapa "${event.stepId}" falhou (${event.provider}): ${event.errorMessage}`,
-      );
-      return;
+/** Monta o plano público das fases: tipo de cada fase e a IA decidida para cada etapa. */
+function buildPlan(recipe: Recipe, team: Record<string, ProviderId>): PublicPlannedStage[] {
+  return recipe.stages.map((stage) => ({
+    stageId: stage.id,
+    kind: stage.kind,
+    steps: stageSteps(stage).map((step) => ({ stepId: step.id, provider: step.provider ?? team[step.roleId] })),
+  }));
+}
+
+/** Lê o token do dono do corpo do pedido, se veio em formato válido. */
+function readOwnerToken(body: unknown): string {
+  if (typeof body === "object" && body !== null && "ownerToken" in body) {
+    const value = (body as { ownerToken: unknown }).ownerToken;
+    if (typeof value === "string") return value;
   }
+  return "";
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 function refuse(status: number, problems: string[]): Response {

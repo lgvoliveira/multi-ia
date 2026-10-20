@@ -1,19 +1,44 @@
 import { describe, expect, it } from "vitest";
+import type { ProviderId } from "@/lib/providers/types";
+import type { OutputFormat, StageKind } from "@/lib/recipes/types";
 import type { PublicRunEvent } from "@/lib/runs/public-events";
 import {
   createRunState,
   finishedSite,
   formatDuration,
+  liveDocument,
   runReducer,
+  stagesOf,
+  type PlannedStageView,
   type PlannedStepView,
   type RunAction,
   type RunState,
 } from "./run-state";
 
-const PLANNED: PlannedStepView[] = [
-  { id: "plan", roleId: "chief", name: "Chefe", summary: "Vai planejar", doneSummary: "Planejou", format: "text", provider: "claude" },
-  { id: "code", roleId: "programmer", name: "Programador", summary: "Vai programar", doneSummary: "Programou", format: "html", provider: "gpt" },
-  { id: "review", roleId: "reviewer", name: "Revisor", summary: "Vai revisar", doneSummary: "Revisou", format: "text", provider: "gemini" },
+function stepView(
+  id: string,
+  roleId: string,
+  name: string,
+  format: OutputFormat,
+  provider: ProviderId,
+): PlannedStepView {
+  return { id, roleId, name, summary: `Vai ${name}`, doneSummary: `${name} pronto`, format, provider };
+}
+
+function parallelStage(id: string, kind: StageKind, steps: PlannedStepView[]): PlannedStageView {
+  return { id, kind, steps };
+}
+
+// Mesma forma da receita "Criar um site": planejar, construir (em paralelo), revisar e consolidar.
+const STAGES: PlannedStageView[] = [
+  parallelStage("brief", "sequential", [stepView("brief", "chief", "Chefe", "text", "claude")]),
+  parallelStage("build", "parallel", [
+    stepView("front", "frontend", "Front-end", "html", "gpt"),
+    stepView("back", "backend", "Back-end", "text", "claude"),
+    stepView("research", "researcher", "Pesquisador", "text", "gemini"),
+  ]),
+  parallelStage("review", "review", [stepView("review", "chief", "Revisão", "text", "claude")]),
+  parallelStage("final", "sequential", [stepView("consolidate", "chief", "Consolidação", "html", "claude")]),
 ];
 
 function event(publicEvent: PublicRunEvent): RunAction {
@@ -22,7 +47,7 @@ function event(publicEvent: PublicRunEvent): RunAction {
 
 /** Aplica as ações em ordem, a partir do começo da execução. */
 function play(...actions: RunAction[]): RunState {
-  return actions.reduce(runReducer, createRunState(PLANNED));
+  return actions.reduce(runReducer, createRunState(STAGES));
 }
 
 /** Resumo de cada etapa: "id status". */
@@ -30,50 +55,165 @@ function statuses(state: RunState): string[] {
   return state.steps.map((step) => `${step.id} ${step.status}`);
 }
 
-const PLAN_DONE = [
-  event({ type: "step-started", stepId: "plan", provider: "claude" }),
-  event({ type: "step-text", stepId: "plan", text: "Plano: " }),
-  event({ type: "step-text", stepId: "plan", text: "4 seções." }),
-  event({ type: "step-finished", stepId: "plan", durationMs: 3200 }),
+function stepById(state: RunState, id: string) {
+  const step = state.steps.find((candidate) => candidate.id === id);
+  if (!step) throw new Error(`Etapa não encontrada: ${id}`);
+  return step;
+}
+
+const BRIEF_DONE = [
+  event({ type: "stage-started", stageId: "brief", round: 1 }),
+  event({ type: "step-started", stepId: "brief", provider: "claude" }),
+  event({ type: "step-text", stepId: "brief", text: "Plano: " }),
+  event({ type: "step-text", stepId: "brief", text: "4 seções." }),
+  event({ type: "step-finished", stepId: "brief", durationMs: 3200 }),
 ];
 
 describe("estado da tela do time trabalhando", () => {
-  it("começa com todas as etapas aguardando, cada uma com a IA escolhida", () => {
-    const state = createRunState(PLANNED);
+  it("começa com todas as etapas aguardando, cada uma com a IA escolhida, agrupadas por fase", () => {
+    const state = createRunState(STAGES);
 
     expect(state.status).toBe("running");
-    expect(statuses(state)).toEqual(["plan waiting", "code waiting", "review waiting"]);
-    expect(state.steps.map((step) => step.provider)).toEqual(["claude", "gpt", "gemini"]);
+    expect(statuses(state)).toEqual([
+      "brief waiting",
+      "front waiting",
+      "back waiting",
+      "research waiting",
+      "review waiting",
+      "consolidate waiting",
+    ]);
+    expect(state.steps.map((step) => step.provider)).toEqual(["claude", "gpt", "claude", "gemini", "claude", "claude"]);
+    expect(state.stages.map((stage) => [stage.id, stage.kind, stage.round])).toEqual([
+      ["brief", "sequential", 1],
+      ["build", "parallel", 1],
+      ["review", "review", 1],
+      ["final", "sequential", 1],
+    ]);
+    // Cada etapa sabe a fase a que pertence.
+    expect(stepById(state, "front").stageId).toBe("build");
   });
 
   it("a etapa trabalha, junta o texto que chega aos pedaços e termina com o tempo que levou", () => {
-    const working = play(...PLAN_DONE.slice(0, 3));
-    expect(statuses(working)).toEqual(["plan working", "code waiting", "review waiting"]);
-    expect(working.steps[0].text).toBe("Plano: 4 seções.");
+    const working = play(...BRIEF_DONE.slice(0, 3));
+    expect(stepById(working, "brief").status).toBe("working");
+    expect(stepById(working, "brief").text).toBe("Plano: ");
 
-    const done = play(...PLAN_DONE);
-    expect(statuses(done)).toEqual(["plan done", "code waiting", "review waiting"]);
-    expect(done.steps[0]).toMatchObject({ text: "Plano: 4 seções.", durationMs: 3200 });
+    const done = play(...BRIEF_DONE);
+    expect(stepById(done, "brief")).toMatchObject({ status: "done", text: "Plano: 4 seções.", durationMs: 3200 });
   });
 
   it("vale a IA que o servidor decidiu para cada etapa", () => {
     const state = play(
       event({
         type: "run-started",
-        steps: [
-          { stepId: "plan", provider: "claude" },
-          { stepId: "code", provider: "claude" },
-          { stepId: "review", provider: "gemini" },
+        stages: [
+          { stageId: "brief", kind: "sequential", steps: [{ stepId: "brief", provider: "claude" }] },
+          {
+            stageId: "build",
+            kind: "parallel",
+            steps: [
+              { stepId: "front", provider: "claude" },
+              { stepId: "back", provider: "claude" },
+              { stepId: "research", provider: "gemini" },
+            ],
+          },
+          { stageId: "review", kind: "review", steps: [{ stepId: "review", provider: "claude" }] },
+          { stageId: "final", kind: "sequential", steps: [{ stepId: "consolidate", provider: "gpt" }] },
         ],
       }),
-      event({ type: "step-started", stepId: "review", provider: "gpt" }),
     );
 
-    expect(state.steps.map((step) => step.provider)).toEqual(["claude", "claude", "gpt"]);
+    expect(state.steps.map((step) => step.provider)).toEqual([
+      "claude",
+      "claude",
+      "claude",
+      "gemini",
+      "claude",
+      "gpt",
+    ]);
+  });
+
+  it("numa fase em paralelo, várias etapas trabalham ao mesmo tempo", () => {
+    const state = play(
+      ...BRIEF_DONE,
+      event({ type: "stage-started", stageId: "build", round: 1 }),
+      event({ type: "step-started", stepId: "front", provider: "gpt" }),
+      event({ type: "step-started", stepId: "back", provider: "claude" }),
+      event({ type: "step-started", stepId: "research", provider: "gemini" }),
+      event({ type: "step-text", stepId: "front", text: "<!DOCTYPE html>" }),
+      event({ type: "step-text", stepId: "back", text: "Estrutura…" }),
+    );
+
+    expect(statuses(state)).toEqual([
+      "brief done",
+      "front working",
+      "back working",
+      "research working",
+      "review waiting",
+      "consolidate waiting",
+    ]);
+    expect(stepById(state, "front").text).toBe("<!DOCTYPE html>");
+    expect(stepById(state, "back").text).toBe("Estrutura…");
+  });
+
+  it("quando a revisão manda refazer, a fase volta na rodada 2 e os cartões reiniciam", () => {
+    const state = play(
+      event({ type: "step-started", stepId: "front", provider: "gpt" }),
+      event({ type: "step-text", stepId: "front", text: "rascunho 1" }),
+      event({ type: "step-finished", stepId: "front", durationMs: 2000 }),
+      event({ type: "review-result", stageId: "review", round: 1, approved: false }),
+      // Rodada 2: a fase de construção roda de novo.
+      event({ type: "stage-started", stageId: "build", round: 2 }),
+      event({ type: "step-started", stepId: "front", provider: "gpt", round: 2 }),
+    );
+
+    expect(stepById(state, "front")).toMatchObject({ status: "working", text: "", round: 2 });
+    expect(state.stages.find((stage) => stage.id === "build")?.round).toBe(2);
+    expect(state.stages.find((stage) => stage.id === "review")?.approved).toBe(false);
+  });
+
+  it("quando a IA tenta de novo, o texto da tentativa que falhou some e a etapa mostra a tentativa", () => {
+    const retrying = play(
+      event({ type: "step-started", stepId: "front", provider: "gpt" }),
+      event({ type: "step-text", stepId: "front", text: "<html><bo" }),
+      event({ type: "step-retrying", stepId: "front", attempt: 2 }),
+    );
+    expect(stepById(retrying, "front")).toMatchObject({ status: "working", text: "", retryAttempt: 2, provider: "gpt" });
+
+    const done = play(
+      event({ type: "step-started", stepId: "front", provider: "gpt" }),
+      event({ type: "step-retrying", stepId: "front", attempt: 2 }),
+      event({ type: "step-text", stepId: "front", text: "<html></html>" }),
+      event({ type: "step-finished", stepId: "front", durationMs: 4000 }),
+    );
+    expect(stepById(done, "front")).toMatchObject({ status: "done", text: "<html></html>", retryAttempt: undefined });
+  });
+
+  it("quando outra IA assume o papel, a etapa recomeça com ela, e as próximas etapas do papel também passam", () => {
+    // O Chefe (Claude) falha no plano e o GPT assume; a consolidação, também do Chefe, já passa para o GPT.
+    const state = play(
+      event({ type: "step-started", stepId: "brief", provider: "claude" }),
+      event({ type: "step-text", stepId: "brief", text: "Plano pela met" }),
+      event({ type: "step-retrying", stepId: "brief", attempt: 3 }),
+      event({ type: "step-switched", stepId: "brief", roleId: "chief", from: "claude", to: "gpt" }),
+    );
+
+    expect(stepById(state, "brief")).toMatchObject({
+      provider: "gpt",
+      replacedProvider: "claude",
+      status: "working",
+      text: "",
+      retryAttempt: undefined,
+    });
+    // A revisão e a consolidação (ambas do chefe) ainda aguardam e passam para o GPT.
+    expect(stepById(state, "review")).toMatchObject({ provider: "gpt", replacedProvider: "claude" });
+    expect(stepById(state, "consolidate")).toMatchObject({ provider: "gpt", replacedProvider: "claude" });
+    // Os outros papéis não mudam.
+    expect(stepById(state, "front").replacedProvider).toBeUndefined();
   });
 
   it("quando o time termina, guarda o resultado final e o tempo total", () => {
-    const state = play(...PLAN_DONE, event({ type: "run-finished", result: "<!DOCTYPE html>", durationMs: 9000 }));
+    const state = play(...BRIEF_DONE, event({ type: "run-finished", result: "<!DOCTYPE html>", durationMs: 9000 }));
 
     expect(state.status).toBe("finished");
     expect(state.result).toBe("<!DOCTYPE html>");
@@ -82,117 +222,111 @@ describe("estado da tela do time trabalhando", () => {
 
   it("quando uma IA falha, marca a etapa, as concluídas continuam com o texto e as seguintes não começam", () => {
     const state = play(
-      ...PLAN_DONE,
-      event({ type: "step-started", stepId: "code", provider: "gpt" }),
-      event({ type: "step-text", stepId: "code", text: "<html>" }),
-      event({ type: "run-failed", stepId: "code" }),
+      ...BRIEF_DONE,
+      event({ type: "step-started", stepId: "front", provider: "gpt" }),
+      event({ type: "step-text", stepId: "front", text: "<html>" }),
+      event({ type: "run-failed", stepId: "front" }),
     );
 
     expect(state.status).toBe("failed");
-    expect(statuses(state)).toEqual(["plan done", "code failed", "review skipped"]);
-    expect(state.steps[0]).toMatchObject({ text: "Plano: 4 seções.", durationMs: 3200 });
-    expect(state.steps[1].text).toBe("<html>");
+    expect(stepById(state, "brief")).toMatchObject({ status: "done", text: "Plano: 4 seções." });
+    expect(stepById(state, "front")).toMatchObject({ status: "failed", text: "<html>" });
+    expect(stepById(state, "research").status).toBe("skipped");
   });
 
-  it("quando a IA tenta de novo, o texto da tentativa que falhou some e a etapa mostra a tentativa", () => {
-    const retrying = play(
-      ...PLAN_DONE,
-      event({ type: "step-started", stepId: "code", provider: "gpt" }),
-      event({ type: "step-text", stepId: "code", text: "<html><bo" }),
-      event({ type: "step-retrying", stepId: "code", attempt: 2 }),
-    );
-    expect(retrying.steps[1]).toMatchObject({ status: "working", text: "", retryAttempt: 2, provider: "gpt" });
-
-    const done = play(
-      ...PLAN_DONE,
-      event({ type: "step-started", stepId: "code", provider: "gpt" }),
-      event({ type: "step-retrying", stepId: "code", attempt: 2 }),
-      event({ type: "step-text", stepId: "code", text: "<html></html>" }),
-      event({ type: "step-finished", stepId: "code", durationMs: 4000 }),
-    );
-    // Deu certo na nova tentativa: o aviso some.
-    expect(done.steps[1]).toMatchObject({ status: "done", text: "<html></html>", retryAttempt: undefined });
-  });
-
-  it("quando outra IA assume o papel, a etapa recomeça com ela, e as próximas etapas do papel também passam para ela", () => {
-    const consolidate: PlannedStepView = { ...PLANNED[0], id: "consolidate", name: "Consolidação" };
-    const state = [
-      event({ type: "step-started", stepId: "plan", provider: "claude" }),
-      event({ type: "step-text", stepId: "plan", text: "Plano pela met" }),
-      event({ type: "step-retrying", stepId: "plan", attempt: 3 }),
-      event({ type: "step-switched", stepId: "plan", roleId: "chief", from: "claude", to: "gpt" }),
-    ].reduce(runReducer, createRunState([...PLANNED, consolidate]));
-
-    expect(state.steps.map((step) => [step.id, step.provider, step.replacedProvider])).toEqual([
-      ["plan", "gpt", "claude"],
-      ["code", "gpt", undefined],
-      ["review", "gemini", undefined],
-      ["consolidate", "gpt", "claude"],
-    ]);
-    expect(state.steps[0]).toMatchObject({ status: "working", text: "", retryAttempt: undefined });
-  });
-
-  it("a troca não muda uma etapa do mesmo papel que já terminou", () => {
-    const consolidate: PlannedStepView = { ...PLANNED[0], id: "consolidate", name: "Consolidação" };
-    const state = [
-      ...PLAN_DONE,
-      event({ type: "step-started", stepId: "consolidate", provider: "claude" }),
-      event({ type: "step-switched", stepId: "consolidate", roleId: "chief", from: "claude", to: "gpt" }),
-    ].reduce(runReducer, createRunState([...PLANNED, consolidate]));
-
-    expect(state.steps[0]).toMatchObject({ provider: "claude", status: "done" });
-    expect(state.steps[0].replacedProvider).toBeUndefined();
-    expect(state.steps[3]).toMatchObject({ provider: "gpt", replacedProvider: "claude" });
-  });
-
-  it("ao cancelar, a etapa que trabalhava fica interrompida e guarda o que já tinha escrito", () => {
+  it("ao cancelar, as etapas que trabalhavam ficam interrompidas e guardam o que já tinham escrito", () => {
     const state = play(
-      ...PLAN_DONE,
-      event({ type: "step-started", stepId: "code", provider: "gpt" }),
-      event({ type: "step-text", stepId: "code", text: "<html>" }),
+      ...BRIEF_DONE,
+      event({ type: "step-started", stepId: "front", provider: "gpt" }),
+      event({ type: "step-started", stepId: "back", provider: "claude" }),
+      event({ type: "step-text", stepId: "front", text: "<html>" }),
       { type: "cancel" },
     );
 
     expect(state.status).toBe("cancelled");
-    expect(statuses(state)).toEqual(["plan done", "code stopped", "review skipped"]);
-    expect(state.steps[1].text).toBe("<html>");
+    expect(stepById(state, "front")).toMatchObject({ status: "stopped", text: "<html>" });
+    expect(stepById(state, "back").status).toBe("stopped");
+    expect(stepById(state, "research").status).toBe("skipped");
   });
 
   it("se a narração acaba sem um evento de fim, a conexão caiu no meio", () => {
-    const state = play(...PLAN_DONE, { type: "stream-ended" });
+    const state = play(...BRIEF_DONE, { type: "stream-ended" });
 
     expect(state.status).toBe("interrupted");
-    expect(statuses(state)).toEqual(["plan done", "code skipped", "review skipped"]);
-  });
-
-  it("o fim normal da narração, depois do evento de fim, não muda nada", () => {
-    const finished = play(...PLAN_DONE, event({ type: "run-finished", result: "Pronto", durationMs: 1 }));
-
-    expect(runReducer(finished, { type: "stream-ended" })).toBe(finished);
+    expect(stepById(state, "brief").status).toBe("done");
+    expect(stepById(state, "front").status).toBe("skipped");
   });
 
   it("depois do fim, um pedaço de texto atrasado é ignorado", () => {
-    const cancelled = play(PLAN_DONE[0], { type: "cancel" });
-    const late = runReducer(cancelled, event({ type: "step-text", stepId: "plan", text: "atrasado" }));
+    const cancelled = play(BRIEF_DONE[1], { type: "cancel" });
+    const late = runReducer(cancelled, event({ type: "step-text", stepId: "brief", text: "atrasado" }));
 
     expect(late).toBe(cancelled);
   });
 });
 
+describe("agrupamento por fase e documento vivo", () => {
+  it("stagesOf agrupa as etapas por fase, na ordem, com o tipo e a rodada", () => {
+    const state = play(event({ type: "stage-started", stageId: "build", round: 2 }));
+    const stages = stagesOf(state);
+
+    expect(stages.map((stage) => [stage.id, stage.kind, stage.round, stage.steps.map((s) => s.id)])).toEqual([
+      ["brief", "sequential", 1, ["brief"]],
+      ["build", "parallel", 2, ["front", "back", "research"]],
+      ["review", "review", 1, ["review"]],
+      ["final", "sequential", 1, ["consolidate"]],
+    ]);
+  });
+
+  it("liveDocument junta o que cada etapa escreveu, só as partes que já têm texto", () => {
+    const empty = liveDocument(createRunState(STAGES));
+    expect(empty).toEqual({
+      brief: undefined,
+      front: undefined,
+      back: undefined,
+      research: undefined,
+      reviewNotes: undefined,
+    });
+
+    const state = play(
+      event({ type: "step-started", stepId: "brief", provider: "claude" }),
+      event({ type: "step-text", stepId: "brief", text: "Plano do site." }),
+      event({ type: "step-started", stepId: "research", provider: "gemini" }),
+      event({ type: "step-text", stepId: "research", text: "Ideias de conteúdo." }),
+    );
+
+    expect(liveDocument(state)).toEqual({
+      brief: "Plano do site.",
+      front: undefined,
+      back: undefined,
+      research: "Ideias de conteúdo.",
+      reviewNotes: undefined,
+    });
+  });
+});
+
 describe("site pronto", () => {
-  // Mesmas etapas, mas terminando com o programador: o resultado final é um site.
-  const ENDS_WITH_SITE = PLANNED.slice(0, 2);
+  // Fases que terminam com texto, para conferir o caso em que o resultado não é um site.
+  const TEXT_ONLY: PlannedStageView[] = [
+    parallelStage("brief", "sequential", [stepView("brief", "chief", "Chefe", "text", "claude")]),
+  ];
   const SITE = "<!DOCTYPE html><title>Doce Encanto</title>";
 
   it("quando o time termina e a última etapa escreve HTML, o resultado é o site", () => {
-    const state = runReducer(createRunState(ENDS_WITH_SITE), event({ type: "run-finished", result: SITE, durationMs: 1 }));
+    const state = runReducer(
+      createRunState(STAGES),
+      event({ type: "run-finished", result: SITE, durationMs: 1 }),
+    );
 
     expect(finishedSite(state)).toBe(SITE);
   });
 
   it("não há site se o resultado final é texto ou se o time não terminou", () => {
-    const textResult = play(event({ type: "run-finished", result: "Texto final.", durationMs: 1 }));
-    const cancelled = runReducer(createRunState(ENDS_WITH_SITE), { type: "cancel" });
+    const textResult = runReducer(
+      createRunState(TEXT_ONLY),
+      event({ type: "run-finished", result: "Texto final.", durationMs: 1 }),
+    );
+    const cancelled = runReducer(createRunState(STAGES), { type: "cancel" });
 
     expect(finishedSite(textResult)).toBeNull();
     expect(finishedSite(cancelled)).toBeNull();

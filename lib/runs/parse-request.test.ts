@@ -10,9 +10,10 @@ function refusal(...problems: string[]) {
 
 describe("conferência do pedido que chega pela internet", () => {
   it("aceita um pedido válido e entrega ao motor a receita completa, com o time escolhido", () => {
-    expect(parseRunRequest({ ...VALID, team: { programmer: "claude" } })).toEqual({
+    expect(parseRunRequest({ ...VALID, team: { frontend: "claude" }, keys: { claude: "sk-x" } })).toEqual({
       ok: true,
-      input: { recipe: createSiteRecipe, request: VALID.request, team: { programmer: "claude" } },
+      input: { recipe: createSiteRecipe, request: VALID.request, team: { frontend: "claude" } },
+      keys: { claude: "sk-x" },
     });
     expect(parseRunRequest(VALID).ok).toBe(true);
   });
@@ -45,8 +46,8 @@ describe("conferência do pedido que chega pela internet", () => {
     for (const team of [null, "claude", ["claude"]]) {
       expect(parseRunRequest({ ...VALID, team })).toEqual(refusal("O time enviado não é válido."));
     }
-    expect(parseRunRequest({ ...VALID, team: { designer: "claude", reviewer: "llama" } })).toEqual(
-      refusal('A receita não tem o papel "designer".', 'IA desconhecida para o papel "reviewer": "llama".'),
+    expect(parseRunRequest({ ...VALID, team: { designer: "claude", frontend: "llama" } })).toEqual(
+      refusal('A receita não tem o papel "designer".', 'IA desconhecida para o papel "frontend": "llama".'),
     );
   });
 });

@@ -1,46 +1,35 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ProviderId } from "@/lib/providers/types";
-import { SAMPLE_FINAL_SITE } from "@/lib/recipes/create-site.samples";
-import { OFFLINE_PROBLEM, SERVER_PROBLEM, startRun } from "@/lib/runs/client";
-import type { PublicRunEvent } from "@/lib/runs/public-events";
+import { createHash } from "node:crypto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 
-// Guarda o "botão de parar" que cada IA recebeu, para conferir se ela foi mandada parar.
-const providerSignals = vi.hoisted(() => [] as (AbortSignal | undefined)[]);
-// IAs que recusam todo pedido (erro que não adianta repetir: a troca de IA é na hora, sem esperar).
-const refusingProviders = vi.hoisted(() => new Set<ProviderId>());
+// A rota de criação não roda nada nem fala com a rede: só cria a execução e dispara o 1º segmento.
+// Trocamos o store (banco) e o disparo por dublês, e conferimos o que a rota pede a cada um.
 
-// Na rota de verdade a IA simulada "digita" devagar; aqui ela responde na hora.
-vi.mock("@/lib/providers/registry", async () => {
-  const { createMockProvider } = await import("@/lib/providers/mock");
-  const { ProviderError } = await import("@/lib/providers/types");
-  return {
-    getProvider: (id: ProviderId) => {
-      const provider = createMockProvider({ id, chunkDelayMs: 0 });
-      return {
-        id,
-        generate: (request: Parameters<typeof provider.generate>[0]) => {
-          providerSignals.push(request.signal);
-          if (refusingProviders.has(id)) {
-            throw new ProviderError(`400: ${id} recusou o pedido`, { retryable: false });
-          }
-          return provider.generate(request);
-        },
-      };
-    },
-  };
+const createRun = vi.hoisted(() => vi.fn((run: Record<string, unknown>): Promise<string> => {
+  void run;
+  return Promise.resolve("run-generated");
+}));
+const saveSecret = vi.hoisted(() => vi.fn((id: string, blob: string): Promise<void> => {
+  void id;
+  void blob;
+  return Promise.resolve();
+}));
+const triggerContinue = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/runs/store", () => ({ createRun, saveSecret }));
+vi.mock("@/lib/runs/trigger", () => ({ triggerContinue, originFromRequest: () => undefined }));
+
+beforeEach(() => {
+  // encryptKeys precisa de uma chave secreta válida (hex de 32 bytes). Valor só de teste.
+  process.env.RUN_KEY_SECRET = "1".repeat(64);
 });
 
 afterEach(() => {
-  refusingProviders.clear();
-  vi.restoreAllMocks();
+  vi.clearAllMocks();
+  delete process.env.RUN_KEY_SECRET;
 });
 
-const BODY = { recipeId: "create-site", request: "Quero um site para minha confeitaria." };
-
-/** O navegador falando direto com a rota, sem rede no meio. */
-const callRoute: typeof fetch = (input, init) =>
-  POST(new Request(new URL(String(input), "http://localhost"), init));
+const BODY = { recipeId: "create-site", request: "Quero um site para minha confeitaria.", ownerToken: "token-dono" };
 
 function post(body: string, contentType = "application/json"): Promise<Response> {
   return POST(
@@ -52,80 +41,49 @@ function post(body: string, contentType = "application/json"): Promise<Response>
   );
 }
 
-async function collect(events: AsyncIterable<PublicRunEvent>): Promise<PublicRunEvent[]> {
-  const result: PublicRunEvent[] = [];
-  for await (const event of events) result.push(event);
-  return result;
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
 }
 
-describe("rota POST /api/runs", () => {
-  it("narra a execução inteira, do time escolhido até o resultado final", async () => {
-    const start = await startRun({ ...BODY, team: { programmer: "claude" } }, { fetch: callRoute });
-    if (!start.ok) throw new Error(start.problems.join(" "));
-    const events = await collect(start.events);
+describe("rota POST /api/runs (cria a execução persistida)", () => {
+  it("cria a execução na fila, com o time e o plano, e devolve o id (201)", async () => {
+    const response = await post(JSON.stringify({ ...BODY, team: { frontend: "claude" } }));
 
-    expect(events[0]).toEqual({
-      type: "run-started",
-      steps: [
-        { stepId: "plan", provider: "claude" },
-        { stepId: "code", provider: "claude" },
-        { stepId: "review", provider: "gemini" },
-        { stepId: "consolidate", provider: "claude" },
-      ],
-    });
-    const finished = events.filter((event) => event.type === "step-finished");
-    expect(finished.map((event) => event.stepId)).toEqual(["plan", "code", "review", "consolidate"]);
-    expect(events.at(-1)).toEqual({
-      type: "run-finished",
-      result: SAMPLE_FINAL_SITE,
-      durationMs: expect.any(Number),
-    });
-  });
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ runId: "run-generated" });
 
-  it("responde uma linha de JSON por evento, sem guardar cópia e sem os dados internos", async () => {
-    const response = await post(JSON.stringify(BODY));
-    const text = await response.text();
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toBe("application/x-ndjson; charset=utf-8");
-    expect(response.headers.get("cache-control")).toBe("no-cache, no-transform");
-    expect(text.split("\n").at(-1)).toBe(""); // toda linha termina com a quebra de linha
-    expect(text).not.toMatch(/"(model|usage|inputTokens|outputTokens|errorMessage)"/);
-  });
-
-  it("quando uma IA falha, a tela fica sabendo da troca e o servidor anota a mensagem técnica", async () => {
-    refusingProviders.add("gpt");
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-    const start = await startRun(BODY, { fetch: callRoute });
-    if (!start.ok) throw new Error(start.problems.join(" "));
-    const events = await collect(start.events);
-
-    expect(events).toContainEqual({
-      type: "step-switched",
-      stepId: "code",
-      roleId: "programmer",
-      from: "gpt",
-      to: "claude",
-    });
-    expect(events.at(-1)).toMatchObject({ type: "run-finished", result: SAMPLE_FINAL_SITE });
-    expect(JSON.stringify(events)).not.toContain("recusou o pedido");
-    expect(warn).toHaveBeenCalledWith(
-      '[api/runs] A etapa "code" falhou (gpt); claude assumiu o papel "programmer": 400: gpt recusou o pedido',
+    expect(createRun).toHaveBeenCalledTimes(1);
+    expect(createRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipe_id: "create-site",
+        request: "Quero um site para minha confeitaria.",
+        owner_token: sha256("token-dono"),
+        team: expect.objectContaining({ frontend: "claude" }),
+      }),
     );
+    // O plano tem as 4 fases da receita, cada etapa com a IA decidida.
+    const { plan } = createRun.mock.calls[0][0] as { plan: { stageId: string }[] };
+    expect(plan.map((stage) => stage.stageId)).toEqual(["brief", "build", "review", "final"]);
+
+    // Dispara o 1º segmento.
+    expect(triggerContinue).toHaveBeenCalledWith("run-generated", undefined);
   });
 
-  it("quando a IA reserva também falha, a tela recebe só em que etapa parou", async () => {
-    refusingProviders.add("gpt").add("claude");
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  it("guarda as chaves do usuário (criptografadas) quando ele conectou alguma", async () => {
+    await post(JSON.stringify({ ...BODY, keys: { claude: "sk-ant-abc" } }));
 
-    const start = await startRun(BODY, { fetch: callRoute });
-    if (!start.ok) throw new Error(start.problems.join(" "));
-    const events = await collect(start.events);
+    expect(saveSecret).toHaveBeenCalledTimes(1);
+    const [id, blob] = saveSecret.mock.calls[0];
+    expect(id).toBe("run-generated");
+    expect(typeof blob).toBe("string");
+    // O blob guardado não deixa a chave à mostra.
+    expect(blob).not.toContain("sk-ant-abc");
+  });
 
-    expect(events.at(-1)).toEqual({ type: "run-failed", stepId: "plan" });
-    expect(error).toHaveBeenCalledWith('[api/runs] A etapa "plan" falhou (gpt): 400: gpt recusou o pedido');
+  it("sem chaves conectadas, não guarda segredo nenhum", async () => {
+    await post(JSON.stringify(BODY));
+    expect(saveSecret).not.toHaveBeenCalled();
+    expect(createRun).toHaveBeenCalledTimes(1);
   });
 
   it("recusa pedido inválido na hora, com a mensagem em português", async () => {
@@ -133,13 +91,13 @@ describe("rota POST /api/runs", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ problems: ["Escreva o que você quer que o time faça."] });
+    expect(createRun).not.toHaveBeenCalled();
   });
 
-  it("a tela recebe os problemas que o servidor apontou", async () => {
-    const start = await startRun({ ...BODY, request: "a".repeat(4001) }, { fetch: callRoute });
-
-    expect(start).toEqual({
-      ok: false,
+  it("recusa o pedido grande demais", async () => {
+    const response = await post(JSON.stringify({ ...BODY, request: "a".repeat(4001) }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
       problems: ["O pedido passou do limite de 4.000 caracteres (tem 4.001)."],
     });
   });
@@ -156,48 +114,17 @@ describe("rota POST /api/runs", () => {
 
   it("recusa corpo grande demais", async () => {
     const response = await post(JSON.stringify({ ...BODY, request: "a".repeat(70_000) }));
-
     expect(response.status).toBe(413);
     expect(await response.json()).toEqual({ problems: ["O pedido é grande demais."] });
   });
 
-  it("se a pessoa cancelar, a IA que estava trabalhando é mandada parar", async () => {
-    const controller = new AbortController();
-    const start = await startRun(BODY, { fetch: callRoute, signal: controller.signal });
-    if (!start.ok) throw new Error(start.problems.join(" "));
+  it("se o banco falhar ao criar, responde um erro simples (500) e não dispara nada", async () => {
+    createRun.mockRejectedValueOnce(new Error("sem conexão"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const events: PublicRunEvent[] = [];
-    for await (const event of start.events) {
-      events.push(event);
-      if (event.type === "step-text") controller.abort();
-    }
-
-    expect(events.at(-1)).toEqual({ type: "run-cancelled", stepId: "plan" });
-    expect(providerSignals.at(-1)?.aborted).toBe(true);
-  });
-
-  it("se a conexão cair no meio, a IA que estava trabalhando é mandada parar", async () => {
     const response = await post(JSON.stringify(BODY));
-    const reader = response.body!.getReader();
-
-    await reader.read();
-    await reader.read();
-    await reader.cancel();
-
-    expect(providerSignals.at(-1)?.aborted).toBe(true);
-  });
-
-  it("sem resposta no formato combinado ou sem internet, a tela mostra uma mensagem simples", async () => {
-    const crashed = await startRun(BODY, {
-      fetch: async () => new Response("Internal Server Error", { status: 500 }),
-    });
-    expect(crashed).toEqual({ ok: false, problems: [SERVER_PROBLEM] });
-
-    const offline = await startRun(BODY, {
-      fetch: async () => {
-        throw new TypeError("Failed to fetch");
-      },
-    });
-    expect(offline).toEqual({ ok: false, problems: [OFFLINE_PROBLEM] });
+    expect(response.status).toBe(500);
+    expect(triggerContinue).not.toHaveBeenCalled();
+    error.mockRestore();
   });
 });

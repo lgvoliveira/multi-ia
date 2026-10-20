@@ -2,7 +2,7 @@
 // e o resultado no fim. Só dados e funções puras, para os testes conferirem cada passagem.
 
 import type { ProviderId } from "@/lib/providers/types";
-import type { OutputFormat } from "@/lib/recipes/types";
+import type { OutputFormat, StageKind } from "@/lib/recipes/types";
 import type { PublicRunEvent } from "@/lib/runs/public-events";
 
 /**
@@ -14,6 +14,8 @@ export type StepStatus = "waiting" | "working" | "done" | "failed" | "stopped" |
 /** Uma etapa como a tela mostra. */
 export interface StepView {
   id: string;
+  /** Fase a que a etapa pertence. Numa fase em paralelo, várias etapas trabalham ao mesmo tempo. */
+  stageId: string;
   /** Papel que faz a etapa. Quando outra IA assume um papel, ela fica com as próximas etapas dele. */
   roleId: string;
   name: string;
@@ -24,6 +26,8 @@ export interface StepView {
   status: StepStatus;
   /** O que a IA escreveu até agora. */
   text: string;
+  /** Rodada atual da etapa. Começa em 1; a revisão pode mandar refazer e aí sobe para 2, 3... */
+  round: number;
   durationMs?: number;
   /** IA que não conseguiu fazer a etapa (ou uma anterior do mesmo papel); `provider` entrou no lugar dela. */
   replacedProvider?: ProviderId;
@@ -37,6 +41,22 @@ export type PlannedStepView = Pick<
   "id" | "roleId" | "name" | "summary" | "doneSummary" | "format" | "provider"
 >;
 
+/** Uma fase como a tela já a conhece antes de a execução começar. */
+export interface PlannedStageView {
+  id: string;
+  kind: StageKind;
+  steps: PlannedStepView[];
+}
+
+/** Uma fase no estado da execução: o tipo e a rodada atual. As etapas ficam na lista plana `steps`. */
+export interface RunStage {
+  id: string;
+  kind: StageKind;
+  round: number;
+  /** Veredito da última rodada de revisão, quando houve uma. */
+  approved?: boolean;
+}
+
 /**
  * running: o time está trabalhando. Os outros são o fim: terminou, uma IA falhou,
  * a pessoa cancelou ou a conexão caiu no meio do caminho.
@@ -45,7 +65,10 @@ export type RunStatus = "running" | "finished" | "failed" | "cancelled" | "inter
 
 export interface RunState {
   status: RunStatus;
+  /** Todas as etapas numa lista só, na ordem das fases. Cada uma sabe a sua fase (stageId). */
   steps: StepView[];
+  /** As fases, na ordem, com a rodada atual de cada uma. */
+  stages: RunStage[];
   /** O resultado final, quando o time termina. */
   result?: string;
   /** Quanto tempo o time levou, quando termina. */
@@ -59,10 +82,13 @@ export type RunAction =
   /** A narração acabou. Se ela não trouxe um evento de fim, a conexão caiu no meio. */
   | { type: "stream-ended" };
 
-export function createRunState(steps: PlannedStepView[]): RunState {
+export function createRunState(stages: PlannedStageView[]): RunState {
   return {
     status: "running",
-    steps: steps.map((step) => ({ ...step, status: "waiting", text: "" })),
+    steps: stages.flatMap((stage) =>
+      stage.steps.map((step) => ({ ...step, stageId: stage.id, status: "waiting" as StepStatus, text: "", round: 1 })),
+    ),
+    stages: stages.map((stage) => ({ id: stage.id, kind: stage.kind, round: 1 })),
   };
 }
 
@@ -84,16 +110,25 @@ function applyEvent(state: RunState, event: PublicRunEvent): RunState {
   switch (event.type) {
     case "run-started": {
       // Vale a IA que o servidor decidiu para cada etapa.
-      const providers = new Map(event.steps.map((step) => [step.stepId, step.provider]));
+      const providers = new Map<string, ProviderId>();
+      for (const stage of event.stages) {
+        for (const step of stage.steps) providers.set(step.stepId, step.provider);
+      }
       return mapSteps(state, (step) => ({ ...step, provider: providers.get(step.id) ?? step.provider }));
     }
-    case "step-started":
+    case "stage-started":
+      return updateStage(state, event.stageId, (stage) => ({ ...stage, round: event.round }));
+    case "step-started": {
+      const round = event.round ?? 1;
+      // step-started sempre recomeça a etapa do zero; numa rodada nova (revisão), o texto anterior também sai.
       return updateStep(state, event.stepId, (step) => ({
         ...step,
         provider: event.provider,
         status: "working",
         text: "",
+        round: round > step.round ? round : step.round,
       }));
+    }
     case "step-text":
       return updateStep(state, event.stepId, (step) => ({ ...step, text: step.text + event.text }));
     case "step-retrying":
@@ -107,6 +142,8 @@ function applyEvent(state: RunState, event: PublicRunEvent): RunState {
         if (step.roleId === event.roleId && step.status === "waiting") return replaced;
         return step;
       });
+    case "review-result":
+      return updateStage(state, event.stageId, (stage) => ({ ...stage, round: event.round, approved: event.approved }));
     case "step-finished":
       return updateStep(state, event.stepId, (step) => ({
         ...step,
@@ -126,7 +163,7 @@ function applyEvent(state: RunState, event: PublicRunEvent): RunState {
   }
 }
 
-/** Encerra a execução: a etapa que trabalhava parou no meio, e as que esperavam não vão mais começar. */
+/** Encerra a execução: as etapas que trabalhavam param no meio, e as que esperavam não vão mais começar. */
 function endRun(state: RunState, status: RunStatus): RunState {
   const ended = mapSteps(state, (step) => {
     if (step.status === "working") return { ...step, status: "stopped" };
@@ -142,6 +179,48 @@ function mapSteps(state: RunState, change: (step: StepView) => StepView): RunSta
 
 function updateStep(state: RunState, stepId: string, change: (step: StepView) => StepView): RunState {
   return mapSteps(state, (step) => (step.id === stepId ? change(step) : step));
+}
+
+function updateStage(state: RunState, stageId: string, change: (stage: RunStage) => RunStage): RunState {
+  return { ...state, stages: state.stages.map((stage) => (stage.id === stageId ? change(stage) : stage)) };
+}
+
+/** Uma fase com as suas etapas, para a tela desenhar fase por fase. */
+export interface StageView extends RunStage {
+  steps: StepView[];
+}
+
+/** Agrupa as etapas por fase, na ordem, com o tipo e a rodada de cada fase. */
+export function stagesOf(state: RunState): StageView[] {
+  return state.stages.map((stage) => ({
+    ...stage,
+    steps: state.steps.filter((step) => step.stageId === stage.id),
+  }));
+}
+
+/** As partes do documento vivo, montadas a partir do que cada etapa escreveu até agora. */
+export interface LiveDocument {
+  brief?: string;
+  front?: string;
+  back?: string;
+  research?: string;
+  reviewNotes?: string;
+}
+
+/** Junta o que cada etapa produziu num "documento vivo" que a tela mostra enquanto o time trabalha. */
+export function liveDocument(state: RunState): LiveDocument {
+  const textOf = (stepId: string) => {
+    const step = state.steps.find((candidate) => candidate.id === stepId);
+    return step && step.text.length > 0 ? step.text : undefined;
+  };
+  const document: LiveDocument = {
+    brief: textOf("brief"),
+    front: textOf("front"),
+    back: textOf("back"),
+    research: textOf("research"),
+    reviewNotes: textOf("review"),
+  };
+  return document;
 }
 
 /** O site pronto, quando o time terminou e o resultado final é um site. Senão, null. */
