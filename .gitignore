@@ -154,3 +154,5 @@ next-env.d.ts
 .vercel
 *.pem
 .DS_Store
+
+.vercel

@@ -3,6 +3,12 @@
 
 import type { Role, Step, StepInput } from "@/lib/recipes/types";
 
+/**
+ * Chave em que o motor guarda o veredito da revisão nas saídas. As etapas que recebem from:"review"
+ * leem esta chave. Não é a saída de nenhuma etapa comum, por isso o nome com underscores.
+ */
+export const REVIEW_FEEDBACK_KEY = "__review_feedback__";
+
 /** Quem a IA é (o papel) + o que ela faz agora (a etapa). */
 export function buildSystemPrompt(role: Role, step: Step): string {
   return `${role.systemPrompt}\n\n${step.instruction}`;
@@ -24,6 +30,8 @@ export function buildStepInput(
 
 function contentOf(input: StepInput, request: string, outputs: ReadonlyMap<string, string>): string {
   if (input.from === "request") return request;
+  // Na primeira rodada ainda não houve revisão: chega vazio.
+  if (input.from === "review") return outputs.get(REVIEW_FEEDBACK_KEY) ?? "";
   const output = outputs.get(input.stepId);
   if (output === undefined) {
     throw new Error(`Falta a resposta da etapa "${input.stepId}", que deveria ter rodado antes.`);

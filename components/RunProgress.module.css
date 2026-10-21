@@ -89,6 +89,30 @@
   font-weight: var(--weight-semibold);
 }
 
+/* As fases, uma embaixo da outra. */
+.stages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Aviso de que a revisão mandou refazer e estamos numa nova rodada. */
+.roundBanner {
+  align-self: flex-start;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
 .steps {
   margin: 0;
   padding: 0;
@@ -96,6 +120,61 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+/* Fase em paralelo: os cartões lado a lado, descendo para uma coluna em telas estreitas. */
+.parallelSteps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(var(--card-min-width), 1fr));
+  align-items: start;
+}
+
+/* Painel "documento vivo": o que o time já produziu, em resumo. */
+.liveDoc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.liveDocTitle {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-xl);
+}
+
+.liveDocList {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.liveDocItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.liveDocLabel {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.liveDocPreview {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* Invisível na tela, mas lido pelo leitor de tela. */

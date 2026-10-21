@@ -1,8 +1,8 @@
 // Respostas de exemplo da receita "Criar um site", devolvidas pela IA simulada.
 // A IA simulada sempre devolve este exemplo (uma confeitaria), qualquer que seja o pedido.
-// O site final corrige o que a revisão aponta no primeiro site.
+// O site final corrige, na consolidação, o que o rascunho visual deixou pendente.
 
-export const SAMPLE_PLAN = `Plano do site — Doce Encanto Confeitaria
+export const SAMPLE_BRIEF = `Plano do site — Doce Encanto Confeitaria
 
 1. Objetivo: apresentar a confeitaria e levar o visitante a fazer o pedido pelo WhatsApp.
 
@@ -25,14 +25,56 @@ export const SAMPLE_PLAN = `Plano do site — Doce Encanto Confeitaria
 - [preço] de cada produto
 `;
 
-export const SAMPLE_REVIEW = `Revisão do site
+export const SAMPLE_RESEARCH = `Pesquisa de conteúdo — Doce Encanto Confeitaria
 
-1. O botão fixo do WhatsApp fica por cima do texto do rodapé no celular. Correção: dar ao rodapé um espaço extra embaixo (cerca de 96px), para o botão não cobrir nada.
-2. Os blocos que representam as fotos não têm descrição para quem usa leitor de tela. Correção: marcar cada bloco com role="img" e um aria-label, como pedem as regras do time.
-3. As animações não respeitam quem pediu menos movimento no aparelho. Correção: desligar animações e transições com prefers-reduced-motion e mostrar os cartões direto.
-4. Ajuste fino: o horário de funcionamento só aparece no fim da página. Vale repetir o marcador de horário no topo, logo abaixo da frase de apresentação.
+1. Ideias de conteúdo por seção:
+- Topo: além do nome, uma frase que gera desejo, como "Do forno para a sua festa". Deixe o botão "Pedir pelo WhatsApp" bem à mão.
+- Cardápio: para cada doce, um nome apetitoso e uma descrição curta que fale do sabor e da ocasião (ex.: "Bolo de chocolate com recheio cremoso, perfeito para aniversários").
+- Encomendas: explique de forma simples como pedir (escolher, falar no WhatsApp, combinar entrega) e com quanta antecedência.
+- Perguntas frequentes: fazem bolo sem lactose/glúten? Entregam em casa? Qual a antecedência mínima? Formas de pagamento?
 
-O resto está bom: o cardápio atende ao pedido, o contraste das cores é adequado, os dados que faltam estão como marcadores e o JavaScript é só enfeite (sem ele, os cartões continuam aparecendo).
+2. Boas práticas de sites de confeitaria:
+- Fotos (ou blocos marcados) grandes e apetitosas são o que mais convence.
+- Botão de WhatsApp sempre visível; é por ali que a maioria pede.
+- Mostrar avaliações de clientes passa confiança (use [depoimento de cliente] quando não houver dado real).
+- Deixar claros horário, região de entrega e antecedência evita dúvidas e perda de pedido.
+
+3. Tom e palavras: caseiro, afetivo e caprichado. Palavras que o público valoriza: "feito com carinho", "caseiro", "fresquinho", "encomenda", "sob medida para a sua festa".
+
+Observação: não invente dados reais. Onde faltar, use marcadores como [seu WhatsApp com DDD], [preço] e [região de entrega].
+`;
+
+export const SAMPLE_BACK = `Estrutura e conteúdo — Doce Encanto Confeitaria
+
+1. Estrutura das seções (ordem no HTML):
+- Topo (header): nome, lema, atalhos e botão "Pedir pelo WhatsApp".
+- Cardápio (section#cardapio): 4 produtos em cartões (nome, descrição, preço).
+- Horário e endereço (section#horario-e-endereco): horário, endereço e telefone.
+- Rodapé (footer): nome e lembrete de pedidos pelo WhatsApp.
+- Botão de WhatsApp fixo no canto, sempre visível.
+
+2. Textos sugeridos:
+- Lema: "Bolos e doces caseiros, feitos com carinho para o seu dia."
+- Rodapé: "Doce Encanto Confeitaria · Pedidos pelo WhatsApp".
+
+3. Comportamento (JavaScript só de enfeite, o site funciona sem ele):
+- Marcar a página com a classe "js" no carregamento, para os cartões começarem escondidos.
+- Observar cada cartão do cardápio e revelá-lo com animação quando ele chega na tela (IntersectionObserver).
+- Sem JavaScript, todos os cartões já aparecem: o conteúdo inteiro vem escrito no HTML.
+
+4. Dados que faltam (usar marcadores entre colchetes): [seu WhatsApp com DDD], [dias e horários de funcionamento], [seu endereço], [seu telefone] e [preço] de cada produto.
+`;
+
+export const SAMPLE_REVIEW_APPROVED = `APROVADO
+
+O site atende ao pedido e está pronto para entregar:
+- O cardápio tem os 4 produtos com nome, descrição e preço, como no plano.
+- As fotos são blocos marcados com role="img" e aria-label, bons para leitor de tela.
+- O contraste das cores é adequado e os títulos estão em ordem (h1, h2, h3).
+- Os dados que faltam estão como marcadores entre colchetes, nada inventado.
+- O JavaScript é só enfeite: sem ele, os cartões continuam aparecendo.
+
+Pequeno ajuste, já aplicado na versão final: espaço extra embaixo do rodapé para o botão fixo do WhatsApp não cobrir o texto, e animações desligadas para quem pediu menos movimento (prefers-reduced-motion).
 `;
 
 const MENU = [
@@ -168,5 +210,6 @@ ${menuItems}
 `;
 }
 
-export const SAMPLE_FIRST_SITE = buildSampleSite(false);
+// O rascunho visual do front-end (sem as correções da consolidação) e a versão final do chefe.
+export const SAMPLE_FRONT = buildSampleSite(false);
 export const SAMPLE_FINAL_SITE = buildSampleSite(true);

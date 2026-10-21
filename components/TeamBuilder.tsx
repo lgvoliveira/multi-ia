@@ -3,7 +3,7 @@
 // Tela "Montar o time": escolher a IA de cada papel e escrever o pedido.
 // Roda no navegador porque reage na hora a cada troca de IA e a cada letra digitada.
 
-import { useId, useState, type FormEvent } from "react";
+import { useId, useRef, useState, type FormEvent } from "react";
 import { MAX_REQUEST_CHARS } from "@/lib/engine/validate";
 import { PROVIDERS, isProviderId } from "@/lib/providers/catalog";
 import type { ProviderId } from "@/lib/providers/types";
@@ -13,6 +13,21 @@ import styles from "./TeamBuilder.module.css";
 
 /** O que a tela precisa de cada papel. As instruções das IAs ficam no servidor. */
 export type TeamRole = Pick<Role, "id" | "name" | "description" | "suggestedProvider">;
+
+/** Tipos de agente que a pessoa pode acrescentar ao time, com a IA recomendada de cada um. */
+const ADDABLE_AGENTS: readonly (TeamRole & { typeId: string })[] = [
+  { typeId: "chief", id: "chief", name: "Chefe", description: "Entende o pedido, planeja, revisa e divide o trabalho", suggestedProvider: "claude" },
+  { typeId: "researcher", id: "researcher", name: "Pesquisador", description: "Pesquisa ideias e conteúdos de referência", suggestedProvider: "gemini" },
+  { typeId: "programmer", id: "programmer", name: "Programador", description: "Escreve o código do projeto", suggestedProvider: "gpt" },
+];
+
+/** Um agente que a pessoa acrescentou a mais do time base da receita. */
+interface ExtraAgent {
+  id: string;
+  name: string;
+  description: string;
+  provider: ProviderId;
+}
 
 /** IA escolhida para cada papel (id do papel → IA). */
 export type Team = Record<string, ProviderId>;
@@ -48,6 +63,10 @@ export function TeamBuilder({
   const [team, setTeam] = useState<Team>(initialTeam);
   const [request, setRequest] = useState(initialRequest);
   const [status, setStatus] = useState<FormStatus>("editing");
+  // Agentes acrescentados pela pessoa, além do time base da receita.
+  const [extraAgents, setExtraAgents] = useState<ExtraAgent[]>([]);
+  const [choosingAgent, setChoosingAgent] = useState(false);
+  const nextAgentId = useRef(1);
   const ids = useId();
   const requestId = `${ids}-request`;
   const hintId = `${ids}-hint`;
@@ -63,6 +82,24 @@ export function TeamBuilder({
     }
     setStatus("submitted");
     onStart(team, request);
+  }
+
+  function addAgent(type: (typeof ADDABLE_AGENTS)[number]) {
+    setExtraAgents((current) => [
+      ...current,
+      {
+        id: `extra-${nextAgentId.current++}`,
+        name: type.name,
+        description: type.description,
+        provider: type.suggestedProvider,
+      },
+    ]);
+    setChoosingAgent(false);
+    setStatus("editing");
+  }
+
+  function removeAgent(id: string) {
+    setExtraAgents((current) => current.filter((agent) => agent.id !== id));
   }
 
   const atLimit = request.length >= MAX_REQUEST_CHARS;
@@ -88,7 +125,59 @@ export function TeamBuilder({
               }}
             />
           ))}
+          {extraAgents.map((agent, index) => (
+            <RoleCard
+              key={agent.id}
+              role={{
+                id: agent.id,
+                name: agent.name,
+                description: agent.description,
+                suggestedProvider: agent.provider,
+              }}
+              position={roles.length + index + 1}
+              provider={agent.provider}
+              onChange={(provider) => {
+                setExtraAgents((current) =>
+                  current.map((item) => (item.id === agent.id ? { ...item, provider } : item)),
+                );
+                setStatus("editing");
+              }}
+              onRemove={() => removeAgent(agent.id)}
+            />
+          ))}
         </ol>
+
+        <div className={styles.addAgent}>
+          {choosingAgent ? (
+            <div className={styles.chooser} role="group" aria-label="Escolha o tipo de agente">
+              {ADDABLE_AGENTS.map((type) => (
+                <button
+                  key={type.typeId}
+                  type="button"
+                  className={styles.chooserOption}
+                  onClick={() => addAgent(type)}
+                >
+                  <AiDot provider={type.suggestedProvider} size="large" />
+                  {type.name}
+                </button>
+              ))}
+              <button
+                type="button"
+                className={styles.chooserCancel}
+                onClick={() => setChoosingAgent(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <button type="button" className={styles.addButton} onClick={() => setChoosingAgent(true)}>
+              + Adicionar agente
+            </button>
+          )}
+          <p className={styles.addWarning}>
+            Mais agentes deixam o desenvolvimento mais rápido, mas gastam mais tokens.
+          </p>
+        </div>
       </section>
 
       <section className={styles.request}>
@@ -138,9 +227,11 @@ interface RoleCardProps {
   position: number;
   provider: ProviderId;
   onChange: (provider: ProviderId) => void;
+  /** Só os agentes acrescentados pela pessoa podem ser removidos. */
+  onRemove?: () => void;
 }
 
-function RoleCard({ role, position, provider, onChange }: RoleCardProps) {
+function RoleCard({ role, position, provider, onChange, onRemove }: RoleCardProps) {
   const ids = useId();
   const nameId = `${ids}-name`;
   const labelId = `${ids}-label`;
@@ -181,6 +272,16 @@ function RoleCard({ role, position, provider, onChange }: RoleCardProps) {
           </select>
         </div>
       </div>
+      {onRemove && (
+        <button
+          type="button"
+          className={styles.removeAgent}
+          onClick={onRemove}
+          aria-label={`Remover agente ${role.name}`}
+        >
+          Remover
+        </button>
+      )}
     </li>
   );
 }
