@@ -58,7 +58,15 @@ O MVP começa com receitas cujo resultado é texto ou código, que só exigem as
 | Comitê de investimento | Analista da tese + advogado do diabo + consolidador | MVP |
 | Analisar contrato ou documento | Leitor + revisor jurídico + resumo | Fase 2 |
 | Revisão de modelo financeiro e valuation | Auditor + segundo auditor | Fase 2 (precisa ler planilhas) |
-| Edição de vídeo | Roteirista + editor via código (ffmpeg) | Fase 3 (precisa de oficina na nuvem) |
+| Editar um vídeo gravado | Transcritor + editor (decide os cortes) + revisor | Fase 3 (precisa de oficina na nuvem) |
+| Gerar vídeo do zero | Roteirista + diretor de cena + modelo de vídeo | Fase 3 (custo alto por segundo de vídeo) |
+
+**Vídeo na fase 3** (ideias aprovadas pelo Luis em 09/10/2026):
+
+1. **Editar um vídeo que a pessoa gravou:** cortar silêncios e erros, pôr legendas, fazer cortes curtos para Reels e TikTok, adicionar música e logo. Uma IA transcreve o áudio, o Claude ou o GPT decide os cortes lendo a transcrição, e a oficina na nuvem monta o vídeo (servidor próprio com ffmpeg ou APIs prontas como Shotstack e Creatomate). É a mais realista e a que mais combina com pequeno negócio e criador de conteúdo. Concorrentes: OpusClip, Submagic, CapCut.
+2. **Gerar vídeo do zero:** cenas que não existem, criadas por modelos de vídeo via API. O custo por segundo é alto, então pede preço de plano próprio (ou créditos avulsos).
+
+Fica de fora: edição criativa profissional (ritmo, montagem artística, efeitos), em que a IA ainda é fraca. As duas ideias exigem upload de arquivos grandes, armazenamento e um servidor que renderiza.
 
 ## Arquitetura técnica
 
