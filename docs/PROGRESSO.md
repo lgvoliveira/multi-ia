@@ -4,9 +4,9 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 24/10/2026 (etapa 5: PR 2b testado e no ar; PR pequeno do aviso de troca de login)
-**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login) e PR 2b (convite) no ar; PR do aviso de
-troca de login (issue #31) aberto, esperando o teste do Luis; depois, PR 3 (trocar o código do parceiro)
+**Última atualização:** 24/10/2026 (etapa 5: aviso de troca de login testado e no ar; plano do PR 3 em 4 partes)
+**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite) e o aviso de troca de
+login no ar; PR 3 (trocar o código do parceiro) dividido em 4 partes, começando pela 3a (receitas com login, issue #33)
 
 ---
 
@@ -116,7 +116,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco) e PR 2a (login) no ar; PR 2b (convite) aberto; falta o PR 3 (trocar o código) | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login) e PR 2b (convite) no ar; falta o PR 3 (trocar o código), em 4 partes | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -524,17 +524,35 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   mantido; aviso com ninguém conectado; com o dono de volta, desativar, reativar e teto gravam; sem erros no navegador).
   Aviso fotografado no computador e em 320 px.
 
+**Aviso testado pelo Luis e no ar (24/10, Parte H do guia, em abas normais)**
+- Todos os passos deram o resultado esperado: o convite avisou quem estava conectado; com o funcionário (Bruno Teste)
+  conectado em outra aba, "Desativar" na aba do dono, sem recarregar, mostrou "Nada foi mudado… quem está conectado
+  agora é Bruno Teste" e o cartão não mudou; com o Bruno desconectado, apareceu "A sua conta de dono não está mais
+  conectada"; depois de sair e entrar de novo como dono, "Desativar" funcionou. **Merge do PR #32 feito.** F34 conferida.
+
+**Plano do PR 3 (aprovado pelo Luis em 24/10, Claude Code)**
+- O PR 3 (trazer de volta o código do parceiro, no banco novo e com login) vira 4 partes, cada uma com um teste do Luis:
+  1. **3a — Receitas com login** (issue #33): "Criar um site" volta para quem está logado; cada execução em nome do
+     funcionário e da empresa; só ele acompanha e cancela; a narração volta a aparecer enquanto as IAs escrevem (F35);
+     sai "Minhas chaves" (decisão 3 de 24/10). Ainda só com a IA simulada.
+  2. **3b — Receitas cobrando:** estimativa e reserva antes de começar, cobrança por etapa pelo custo real, devolução da
+     sobra, pausa se for passar da estimativa e o custo de toda chamada de IA em `ai_calls` (F24, F26).
+  3. **3c — Tarefa rápida:** `/trabalho` volta com o chat, os arquivos e a voz, no banco novo e cobrando pela carteira
+     (F13, F16).
+  4. **3d — Painel do dono:** saldo da empresa, gasto do mês por funcionário e por IA (do extrato) e as entregas.
+- **Falha nova F35** (achada pelo Claude ao estudar o código): o servidor só grava o texto das IAs quando a fase inteira
+  termina, então a tela fica parada um ou dois minutos com IAs de verdade. Corrige na 3a.
+- **F33 aceita por enquanto** (Luis): ainda não há empresas reais; resolver antes da primeira, junto com o envio de
+  e-mail próprio (F30).
+
 ## Próximo passo
 
-1. **Luis, no chat do Claude:** seguir a **Parte H** do `docs/GUIA-TESTE-CONVITE.md` para testar o PR do aviso. Se
-   tudo der certo, fazer o merge. Se ainda não conferiu, ver se a tabela `member_invites` apareceu no projeto de verdade
-   (Parte G do guia).
-2. **Decidir a F33** (pode ser no chat do Claude, anexando `docs/FALHAS.md`): aceitar por enquanto, ou já limitar o
-   "link novo" a quem não aceitou o convite (quem perder a senha ficaria sem saída até existir o envio de e-mail, F30).
-3. **Claude Code** (esforço Extra alto): PR 3, trocar o código do parceiro para o banco novo (chat, receitas, gastos e
-   entregas no painel; F13, F16, F22 a F28). Os botões do funcionário que mudam algo (rodar uma receita, por exemplo)
-   devem conferir, como o painel do dono, que o login ainda é o de quem abriu a página (F34).
-4. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
+1. **Claude Code** (esforço Extra alto): parte **3a** do PR 3 (issue #33). Os botões que mudam algo (começar e cancelar
+   uma execução) conferem, como o painel do dono, que o login ainda é o de quem abriu a página (F34). Depois, 3b, 3c e
+   3d, cada uma com a sua issue.
+2. **Luis:** se ainda não conferiu, ver se a tabela `member_invites` apareceu no projeto de verdade (Parte G do
+   `docs/GUIA-TESTE-CONVITE.md`).
+3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.
 
