@@ -50,8 +50,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F30 | E-mails do login só chegam para a equipe do Supabase | Código | Média | Aberta |
 | F31 | Next.js 16.4.0 com falhas de segurança graves conhecidas | Segurança | Alta | Resolvida |
 | F32 | O e-mail do funcionário não é conferido | Segurança / Produto | Baixa | Aberta |
-| F33 | O dono consegue entrar na conta de um funcionário pelo link de senha nova | Segurança / LGPD | Média | Aberta |
+| F33 | O dono consegue entrar na conta de um funcionário pelo link de senha nova | Segurança / LGPD | Média | Aceita |
 | F34 | Painel do dono usado com o login de outra aba, sem aviso | Produto / Código | Baixa | Resolvida |
+| F35 | O texto das IAs só aparece quando a fase inteira termina | Produto / Código | Média | Decidida |
 
 ## Negócio
 
@@ -124,6 +125,16 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O problema:** um arquivo `.html` baixado não serve para quem não sabe o que fazer com ele.
 - **O que fazer:** pensar em entregas prontas para uso (ex.: "publicar o site com um clique", num endereço separado do
   nosso por segurança).
+
+### F35 — O texto das IAs só aparece quando a fase inteira termina
+- **Gravidade:** Média · **Status:** Decidida · **Anotada:** 24/10/2026 (ao planejar o PR 3)
+- **O problema:** na T6, a tela mostrava o texto das IAs enquanto elas escreviam. O PR #19 passou a guardar a execução
+  no banco, em partes (uma fase de cada vez), mas o servidor só grava a narração quando a fase **inteira** termina
+  (`app/api/runs/[id]/continue/route.ts` junta os eventos e grava tudo no fim). A tela fica parada até lá. Com a IA
+  simulada são poucos segundos; com IAs de verdade, a fase do Programador leva um ou dois minutos sem nada mudar, e a
+  pessoa pode achar que travou.
+- **Decisão (Luis, 24/10/2026):** corrigir na parte 3a do PR 3: o servidor grava a narração aos poucos, enquanto a fase
+  roda, e a tela busca as novidades com o login de quem pediu.
 
 ## Código e segurança
 
@@ -319,7 +330,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   um jeito de liberar um e-mail ocupado. Até lá, a página do convite mostra o e-mail com destaque.
 
 ### F33 — O dono consegue entrar na conta de um funcionário pelo link de senha nova
-- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 24/10/2026 (PR 2b)
+- **Gravidade:** Média · **Status:** Aceita · **Anotada:** 24/10/2026 (PR 2b)
 - **O problema:** "Gerar link novo" serve para quem perdeu a senha (critério da issue #27). Mas quem gera o link é o
   dono, e quem tem o link cria a senha. Um dono mal-intencionado pode abrir o link ele mesmo, criar uma senha e entrar
   como o funcionário. Hoje isso não mostra nada (o chat está em obras), mas quando o PR 3 trouxer as conversas de volta,
@@ -329,6 +340,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O que fazer (proposta, a decidir com o Luis antes de empresas reais):** quando houver envio de e-mail próprio (F30),
   a senha nova vai por e-mail direto ao funcionário, e o "link novo" do dono fica só para quem ainda não aceitou o
   convite. Outra peça possível: avisar o funcionário, na entrada, que a senha foi trocada por um link do dono.
+- **Decisão (Luis, 24/10/2026):** aceitar por enquanto, porque ainda não há empresas reais. Resolver antes da primeira
+  empresa real, junto com o envio de e-mail próprio (F30). Limitar já o link novo deixaria sem saída quem esquecer a
+  senha.
 
 ### F34 — Painel do dono usado com o login de outra aba, sem aviso
 - **Gravidade:** Baixa · **Status:** Resolvida · **Anotada:** 24/10/2026 (achada pelo Luis no teste do PR 2b)
@@ -348,6 +362,10 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   conectado, "A sua conta de dono não está mais conectada…"), com o caminho: Sair e entrar de novo como dono. O id
   escondido só serve para recusar; quem pode o quê continua sendo decidido pelo login e pelo banco. O guia explica a
   janela anônima (Parte C) e ganhou um teste do aviso (Parte H).
+- **Conferida pelo Luis (24/10/2026, Parte H do guia, em abas normais):** o convite avisou quem estava conectado; com o
+  funcionário conectado em outra aba, "Desativar" mostrou "Nada foi mudado… quem está conectado agora é Bruno Teste" e o
+  cartão não mudou; com ninguém conectado, apareceu "A sua conta de dono não está mais conectada"; depois de sair e
+  entrar de novo como dono, "Desativar" funcionou. Merge do PR #32 feito.
 - **Para as próximas telas:** toda tela com botões que mudam alguma coisa deve conferir do mesmo jeito que o login
   ainda é o de quem abriu a página. No PR 3, isso vale para o chat e as receitas do funcionário: sem a conferência, uma
   execução começada numa aba de funcionário seria cobrada de quem entrou depois em outra aba. Avisar a aba antes do
