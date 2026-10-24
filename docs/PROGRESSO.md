@@ -4,8 +4,8 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 24/10/2026 (etapa 5, PR 1: banco novo em migrações, com testes das regras de acesso; PR #24)
-**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco) pronto para o merge; próximo: PR 2 (login de verdade)
+**Última atualização:** 24/10/2026 (etapa 5: banco no ar; decisões do login; projeto de testes do Supabase)
+**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco) no ar; agora: projeto de testes e PR 2a (login de verdade)
 
 ---
 
@@ -115,7 +115,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco) no PR #24; faltam PR 2 (login) e PR 3 (trocar o código) | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco) no ar; faltam PR 2a e 2b (login e convite) e PR 3 (trocar o código) | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -392,20 +392,35 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   teto sem conferência...): todas deixaram a checagem vermelha.
 - Falhas: F14 resolvida; F23 a F27 passaram a "Decidida" (o banco novo resolve, falta trocar o código no PR 3);
   F05 com andamento; novas F28 (arquivo apagado direto pelo banco deixa o conteúdo na pasta) e F29 (saldo negativo).
-- **Ainda não conferido:** o login dos usuários da empresa de exemplo (fica para o PR 2) e a versão do Postgres do
-  projeto de verdade (as checagens usam a 17; conferir em *Project Settings → Infrastructure*).
+- **Ainda não conferido:** o login dos usuários (fica para o PR 2).
 - **Atenção nas checagens:** o GitHub às vezes demora a baixar as imagens do Supabase ("toomanyrequests" no registro);
   nesta vez ele tentou de novo sozinho e passou. Se a parte "Banco de dados" falhar só por isso, basta rodar de novo
   (*Re-run jobs*).
 
+**Banco no ar (24/10, Luis):** merge do PR #24 feito. No painel do Supabase, as 5 migrações foram aplicadas sem erro, as
+11 tabelas existem e estão vazias, a pasta `files` é privada e o Postgres é o 17.11 (a mesma versão das checagens).
+
+**Decisões do Luis para o login (24/10, Claude Code)**
+- **Biblioteca `@supabase/ssr` aprovada:** a oficial do Supabase para login no Next.js. Guarda o login num cookie seguro
+  e o renova sozinho. Entra no PR 2a.
+- **Testes num segundo projeto grátis do Supabase** (`multi-ia-teste`), não no de verdade: o computador guarda só chaves
+  de teste, o extrato de verdade fica sem recargas de mentira (ele não deixa apagar linhas) e dá para testar migração
+  nova antes do merge. As migrações chegam lá pelo workflow "Banco de testes" (detalhes no `BANCO-DE-DADOS.md`).
+- **Convite do funcionário por link para copiar:** o dono informa nome, e-mail e teto; o sistema gera um link que só
+  funciona uma vez e vale 24 horas; o dono manda pelo WhatsApp; o funcionário cria a própria senha. Não depende de
+  e-mail, e só o funcionário conhece a senha (F12).
+- **O PR 2 vira dois:** 2a (cadastro da empresa, entrar, sair, confirmar o e-mail, páginas protegidas; F10, F11, F13) e
+  2b (convite e a parte "Equipe" do painel do dono; F12). Entre o PR 2a e o PR 3, o chat e a receita de site ficam com um
+  aviso, porque o código do parceiro ainda usa as tabelas antigas, que não existem no banco novo.
+- **Falha nova F30:** o envio de e-mail embutido no Supabase só entrega para a equipe do projeto, até 2 por hora. Antes da
+  primeira empresa real, ligar um serviço de e-mail próprio.
+
 ## Próximo passo
 
-1. **Luis:** fazer o merge do PR #24. No merge, o Supabase aplica as migrações sozinho no projeto novo. Conferir no
-   painel do Supabase: *Integrations → GitHub* sem erro, as 11 tabelas em *Table Editor* e a pasta `files` em *Storage*.
-2. **Claude Code** (esforço Extra alto): PR 2 da etapa 5, login de verdade, cadastro da empresa e convite de funcionário
-   (F10 a F13). Começa propondo a biblioteca `@supabase/ssr` (login do Supabase no Next.js) e decidindo onde o Luis testa
-   o login: no projeto de verdade (ainda sem empresas reais) ou num segundo projeto grátis só para testes. O Claude guia a
-   criação das chaves do projeto novo no `.env.local`.
+1. **Luis:** fazer o merge do PR do projeto de testes. Depois, criar o projeto `multi-ia-teste` e configurar (passo a
+   passo na conversa de 24/10 e no `BANCO-DE-DADOS.md`): opções de login, chaves no `.env.local`, segredo
+   `SUPABASE_TEST_DB_URL` no GitHub e o botão *Run workflow* em *Actions → Banco de testes*.
+2. **Claude Code** (esforço Extra alto): PR 2a, login de verdade. Depois, PR 2b, convite de funcionário.
 3. Depois: PR 3 (trocar o código do parceiro para o banco novo; F16, F22 a F28).
 4. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um

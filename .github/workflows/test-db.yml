@@ -1,0 +1,40 @@
+# Aplica as migrações no projeto de TESTES do Supabase (multi-ia-teste), o banco que o computador do Luis usa.
+# Roda sozinho quando uma migração nova entra na main e também por botão (Actions → "Banco de testes" → Run workflow),
+# escolhendo o branch: assim dá para testar a migração nova de um PR antes do merge.
+# O banco de verdade não é tocado: ele recebe as migrações pela ligação do Supabase com o GitHub, no merge.
+# A única ligação deste arquivo com um banco é o segredo SUPABASE_TEST_DB_URL, que aponta só para o projeto de testes.
+name: Banco de testes
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [supabase/migrations/**]
+
+# Uma aplicação de cada vez, para duas não se atropelarem.
+concurrency:
+  group: test-db
+  cancel-in-progress: false
+
+jobs:
+  push:
+    name: Aplicar as migrações
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.120.0
+
+      # Só aplica o que ainda não foi aplicado (o Supabase guarda a lista no próprio banco). --include-all aceita uma
+      # migração mais antiga que a última aplicada, o que acontece quando um PR é testado antes de outro.
+      - name: Aplicar as migrações novas
+        env:
+          SUPABASE_TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_TEST_DB_URL" ]; then
+            echo "::error::Falta o segredo SUPABASE_TEST_DB_URL (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          supabase db push --db-url "$SUPABASE_TEST_DB_URL" --include-all --yes

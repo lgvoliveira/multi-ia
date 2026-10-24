@@ -47,6 +47,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F27 | Qualquer pessoa pode ler as execuções direto no banco | Segurança | Alta | Decidida |
 | F28 | Apagar um arquivo direto pelo banco deixa o conteúdo guardado | Segurança / LGPD | Baixa | Aberta |
 | F29 | O saldo da empresa pode ficar negativo | Negócio | Baixa | Aceita |
+| F30 | E-mails do login só chegam para a equipe do Supabase | Código | Média | Aberta |
 
 ## Negócio
 
@@ -256,6 +257,17 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Por que aceitar:** a diferença fica limitada ao erro de uma estimativa, o servidor pausa e pergunta antes da etapa
   seguinte quando a reserva estoura, e nenhuma reserva nova passa com saldo negativo. Reavaliar se as estimativas
   errarem muito (regra "estimativas honestas").
+
+### F30 — E-mails do login só chegam para a equipe do Supabase
+- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 24/10/2026
+- **O problema:** o envio de e-mail que vem com o Supabase (confirmar o cadastro, recuperar a senha) só entrega para
+  quem é da equipe do projeto no painel do Supabase, e no máximo 2 e-mails por hora no projeto inteiro. Para os testes
+  basta, porque o Gmail do projeto é da equipe. Mas o dono de uma empresa de verdade não receberia o e-mail para
+  confirmar o cadastro nem para recuperar a senha. O convite do funcionário não depende disso: é um link que o dono copia
+  e manda (decisão do Luis, 24/10).
+- **O que fazer:** antes da primeira empresa real, ligar um serviço de e-mail próprio no Supabase (*Authentication →
+  Emails → SMTP Settings*). Sem domínio, dá para usar o Gmail do projeto com uma "senha de app", de graça; com marca e
+  domínio, um serviço de e-mail com o endereço da marca. Junto, entra o "Esqueci minha senha" do dono.
 
 ## Processo
 

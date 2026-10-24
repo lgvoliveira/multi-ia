@@ -1,8 +1,9 @@
 # Banco de dados
 
-> **Status (24/10/2026):** proposta aprovada e decisões tomadas pelo Luis (fim deste arquivo). As migrações estão no
-> PR #24 (etapa 5, PR 1). Depois do merge, **a versão oficial das tabelas são as migrações** em `supabase/migrations/`;
-> este arquivo explica o desenho em português e precisa mudar junto quando elas mudarem.
+> **Status (24/10/2026):** proposta aprovada e decisões tomadas pelo Luis (fim deste arquivo). As migrações entraram na
+> `main` no PR #24 e já estão no projeto de verdade (conferido pelo Luis: 11 tabelas vazias, pasta `files` privada,
+> Postgres 17.11, a mesma versão das checagens). **A versão oficial das tabelas são as migrações** em
+> `supabase/migrations/`; este arquivo explica o desenho em português e precisa mudar junto quando elas mudarem.
 
 O banco é refeito **do zero**, num projeto novo do Supabase (Gmail do projeto, região São Paulo), sem usar as tabelas
 que o parceiro criou no Supabase dele (`ock_*`, `runs`, `run_events`, `run_steps`, `run_secrets`). O código atual ainda
@@ -214,6 +215,42 @@ verdade.
 **Regra:** mudança de tabela só por migração no GitHub, nunca pelo editor de tabelas ou de SQL do painel do Supabase.
 Senão o banco deixa de bater com o repositório (F14). Vale para todos, inclusive o parceiro. Lançar recarga e ajuste
 pelo editor de SQL é permitido, porque não muda tabela.
+
+## Projeto de testes
+
+Decidido pelo Luis em 24/10/2026. O computador de desenvolvimento **não usa o banco de verdade**: usa um segundo
+projeto grátis do Supabase, `multi-ia-teste` (mesma organização, região São Paulo), só com dados de mentira.
+
+Por quê:
+- O computador guarda só chaves de teste. Se uma vazar, ficam expostos só dados de mentira. A chave-mestra do banco de
+  verdade só vai para a hospedagem (Vercel), na publicação.
+- O banco de verdade fica limpo para as empresas reais. O extrato não deixa apagar linhas, então uma recarga de teste
+  ficaria lá para sempre.
+- Dá para testar uma migração nova antes do merge.
+
+**Como as migrações chegam nele:** pelo workflow "Banco de testes" (`.github/workflows/test-db.yml`), com a mesma
+ferramenta oficial do Supabase das checagens. Ele roda sozinho quando uma migração nova entra na `main` e também por
+botão: *Actions → Banco de testes → Run workflow*, escolhendo o branch do PR. A ligação é o segredo
+`SUPABASE_TEST_DB_URL` do repositório (*Settings → Secrets and variables → Actions*): o endereço do banco de testes com
+a senha, pelo *Session pooler* (o GitHub não alcança o endereço direto do banco). Só o GitHub enxerga esse segredo. A
+empresa de exemplo (`seed.sql`) não vai para lá: as contas de teste são criadas pelas próprias telas.
+
+**Configuração do login no projeto de testes** (painel do Supabase, *Authentication*):
+
+| Onde | Opção | Valor | Por quê |
+|---|---|---|---|
+| *URL Configuration* | *Site URL* | `http://localhost:3000` | O site roda no computador |
+| *URL Configuration* | *Redirect URLs* | `http://localhost:3000/**` | Os links de confirmação só podem voltar para o nosso site |
+| *Sign In / Providers → Email* | *Confirm email* | ligado | O dono confirma o e-mail antes de entrar |
+| *Sign In / Providers → Email* | *Email OTP Expiration* | `86400` (24 horas) | Prazo do link de confirmação e do convite do funcionário |
+| *Sign In / Providers → Email* | *Minimum password length* | `8` | Senha mínima |
+
+No projeto de verdade, as mesmas opções, com o endereço do site no ar, na publicação. As opções de segurança da criação
+são as mesmas do projeto de verdade (acima).
+
+**Limites do plano grátis:** o projeto pausa depois de 7 dias sem uso (volta com *Restore project* no painel), e o
+envio de e-mail embutido só entrega para quem é da equipe do Supabase, no máximo 2 por hora (F30). O projeto de testes
+também só muda por migração. Se ele ficar bagunçado, dá para apagar e criar de novo, e o workflow remonta as tabelas.
 
 ## Decisões tomadas (Luis, 24/10/2026)
 
