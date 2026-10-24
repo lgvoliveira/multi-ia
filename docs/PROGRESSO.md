@@ -4,8 +4,8 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 22/10/2026 (o produto passou a ser para empresas: PR #19 do parceiro + decisões do Luis; criado o `docs/FALHAS.md`)
-**Etapa atual:** alinhar a visão nova com o parceiro; depois, etapa 5 — Base para empresas
+**Última atualização:** 24/10/2026 (etapa 5 começou: proposta do banco novo em `docs/BANCO-DE-DADOS.md`; falhas F23 a F27)
+**Etapa atual:** etapa 5 — Base para empresas. Proposta do banco feita; faltam 3 decisões do Luis para escrever as migrações
 
 ---
 
@@ -19,6 +19,7 @@
   https://claude.ai/artifact/XWxF7wU57nRp5Yq7PTZY3n
 - Documento no repositório: `docs/DOCUMENTO-PROJETO.md` (versão oficial; o online é para leitura e pode ficar defasado)
 - Falhas e riscos: `docs/FALHAS.md` (lista viva; toda falha nova percebida entra lá, com status)
+- Desenho do banco de dados: `docs/BANCO-DE-DADOS.md` (proposta de 24/10, com as decisões pendentes no fim)
 
 ## Resumo da ideia (atualizado em 22/10/2026)
 
@@ -114,7 +115,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: OCK rodando no computador do Luis, banco no repositório, login de verdade, cadastro de empresa, painel do dono protegido | A fazer | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento (24/10): proposta do banco feita, faltam decisões | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -339,22 +340,44 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
   WhatsApp, cores) em vez de exigir que a pessoa saiba escrever um bom pedido. **O Luis gostou (09/10)**: entra no
   produto (já está no DOCUMENTO-PROJETO); falta decidir quando. As respostas viram o pedido que vai para o time.
 
+## Etapa 5 — Base para empresas (começou em 24/10/2026)
+
+**Decisão do Luis (24/10):** refazer o banco do zero, num projeto novo do Supabase (Gmail do projeto, região São
+Paulo), sem usar as tabelas do Supabase do parceiro. As tabelas passam a viver no repositório, como migrações.
+
+**O que foi feito (24/10, Claude Code; PR só de documentos)**
+- Proposta completa do banco em `docs/BANCO-DE-DADOS.md`: tabelas, carteira como extrato com reservas, regras de acesso
+  por empresa (RLS), login pelo Supabase Auth, ordem das migrações e dos PRs da etapa.
+- Ao estudar o código atual, 5 falhas novas no `FALHAS.md`: F23 (apagar funcionário devolve o gasto dele ao crédito),
+  F24 (gasto e teto falham com pedidos ao mesmo tempo), F25 (o dono define o próprio crédito), F26 (o custo das
+  tentativas que falharam não é registrado) e F27 (qualquer pessoa lê as execuções direto no banco com a chave pública).
+  F14 passou a "Decidida" (banco do zero com migrações).
+- Orientação para ligar o GitHub ao Supabase (opções no `BANCO-DE-DADOS.md`): "Deploy to production" ligado,
+  "Automatic branching" desligado (é pago). Falta conferir se a ligação foi feita assim.
+- Regra nova no AGENTS.md (seção 8): mudança de tabela só por migração no GitHub, nunca pelo painel do Supabase.
+
+**Aguardando o Luis** (vai discutir no chat do Claude): as 3 decisões do fim do `BANCO-DE-DADOS.md`: teto do
+funcionário por mês ou acumulado; o que o dono vê (F05); se o "Traga sua chave" fica fora do banco novo.
+
 ## Próximo passo
 
-1. **Alinhar com o parceiro (sem código):** ler juntos o `DOCUMENTO-PROJETO.md` revisado e o `FALHAS.md`, confirmar a
-   visão e as etapas 5 a 8, e combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa =
-   um PR pequeno, e o PROGRESSO atualizado em todo PR (F20).
-2. **Pedir ao parceiro** o esquema do banco (as tabelas que ele criou no Supabase) e como ele roda o OCK. O esquema
-   entra no repositório (F14).
-3. **Começar a etapa 5 no Claude Code** (esforço Extra alto): primeiro fazer o OCK rodar no computador do Luis (F22),
-   depois login de verdade e painel do dono protegido (F10, F11, F13).
+1. **Luis decide** as 3 questões do fim do `docs/BANCO-DE-DADOS.md` (no chat do Claude, ou no Cowork com o parceiro)
+   e confere a ligação do GitHub com o Supabase.
+2. **De volta ao Claude Code** (esforço Extra alto), com as decisões: PR 1 da etapa 5, com as migrações, a empresa de
+   exemplo e o teste das regras de acesso. O Claude guia a criação das chaves do projeto novo no `.env.local`.
+3. Depois: PR 2 (login de verdade, cadastro da empresa e convite de funcionário; F10 a F13) e PR 3 (trocar o código do
+   parceiro para o banco novo; F16, F22 a F27).
+4. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
+   visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
+   PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.
 
 ## Decisões em aberto
 
 - Nome e marca (OCK é provisório)
 - Formato do preço (por empresa, por funcionário, pelo consumo), margem e plano de teste (F04)
 - O que o dono vê: só entregas e gastos, ou as conversas inteiras (F05)
-- Se o "Traga sua chave" continua no produto para empresas
+- Teto do funcionário: por mês ou acumulado (proposta do Claude: por mês)
+- Se o "Traga sua chave" continua no produto para empresas (proposta do Claude: fora do banco novo)
 - Se e quando nichar (F02)
 - Modelo de cada papel e de cada nível (econômico, padrão, potente)
 - Cronograma
@@ -365,6 +388,11 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 1. Abra o VS Code na pasta `C:\Users\Luis\projetos\multi-ia` e abra o terminal (Ctrl + ').
 2. Rode `git pull` (traz a versão mais nova do GitHub) e depois `claude`.
 3. Cole: "Estamos no projeto Multi-IA. Leia o AGENTS.md e o docs/PROGRESSO.md e continue de onde paramos."
+
+**No chat do Claude (claude.ai), para discutir decisões:**
+1. Anexe `docs/PROGRESSO.md`, `docs/BANCO-DE-DADOS.md` e `docs/FALHAS.md` (o chat não lê a pasta sozinho).
+2. Cole: "Estamos no projeto da plataforma multi-IA. Leia os arquivos anexados e me ajude a decidir as 3 questões
+   pendentes do fim do BANCO-DE-DADOS.md."
 
 **No Cowork (discussões, documentos, planejamento):**
 1. Conecte a pasta `C:\Users\Luis\projetos\multi-ia`.
