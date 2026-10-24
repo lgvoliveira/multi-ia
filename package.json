@@ -15,6 +15,7 @@
     "node": ">=24"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
     "docx": "^9.5.1",
     "jszip": "^3.10.1",
