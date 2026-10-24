@@ -2,22 +2,27 @@
 
 // As ações da parte "Equipe" do painel do dono: convidar, gerar link novo, mudar o teto e desativar ou reativar.
 // Qualquer um pode chamar uma ação direto pela internet, então cada uma confere de novo, no servidor, que quem pede é
-// o dono logado. Mudar teto e situação vai pela sessão dele (o banco só deixa mexer nos funcionários da empresa dele);
-// criar login, pessoa e convite vai pela chave secreta, com a empresa tirada do login, nunca do formulário.
+// o dono logado, e o mesmo que abriu o painel (pageOwner). Mudar teto e situação vai pela sessão dele (o banco só deixa
+// mexer nos funcionários da empresa dele); criar login, pessoa e convite vai pela chave secreta, com a empresa tirada
+// do login, nunca do formulário.
 
 import { refresh } from "next/cache";
+import { text } from "@/lib/auth/forms";
 import { invitePath } from "@/lib/auth/invite-token";
 import { inviteEmployee, issueNewLink } from "@/lib/auth/invites";
 import { createSessionClient } from "@/lib/auth/session";
 import { siteOrigin } from "@/lib/auth/site-origin";
-import { requireMember } from "@/lib/auth/viewer";
+import { getViewer } from "@/lib/auth/viewer";
 import { findEmployee, updateEmployee, type EmployeeChange } from "@/lib/ock/team";
 import {
+  checkPageOwner,
+  PAGE_OWNER_FIELD,
   parseBudget,
   parseInviteForm,
   parseMemberId,
   type InviteFormState,
   type MemberActionState,
+  type PageOwnerCheck,
 } from "@/lib/ock/team-forms";
 
 const GENERIC = "Não deu certo agora, por um problema do nosso lado. Tente de novo em instantes.";
@@ -34,8 +39,21 @@ async function inviteLink(token: string): Promise<string> {
   return `${await siteOrigin()}${invitePath(token)}`;
 }
 
+/**
+ * O dono que abriu o painel, conferido a cada pedido. Se o login do navegador mudou no meio do caminho (ex.: outra aba
+ * entrou como o funcionário), nada é feito e a tela recebe um aviso, em vez de pular para a página da outra conta.
+ */
+async function pageOwner(formData: FormData): Promise<PageOwnerCheck> {
+  return checkPageOwner(await getViewer(), parseMemberId(formData, PAGE_OWNER_FIELD));
+}
+
 export async function inviteEmployeeAction(_previous: InviteFormState, formData: FormData): Promise<InviteFormState> {
-  const me = await requireMember("owner");
+  const owner = await pageOwner(formData);
+  if (!owner.ok) {
+    const typed = { name: text(formData, "name"), email: text(formData, "email"), budget: text(formData, "budget") };
+    return { status: "error", message: owner.message, values: typed };
+  }
+  const me = owner.me;
   const parsed = parseInviteForm(formData);
   if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values: parsed.values };
 
@@ -53,7 +71,9 @@ export async function inviteEmployeeAction(_previous: InviteFormState, formData:
 }
 
 export async function newLinkAction(_previous: MemberActionState, formData: FormData): Promise<MemberActionState> {
-  const me = await requireMember("owner");
+  const owner = await pageOwner(formData);
+  if (!owner.ok) return { status: "error", message: owner.message };
+  const me = owner.me;
   const memberId = parseMemberId(formData);
   const supabase = await createSessionClient();
   if (!memberId || !supabase) return { status: "error", message: NOT_FOUND };
@@ -74,8 +94,8 @@ export async function newLinkAction(_previous: MemberActionState, formData: Form
   }
 }
 
+/** Muda o teto ou a situação de um funcionário. Só depois de conferir o dono (pageOwner). */
 async function changeEmployee(formData: FormData, change: EmployeeChange): Promise<MemberActionState> {
-  await requireMember("owner");
   const memberId = parseMemberId(formData);
   const supabase = await createSessionClient();
   if (!memberId || !supabase) return { status: "error", message: NOT_FOUND };
@@ -91,19 +111,17 @@ async function changeEmployee(formData: FormData, change: EmployeeChange): Promi
 }
 
 export async function updateBudgetAction(_previous: MemberActionState, formData: FormData): Promise<MemberActionState> {
+  const owner = await pageOwner(formData);
+  if (!owner.ok) return { status: "error", message: owner.message };
   const budget = parseBudget(formData.get("budget")?.toString() ?? "");
-  if (!budget.ok) {
-    await requireMember("owner");
-    return { status: "error", message: budget.message };
-  }
+  if (!budget.ok) return { status: "error", message: budget.message };
   return changeEmployee(formData, { monthly_budget_cents: budget.cents });
 }
 
 export async function setStatusAction(_previous: MemberActionState, formData: FormData): Promise<MemberActionState> {
+  const owner = await pageOwner(formData);
+  if (!owner.ok) return { status: "error", message: owner.message };
   const status = formData.get("status");
-  if (status !== "active" && status !== "disabled") {
-    await requireMember("owner");
-    return { status: "error", message: GENERIC };
-  }
+  if (status !== "active" && status !== "disabled") return { status: "error", message: GENERIC };
   return changeEmployee(formData, { status });
 }

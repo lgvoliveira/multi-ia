@@ -50,7 +50,7 @@ export function OwnerHome({ me, team }: { me: CurrentMember; team: TeamMember[] 
           Você gera um link e manda para a pessoa (pelo WhatsApp, por exemplo). Ela abre, cria a própria senha e entra.
           Ninguém além dela fica sabendo a senha.
         </p>
-        <InviteEmployee />
+        <InviteEmployee ownerId={me.id} />
       </section>
 
       <section className={styles.section} aria-labelledby="team-title">
@@ -81,6 +81,7 @@ export function OwnerHome({ me, team }: { me: CurrentMember; team: TeamMember[] 
                 {invite && <p className={styles.personNote}>{invite.note}</p>}
                 {person.role === "employee" && (
                   <MemberActions
+                    ownerId={me.id}
                     memberId={person.id}
                     name={person.name}
                     status={person.status}

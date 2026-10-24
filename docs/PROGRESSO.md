@@ -4,9 +4,9 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 24/10/2026 (etapa 5: PR 2a testado e no ar; PR 2b, convite de funcionário)
-**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco) e PR 2a (login) no ar; PR 2b (convite) aberto, esperando o
-teste do Luis; depois, PR 3 (trocar o código do parceiro)
+**Última atualização:** 24/10/2026 (etapa 5: PR 2b testado e no ar; PR pequeno do aviso de troca de login)
+**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login) e PR 2b (convite) no ar; PR do aviso de
+troca de login (issue #31) aberto, esperando o teste do Luis; depois, PR 3 (trocar o código do parceiro)
 
 ---
 
@@ -495,16 +495,46 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   não lê conversas). A F33 precisa de uma decisão do Luis antes de empresas reais.
 - **Guia do teste:** `docs/GUIA-TESTE-CONVITE.md`, para o Luis seguir com o chat do Claude.
 
+**Convite testado pelo Luis e no ar (24/10, com o chat do Claude e o guia)**
+- Os passos do guia funcionaram, e o **merge do PR #30** foi feito (convite na `main`). Ainda não confirmado: se a
+  tabela `member_invites` apareceu no projeto de verdade.
+- **Achado no teste (nova F34):** no começo, o Luis abriu o convite numa aba **normal** do mesmo navegador, não na
+  janela anônima, e entrou como o funcionário (Leandro). Depois, na aba do dono, "Desativar" às vezes mandava para a tela
+  do Leandro. Conferido pelo Claude: as abas normais dividem o mesmo login, então o navegador inteiro passou a estar
+  conectado como o Leandro; o servidor recusou (quem pedia não era dono) e **nada foi gravado**. O "às vezes" veio de o
+  dono ter entrado de novo no meio (no banco de testes, a última entrada do dono foi 35 s depois da do Leandro).
+  Reproduzido com o Chrome por roteiro, com dono e funcionário em abas do mesmo navegador.
+
+**PR do aviso de troca de login (24/10, Claude Code; issue #31)**
+- **O que mudou:** se o login do navegador mudou desde que o painel do dono foi aberto, nenhum botão da Equipe muda
+  nada, e o cartão avisa: "Nada foi mudado. Neste navegador, quem está conectado agora é Leandro…" (ou "A sua conta de
+  dono não está mais conectada…"), com o caminho: Sair e entrar de novo como dono. Antes, a aba pulava para a tela do
+  funcionário sem explicação. Também fecha um caso raro: com duas contas de dono no mesmo navegador, um convite podia
+  ir para a empresa errada.
+- **Como funciona:** cada formulário da Equipe leva escondido o id do dono que abriu o painel; o servidor confere se
+  quem está conectado ainda é ele (`checkPageOwner`). O id escondido só serve para recusar; quem pode o quê continua
+  decidido pelo login e pelo banco.
+- **Decisão do Claude:** avisar no clique, e não assim que a aba volta a ficar à vista (isso pediria consultar o
+  servidor de tempos em tempos, e o aviso no clique já evita o engano).
+- **Guia:** a Parte C do `docs/GUIA-TESTE-CONVITE.md` explica por que a janela anônima (com o atalho do Opera GX), e a
+  Parte H testa o aviso.
+- **Como foi conferido:** lint, tipos, 222 testes (6 novos) e build. Roteiro no Chrome, contra o projeto de testes:
+  na versão antiga, repetiu o que o Luis viu (a aba do dono foi para `/trabalho` e o Leandro continuou ativo); na nova,
+  15 conferências passaram (aviso ao desativar, mudar teto e convidar, sem nada gravado e com o que foi digitado
+  mantido; aviso com ninguém conectado; com o dono de volta, desativar, reativar e teto gravam; sem erros no navegador).
+  Aviso fotografado no computador e em 320 px.
+
 ## Próximo passo
 
-1. **Luis, no chat do Claude:** seguir o `docs/GUIA-TESTE-CONVITE.md` para testar o PR #30 (convite). Se tudo der certo,
-   fazer o merge do #30 e conferir a tabela `member_invites` no projeto de verdade.
-2. **Luis, de volta ao Claude Code:** contar como foi (o fim do guia diz o quê).
-3. **Decidir a F33** (pode ser no chat do Claude, anexando `docs/FALHAS.md`): aceitar por enquanto, ou já limitar o
+1. **Luis, no chat do Claude:** seguir a **Parte H** do `docs/GUIA-TESTE-CONVITE.md` para testar o PR do aviso. Se
+   tudo der certo, fazer o merge. Se ainda não conferiu, ver se a tabela `member_invites` apareceu no projeto de verdade
+   (Parte G do guia).
+2. **Decidir a F33** (pode ser no chat do Claude, anexando `docs/FALHAS.md`): aceitar por enquanto, ou já limitar o
    "link novo" a quem não aceitou o convite (quem perder a senha ficaria sem saída até existir o envio de e-mail, F30).
-4. **Claude Code** (esforço Extra alto): PR 3, trocar o código do parceiro para o banco novo (chat, receitas, gastos e
-   entregas no painel; F13, F16, F22 a F28).
-5. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
+3. **Claude Code** (esforço Extra alto): PR 3, trocar o código do parceiro para o banco novo (chat, receitas, gastos e
+   entregas no painel; F13, F16, F22 a F28). Os botões do funcionário que mudam algo (rodar uma receita, por exemplo)
+   devem conferir, como o painel do dono, que o login ainda é o de quem abriu a página (F34).
+4. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.
 

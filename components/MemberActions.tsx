@@ -6,14 +6,19 @@
 import { useActionState, useState } from "react";
 import { newLinkAction, setStatusAction, updateBudgetAction } from "@/app/dono/actions";
 import { firstName } from "@/lib/auth/member";
-import type { MemberActionState } from "@/lib/ock/team-forms";
+import { PAGE_OWNER_FIELD, type MemberActionState } from "@/lib/ock/team-forms";
 import { InviteLinkPanel } from "./InviteLinkPanel";
 import styles from "./TeamForms.module.css";
 
 const IDLE: MemberActionState = { status: "idle" };
 
-interface MemberActionsProps {
+/** A pessoa do cartão e o dono que abriu o painel (o servidor confere se o login do navegador ainda é o dele). */
+interface Ids {
   memberId: string;
+  ownerId: string;
+}
+
+interface MemberActionsProps extends Ids {
   name: string;
   status: "active" | "disabled";
   /** O teto atual como aparece no campo ("50,00"; vazio = sem teto). */
@@ -22,13 +27,14 @@ interface MemberActionsProps {
 
 type Mode = "buttons" | "budget" | "disable" | "link";
 
-export function MemberActions({ memberId, name, status, budgetInput }: MemberActionsProps) {
+export function MemberActions({ memberId, ownerId, name, status, budgetInput }: MemberActionsProps) {
   const [mode, setMode] = useState<Mode>("buttons");
   const back = () => setMode("buttons");
+  const ids = { memberId, ownerId };
 
-  if (mode === "budget") return <BudgetForm memberId={memberId} budgetInput={budgetInput} onDone={back} />;
-  if (mode === "disable") return <DisableConfirm memberId={memberId} name={name} onDone={back} />;
-  if (mode === "link") return <NewLink memberId={memberId} name={name} onDone={back} />;
+  if (mode === "budget") return <BudgetForm ids={ids} budgetInput={budgetInput} onDone={back} />;
+  if (mode === "disable") return <DisableConfirm ids={ids} name={name} onDone={back} />;
+  if (mode === "link") return <NewLink ids={ids} name={name} onDone={back} />;
 
   return (
     <div className={styles.buttons}>
@@ -45,9 +51,18 @@ export function MemberActions({ memberId, name, status, budgetInput }: MemberAct
           </button>
         </>
       ) : (
-        <Reactivate memberId={memberId} />
+        <Reactivate ids={ids} />
       )}
     </div>
+  );
+}
+
+function HiddenIds({ ids }: { ids: Ids }) {
+  return (
+    <>
+      <input type="hidden" name="memberId" value={ids.memberId} />
+      <input type="hidden" name={PAGE_OWNER_FIELD} value={ids.ownerId} />
+    </>
   );
 }
 
@@ -59,17 +74,17 @@ function ErrorMessage({ state }: { state: MemberActionState }) {
   ) : null;
 }
 
-function BudgetForm({ memberId, budgetInput, onDone }: { memberId: string; budgetInput: string; onDone: () => void }) {
+function BudgetForm({ ids, budgetInput, onDone }: { ids: Ids; budgetInput: string; onDone: () => void }) {
   const [state, formAction, pending] = useActionState(async (previous: MemberActionState, formData: FormData) => {
     const result = await updateBudgetAction(previous, formData);
     if (result.status === "done") onDone();
     return result;
   }, IDLE);
-  const inputId = `budget-${memberId}`;
+  const inputId = `budget-${ids.memberId}`;
 
   return (
     <form className={styles.inlineForm} action={formAction} noValidate>
-      <input type="hidden" name="memberId" value={memberId} />
+      <HiddenIds ids={ids} />
       <div className={styles.field}>
         <label htmlFor={inputId} className={styles.label}>
           Teto do mês (R$)
@@ -102,7 +117,7 @@ function BudgetForm({ memberId, budgetInput, onDone }: { memberId: string; budge
   );
 }
 
-function DisableConfirm({ memberId, name, onDone }: { memberId: string; name: string; onDone: () => void }) {
+function DisableConfirm({ ids, name, onDone }: { ids: Ids; name: string; onDone: () => void }) {
   const [state, formAction, pending] = useActionState(async (previous: MemberActionState, formData: FormData) => {
     const result = await setStatusAction(previous, formData);
     if (result.status === "done") onDone();
@@ -112,7 +127,7 @@ function DisableConfirm({ memberId, name, onDone }: { memberId: string; name: st
 
   return (
     <form className={styles.inlineForm} action={formAction}>
-      <input type="hidden" name="memberId" value={memberId} />
+      <HiddenIds ids={ids} />
       <input type="hidden" name="status" value="disabled" />
       <p className={styles.confirmText}>
         Desativar {first}? O acesso para na hora. O que já foi feito e gasto continua registrado, e dá para reativar
@@ -131,14 +146,14 @@ function DisableConfirm({ memberId, name, onDone }: { memberId: string; name: st
   );
 }
 
-function NewLink({ memberId, name, onDone }: { memberId: string; name: string; onDone: () => void }) {
+function NewLink({ ids, name, onDone }: { ids: Ids; name: string; onDone: () => void }) {
   const [state, formAction, pending] = useActionState(newLinkAction, IDLE);
 
   if (state.status === "link") return <InviteLinkPanel name={name} link={state.link} kind={state.kind} onClose={onDone} />;
 
   return (
     <form className={styles.inlineForm} action={formAction}>
-      <input type="hidden" name="memberId" value={memberId} />
+      <HiddenIds ids={ids} />
       <p className={styles.confirmText}>
         Gerar um link novo para {firstName(name)}? Serve para quem não aceitou o convite a tempo ou perdeu a senha. O
         link anterior para de valer; a senha atual continua valendo até o link novo ser usado.
@@ -156,11 +171,11 @@ function NewLink({ memberId, name, onDone }: { memberId: string; name: string; o
   );
 }
 
-function Reactivate({ memberId }: { memberId: string }) {
+function Reactivate({ ids }: { ids: Ids }) {
   const [state, formAction, pending] = useActionState(setStatusAction, IDLE);
   return (
     <form action={formAction} className={styles.inlineForm}>
-      <input type="hidden" name="memberId" value={memberId} />
+      <HiddenIds ids={ids} />
       <input type="hidden" name="status" value="active" />
       <button type="submit" className={styles.smallButton} disabled={pending}>
         {pending ? "Reativando…" : "Reativar"}
