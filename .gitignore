@@ -156,3 +156,7 @@ next-env.d.ts
 .DS_Store
 
 .vercel
+
+# Supabase (arquivos temporários da ferramenta do banco local; não vão para o Git)
+supabase/.temp
+supabase/.branches
