@@ -1,11 +1,19 @@
 import type { Metadata } from "next";
-import { OwnerDashboard } from "@/components/OwnerDashboard";
+import { OwnerHome } from "@/components/OwnerHome";
+import { createSessionClient } from "@/lib/auth/session";
+import { requireMember } from "@/lib/auth/viewer";
+import { listTeam } from "@/lib/ock/team";
 
 export const metadata: Metadata = {
   title: "Painel do dono",
-  description: "Gerencie funcionários e acompanhe o gasto de cada um.",
+  description: "Acompanhe a equipe da empresa.",
 };
 
-export default function DonoPage() {
-  return <OwnerDashboard />;
+// Só o dono logado abre esta página; os outros são mandados para a entrada ou para a página deles.
+export default async function DonoPage() {
+  const me = await requireMember("owner");
+  const supabase = await createSessionClient();
+  if (!supabase) throw new Error("Login não configurado.");
+  const team = await listTeam(supabase);
+  return <OwnerHome me={me} team={team} />;
 }

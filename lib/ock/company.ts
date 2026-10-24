@@ -1,8 +1,9 @@
 // A empresa e seus membros (dono e funcionários), vistos do servidor. Sem pagamento por enquanto:
 // a gente só MEDE o gasto de cada funcionário e soma. Só o servidor usa (cliente de serviço).
+// ATENÇÃO (etapa 5): usa as tabelas do banco antigo (ock_*), que não existem no banco novo. O chat do workspace
+// ainda depende disto; o PR 3 troca tudo para as tabelas novas. O login, o cadastro e a equipe já saíram daqui
+// (lib/auth/ e lib/ock/team.ts).
 
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { isProviderId } from "@/lib/providers/catalog";
 import type { ProviderId } from "@/lib/providers/types";
 import { supabaseAdmin } from "@/lib/runs/supabase-server";
 
@@ -63,36 +64,6 @@ function toMember(r: MemberRow): Member {
   };
 }
 
-/** Guarda a senha como hash (scrypt) com sal próprio. O dono nunca vê a senha do funcionário. */
-function hashPassword(password: string): string {
-  const salt = randomBytes(16);
-  const hash = scryptSync(password, salt, 32);
-  return `${salt.toString("hex")}:${hash.toString("hex")}`;
-}
-
-function verifyPassword(password: string, stored: string): boolean {
-  const [saltHex, hashHex] = stored.split(":");
-  if (!saltHex || !hashHex) return false;
-  const expected = Buffer.from(hashHex, "hex");
-  const actual = scryptSync(password, Buffer.from(saltHex, "hex"), expected.length);
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
-}
-
-/** Email padrão do funcionário: nome e sobrenome juntos, sem acento nem espaço, + @ock.com.br. */
-export function emailFromName(name: string): string {
-  const base = name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // tira acentos
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, ""); // só letras e números
-  return `${base || "funcionario"}@ock.com.br`;
-}
-
-/** Senha aleatória curta e legível, para o dono entregar ao funcionário. */
-function randomPassword(): string {
-  return randomBytes(6).toString("base64").replace(/[+/=]/g, "").slice(0, 8);
-}
-
 export interface TaskLog {
   prompt: string;
   answer: string | null;
@@ -137,33 +108,6 @@ export async function companySpentCents(companyId: string): Promise<number> {
   return ((data as { spent_cents: number }[] | null) ?? []).reduce((sum, m) => sum + (m.spent_cents ?? 0), 0);
 }
 
-/** Muda o crédito total da empresa (null = ilimitado). */
-export async function setCompanyCredit(companyId: string, creditCents: number | null): Promise<void> {
-  const { error } = await supabaseAdmin()
-    .from("ock_companies")
-    .update({ credit_cents: creditCents })
-    .eq("id", companyId);
-  if (error) throw error;
-}
-
-/** Adiciona (recarrega) crédito ao total da empresa. Devolve o novo total em centavos. */
-export async function addCompanyCredit(companyId: string, amountCents: number): Promise<number> {
-  const { data, error: readError } = await supabaseAdmin()
-    .from("ock_companies")
-    .select("credit_cents")
-    .eq("id", companyId)
-    .maybeSingle();
-  if (readError) throw readError;
-  const current = (data as { credit_cents: number | null } | null)?.credit_cents ?? 0;
-  const next = current + amountCents;
-  const { error } = await supabaseAdmin()
-    .from("ock_companies")
-    .update({ credit_cents: next })
-    .eq("id", companyId);
-  if (error) throw error;
-  return next;
-}
-
 /**
  * Confere os limites ANTES de rodar qualquer IA. Devolve uma mensagem de bloqueio, ou null se pode seguir.
  * 1) Teto individual do funcionário (já estourou → barra). 2) Crédito total da empresa acabou → barra.
@@ -182,16 +126,6 @@ export async function budgetBlock(company: Company, member: Member): Promise<str
   return null;
 }
 
-export async function listMembers(companyId: string): Promise<Member[]> {
-  const { data, error } = await supabaseAdmin()
-    .from("ock_members")
-    .select(MEMBER_COLS)
-    .eq("company_id", companyId)
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return ((data as MemberRow[] | null) ?? []).map(toMember);
-}
-
 export async function getMember(id: string): Promise<Member | null> {
   const { data, error } = await supabaseAdmin()
     .from("ock_members")
@@ -200,73 +134,6 @@ export async function getMember(id: string): Promise<Member | null> {
     .maybeSingle();
   if (error) throw error;
   return data ? toMember(data as MemberRow) : null;
-}
-
-/** Acha o funcionário pelo login (email + senha). No 1º acesso vale a senha temporária; depois, o hash. */
-export async function findMemberByLogin(email: string, password: string): Promise<Member | null> {
-  const { data, error } = await supabaseAdmin()
-    .from("ock_members")
-    .select(MEMBER_COLS)
-    .eq("email", email.trim().toLowerCase())
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
-  const member = toMember(data as MemberRow);
-  const ok = member.mustChangePassword
-    ? member.tempPassword != null && member.tempPassword === password
-    : member.passwordHash != null && verifyPassword(password, member.passwordHash);
-  return ok ? member : null;
-}
-
-/** O funcionário cria a própria senha. Re-confere o login atual, guarda o hash e apaga a temporária. */
-export async function changePassword(
-  email: string,
-  currentPassword: string,
-  newPassword: string,
-): Promise<boolean> {
-  const member = await findMemberByLogin(email, currentPassword);
-  if (!member) return false;
-  const { error } = await supabaseAdmin()
-    .from("ock_members")
-    .update({ password_hash: hashPassword(newPassword), password: null, must_change_password: false })
-    .eq("id", member.id);
-  if (error) throw error;
-  return true;
-}
-
-/** Adiciona um funcionário à empresa, já criando o login (email padrão + senha aleatória). */
-export async function addMember(companyId: string, name: string, budgetCents: number | null): Promise<Member> {
-  const email = emailFromName(name);
-  const password = randomPassword();
-  const { data, error } = await supabaseAdmin()
-    .from("ock_members")
-    .insert({ company_id: companyId, name, role: "employee", budget_cents: budgetCents, email, password })
-    .select(MEMBER_COLS)
-    .single();
-  if (error) throw error;
-  return toMember(data as MemberRow);
-}
-
-/** Muda o teto de gasto de um funcionário (null = sem teto). */
-export async function setBudget(memberId: string, budgetCents: number | null): Promise<void> {
-  const { error } = await supabaseAdmin()
-    .from("ock_members")
-    .update({ budget_cents: budgetCents })
-    .eq("id", memberId);
-  if (error) throw error;
-}
-
-/** Exclui um funcionário e tudo dele (tarefas, chats, arquivos). Não apaga donos. */
-export async function deleteMember(memberId: string): Promise<boolean> {
-  const db = supabaseAdmin();
-  const member = await getMember(memberId);
-  if (!member || member.role !== "employee") return false;
-  await db.from("ock_tasks").delete().eq("member_id", memberId);
-  await db.from("ock_conversations").delete().eq("member_id", memberId);
-  await db.from("ock_files").delete().eq("member_id", memberId);
-  const { error } = await db.from("ock_members").delete().eq("id", memberId);
-  if (error) throw error;
-  return true;
 }
 
 /** Soma o custo de uma tarefa ao gasto do funcionário e registra a tarefa. Devolve o novo gasto do membro. */
@@ -367,48 +234,6 @@ export async function conversationTasks(conversationId: string, limit = 300): Pr
   return ((data as unknown as TaskRow[] | null) ?? []).map(toTaskLog);
 }
 
-/** Tarefas de um funcionário feitas HOJE (para o resumo do dia do dono). */
-export async function memberTasksSince(memberId: string, sinceIso: string): Promise<TaskLog[]> {
-  const { data, error } = await supabaseAdmin()
-    .from("ock_tasks")
-    .select("prompt, answer, provider, effort, mode, member_id, cost_cents, input_tokens, output_tokens, created_at")
-    .eq("member_id", memberId)
-    .gte("created_at", sinceIso)
-    .order("id", { ascending: true });
-  if (error) throw error;
-  return ((data as unknown as TaskRow[] | null) ?? []).map(toTaskLog);
-}
-
-/** Gasto acumulado de UMA IA na empresa (para o painel "Gasto por IA", só do dono). */
-export interface ProviderSpend {
-  provider: ProviderId;
-  costCents: number;
-  inputTokens: number;
-  outputTokens: number;
-  tokens: number;
-  tasks: number;
-}
-
-/** Quanto cada IA (Claude/GPT/Gemini) custou para a empresa, agrupado no banco. */
-export async function spendByProvider(companyId: string): Promise<ProviderSpend[]> {
-  const { data, error } = await supabaseAdmin().rpc("ock_spend_by_provider", { p_company: companyId });
-  if (error) throw error;
-  const rows =
-    (data as
-      | { provider: string; cost_cents: number; input_tokens: number; output_tokens: number; tasks: number }[]
-      | null) ?? [];
-  return rows
-    .filter((r) => isProviderId(r.provider))
-    .map((r) => ({
-      provider: r.provider as ProviderId,
-      costCents: Number(r.cost_cents),
-      inputTokens: Number(r.input_tokens),
-      outputTokens: Number(r.output_tokens),
-      tokens: Number(r.input_tokens) + Number(r.output_tokens),
-      tasks: Number(r.tasks),
-    }));
-}
-
 type Joined = { name: string } | { name: string }[] | null;
 
 interface TaskRow {
@@ -440,30 +265,4 @@ function toTaskLog(r: TaskRow): TaskLog {
     tokens: (r.input_tokens ?? 0) + (r.output_tokens ?? 0),
     createdAt: r.created_at,
   };
-}
-
-/** As últimas tarefas da empresa inteira, com o nome de quem pediu (painel do dono). */
-export async function companyTasks(companyId: string, limit = 60): Promise<TaskLog[]> {
-  const { data, error } = await supabaseAdmin()
-    .from("ock_tasks")
-    .select(
-      "prompt, answer, provider, effort, mode, member_id, cost_cents, input_tokens, output_tokens, created_at, ock_members(name)",
-    )
-    .eq("company_id", companyId)
-    .order("id", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return ((data as unknown as TaskRow[] | null) ?? []).map(toTaskLog);
-}
-
-/** As últimas tarefas de UM funcionário (ele só vê as próprias). */
-export async function memberTasks(memberId: string, limit = 40): Promise<TaskLog[]> {
-  const { data, error } = await supabaseAdmin()
-    .from("ock_tasks")
-    .select("prompt, answer, provider, effort, mode, member_id, cost_cents, input_tokens, output_tokens, created_at")
-    .eq("member_id", memberId)
-    .order("id", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return ((data as unknown as TaskRow[] | null) ?? []).map(toTaskLog);
 }

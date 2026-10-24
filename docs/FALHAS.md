@@ -27,10 +27,10 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F07 | O resultado precisa ser claramente melhor que "abrir o ChatGPT e pedir" | Negócio | Média | Aberta |
 | F08 | As receitas não existem dentro do workspace do funcionário | Produto | Alta | Aberta |
 | F09 | Resultado que um leigo não sabe usar (ex.: arquivo .html) | Produto | Média | Aberta |
-| F10 | Login de mentira: o código na URL é o "estar logado" | Segurança | Alta | Aberta |
-| F11 | Painel do dono sem login e senhas temporárias expostas | Segurança | Alta | Aberta |
-| F12 | Senha temporária guardada sem criptografia | Segurança | Média | Aberta |
-| F13 | Só existe uma empresa, fixa no código ("demo") | Código | Alta | Aberta |
+| F10 | Login de mentira: o código na URL é o "estar logado" | Segurança | Alta | Resolvida |
+| F11 | Painel do dono sem login e senhas temporárias expostas | Segurança | Alta | Resolvida |
+| F12 | Senha temporária guardada sem criptografia | Segurança | Média | Resolvida |
+| F13 | Só existe uma empresa, fixa no código ("demo") | Código | Alta | Decidida |
 | F14 | As tabelas do banco (Supabase) não estão no repositório | Código | Alta | Resolvida |
 | F15 | Pacote `xlsx` com falhas de segurança conhecidas | Segurança | Média | Aberta |
 | F16 | Rotas que gastam IA de verdade abertas para qualquer um | Segurança | Alta | Aberta |
@@ -48,6 +48,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F28 | Apagar um arquivo direto pelo banco deixa o conteúdo guardado | Segurança / LGPD | Baixa | Aberta |
 | F29 | O saldo da empresa pode ficar negativo | Negócio | Baixa | Aceita |
 | F30 | E-mails do login só chegam para a equipe do Supabase | Código | Média | Aberta |
+| F31 | Next.js 16.4.0 com falhas de segurança graves conhecidas | Segurança | Alta | Resolvida |
 
 ## Negócio
 
@@ -124,31 +125,42 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 ## Código e segurança
 
 ### F10 — Login de mentira
-- **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 22/10/2026
+- **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 22/10/2026
 - **O problema:** depois do login, o funcionário é reconhecido só pelo código dele na URL (`/trabalho?member=...`).
   Quem tiver o link entra como ele, sem senha. O próprio código avisa que é provisório.
 - **O que fazer:** sessão de verdade (cookie seguro, com o login do Supabase ou equivalente) antes de qualquer empresa real.
+- **Resolvida (24/10/2026, PR 2a):** login pelo Supabase Auth, guardado num cookie seguro (biblioteca `@supabase/ssr`).
+  Cada página protegida confere o login pela assinatura e lê o cadastro no banco a cada pedido (`lib/auth/viewer.ts`);
+  ninguém é reconhecido pelo endereço.
 
 ### F11 — Painel do dono sem login e senhas temporárias expostas
-- **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 22/10/2026
+- **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 22/10/2026
 - **O problema:** `/dono` e a rota `/api/ock/company` não pedem login. Qualquer pessoa pode ver os funcionários,
   criar e apagar funcionários, mudar tetos e o crédito da empresa. A rota devolve as senhas temporárias de quem ainda
   não trocou a senha.
 - **O que fazer:** login do dono e conferência, em toda rota, de que quem pede é o dono daquela empresa.
+- **Resolvida (24/10/2026, PR 2a):** `/dono` só abre para o dono logado, e a equipe é lida com a sessão dele (as regras
+  do banco só mostram a empresa dele). A rota `/api/ock/company` e o painel antigo foram apagados. As ações do dono
+  (convidar, teto, desativar) chegam no PR 2b, também conferidas pelo banco.
 
 ### F12 — Senha temporária guardada sem criptografia
-- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 22/10/2026
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 22/10/2026
 - **O problema:** a senha temporária que o dono entrega fica em texto puro no banco até o funcionário trocar.
   A senha definitiva já é guardada com hash (scrypt).
 - **O que fazer:** trocar por um convite por e-mail (link de uso único) ou guardar também a temporária com hash.
+- **Resolvida (24/10/2026, PR 2a):** não existe mais senha temporária no código nem no banco novo: as senhas ficam só com
+  o Supabase Auth. O convite do funcionário será um link de uso único, que o dono copia e manda (decisão do Luis, 24/10;
+  PR 2b). O banco antigo do parceiro ainda guarda as temporárias: avisar junto com a F27.
 
 ### F13 — Só existe uma empresa, fixa no código
-- **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 22/10/2026
+- **Gravidade:** Alta · **Status:** Decidida · **Anotada:** 22/10/2026
 - **O problema:** as rotas usam sempre a empresa "demo". Não há como cadastrar uma segunda empresa.
 - **O que fazer:** cadastro de empresa e todas as rotas olhando a empresa de quem está logado (junto com F10 e F11).
+- **Andamento (24/10/2026, PR 2a):** o cadastro de empresa existe, e o login e o painel do dono já olham a empresa de
+  quem está logado. O chat (`/api/ock`) ainda usa a empresa "demo" do banco antigo; troca no PR 3.
 
 ### F14 — As tabelas do banco não estão no repositório
-- **Gravidade:** Alta · **Status:** Decidida · **Anotada:** 22/10/2026
+- **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 22/10/2026
 - **O problema:** o código depende de tabelas no Supabase que o parceiro criou, mas não há nenhum arquivo descrevendo
   essas tabelas. Ninguém além dele consegue montar o banco, e uma mudança nele não fica registrada.
 - **Decisão (Luis, 24/10):** em vez de pedir o esquema ao parceiro, refazer o banco do zero num projeto novo do
@@ -169,6 +181,10 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O problema:** `/api/runs` (receitas) não tem login, e `/api/ock` (chat) só pede o código do funcionário. Com IAs
   reais, qualquer um gastaria os créditos da plataforma.
 - **O que fazer:** nada no ar com chaves reais antes de F10, F11 e F13.
+- **Andamento (24/10/2026, PR 2a):** as páginas `/trabalho` e das receitas já exigem login. As rotas `/api/ock/*` e
+  `/api/runs` continuam sem conferir o login até o PR 3, que as troca para o banco novo. Enquanto isso, com o banco
+  novo, elas falham antes de chamar qualquer IA (as tabelas antigas não existem), menos `/api/ock/transcribe`, que só
+  funciona com a chave do GPT da plataforma, que não está configurada.
 
 ### F17 — Preços das IAs e câmbio fixos no código
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 22/10/2026
@@ -268,6 +284,20 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O que fazer:** antes da primeira empresa real, ligar um serviço de e-mail próprio no Supabase (*Authentication →
   Emails → SMTP Settings*). Sem domínio, dá para usar o Gmail do projeto com uma "senha de app", de graça; com marca e
   domínio, um serviço de e-mail com o endereço da marca. Junto, entra o "Esqueci minha senha" do dono.
+
+### F31 — Next.js 16.4.0 com falhas de segurança graves conhecidas
+- **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 24/10/2026
+- **O problema:** a versão instalada do Next.js (16.4.0) tem três falhas graves publicadas: execução de código pela
+  otimização de imagens com SVG (GHSA-2464-fhr4-w9xw), travamento do site pelas "ações do servidor"
+  (GHSA-p3m5-59mp-jv5r) e execução de código em funções com `use cache` (GHSA-673q-mjm6-r5xr). O próprio Next.js passou
+  a avisar no `npm run build` e no `npm run dev`. Nada está no ar, então ninguém foi exposto. Mas o login (PR 2a)
+  passou a usar ações do servidor.
+- **O que fazer:** atualizar para a 16.4.3, que corrige as três (junto com o `eslint-config-next`), num PR pequeno, antes
+  de publicar qualquer coisa.
+- **Resolvida (24/10/2026, PR 2a, a pedido do Luis):** Next.js e `eslint-config-next` na 16.4.3. As correções de
+  segurança vieram na 16.4.1; a 16.4.2 e a 16.4.3 só corrigem defeitos (um deles no `proxy.ts`, que o login usa). Entrou
+  no próprio PR 2a, e não num PR separado, porque os dois mudam o `package-lock.json` e brigariam no merge. O `npm
+  audit` não acusa mais o Next.js, e o build e o `npm run dev` não param mais no aviso.
 
 ## Processo
 

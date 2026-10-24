@@ -28,11 +28,11 @@ let cachedClient: SupabaseClient | null = null;
 function browserClient(): SupabaseClient {
   if (cachedClient) return cachedClient;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
-    throw new Error("Faltam NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !publishableKey) {
+    throw new Error("Faltam NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
   }
-  cachedClient = createClient(url, anonKey, {
+  cachedClient = createClient(url, publishableKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   return cachedClient;
