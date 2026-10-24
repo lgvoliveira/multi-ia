@@ -6,19 +6,22 @@
 import { useActionState, useState } from "react";
 import { inviteEmployeeAction } from "@/app/dono/actions";
 import { NAME_MAX_CHARS } from "@/lib/auth/forms";
-import type { InviteField, InviteFormState } from "@/lib/ock/team-forms";
+import { PAGE_OWNER_FIELD, type InviteField, type InviteFormState } from "@/lib/ock/team-forms";
 import { InviteLinkPanel } from "./InviteLinkPanel";
 import styles from "./TeamForms.module.css";
 
 const INITIAL: InviteFormState = { status: "idle" };
 
-/** Depois de cada convite, "Convidar outra pessoa" recomeça o formulário do zero. */
-export function InviteEmployee() {
+/**
+ * Depois de cada convite, "Convidar outra pessoa" recomeça o formulário do zero. `ownerId` é o dono que abriu o painel:
+ * o servidor confere se o login do navegador ainda é o dele.
+ */
+export function InviteEmployee({ ownerId }: { ownerId: string }) {
   const [round, setRound] = useState(0);
-  return <InviteEmployeeForm key={round} onAnother={() => setRound((n) => n + 1)} />;
+  return <InviteEmployeeForm key={round} ownerId={ownerId} onAnother={() => setRound((n) => n + 1)} />;
 }
 
-function InviteEmployeeForm({ onAnother }: { onAnother: () => void }) {
+function InviteEmployeeForm({ ownerId, onAnother }: { ownerId: string; onAnother: () => void }) {
   const [state, formAction, pending] = useActionState(inviteEmployeeAction, INITIAL);
 
   if (state.status === "created") {
@@ -58,6 +61,7 @@ function InviteEmployeeForm({ onAnother }: { onAnother: () => void }) {
 
   return (
     <form className={styles.inviteForm} action={formAction} noValidate>
+      <input type="hidden" name={PAGE_OWNER_FIELD} value={ownerId} />
       <div className={styles.fields}>
         <div className={styles.field}>
           <label htmlFor="invite-name" className={styles.label}>

@@ -51,6 +51,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F31 | Next.js 16.4.0 com falhas de segurança graves conhecidas | Segurança | Alta | Resolvida |
 | F32 | O e-mail do funcionário não é conferido | Segurança / Produto | Baixa | Aberta |
 | F33 | O dono consegue entrar na conta de um funcionário pelo link de senha nova | Segurança / LGPD | Média | Aberta |
+| F34 | Painel do dono usado com o login de outra aba, sem aviso | Produto / Código | Baixa | Resolvida |
 
 ## Negócio
 
@@ -328,6 +329,29 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O que fazer (proposta, a decidir com o Luis antes de empresas reais):** quando houver envio de e-mail próprio (F30),
   a senha nova vai por e-mail direto ao funcionário, e o "link novo" do dono fica só para quem ainda não aceitou o
   convite. Outra peça possível: avisar o funcionário, na entrada, que a senha foi trocada por um link do dono.
+
+### F34 — Painel do dono usado com o login de outra aba, sem aviso
+- **Gravidade:** Baixa · **Status:** Resolvida · **Anotada:** 24/10/2026 (achada pelo Luis no teste do PR 2b)
+- **O problema:** as abas normais de um navegador dividem o mesmo login (ele fica num cookie do navegador, não na aba).
+  No teste do convite, o Luis abriu o link numa aba normal e entrou como o funcionário. A aba do dono continuou mostrando
+  o painel, mas o navegador já estava conectado como o funcionário: clicar em "Desativar" mandava a aba para a tela
+  dele ("Olá, Leandro", "Em obras"), sem explicação. A desativação **não** era gravada: o servidor recusa quem não é
+  dono, e o banco recusaria de novo. Mas o dono fica confuso (desativou ou não? o site trocou de conta sozinho?). E
+  havia um caso raro de ação na conta errada: com duas contas de dono no mesmo navegador, um convite feito na aba de uma
+  empresa iria para a empresa da outra conta. "Às vezes" funcionava porque, entre um clique e outro, o dono tinha
+  entrado de novo (no banco de testes, a última entrada do dono foi 35 segundos depois da do Leandro). O roteiro no
+  Chrome do PR 2b não pegou isso porque abria dono e funcionário em navegadores separados, como manda o guia.
+- **Também de processo:** o guia do teste mandava usar a janela anônima, mas não dizia por quê.
+- **Resolvida (24/10/2026, issue #31):** cada formulário da Equipe leva, escondido, o id do dono que abriu o painel, e o
+  servidor confere se quem está conectado ainda é ele (`checkPageOwner`, em `lib/ock/team-forms.ts`). Se não for, nada
+  muda e o cartão mostra "Nada foi mudado. Neste navegador, quem está conectado agora é Leandro…" (ou, sem ninguém
+  conectado, "A sua conta de dono não está mais conectada…"), com o caminho: Sair e entrar de novo como dono. O id
+  escondido só serve para recusar; quem pode o quê continua sendo decidido pelo login e pelo banco. O guia explica a
+  janela anônima (Parte C) e ganhou um teste do aviso (Parte H).
+- **Para as próximas telas:** toda tela com botões que mudam alguma coisa deve conferir do mesmo jeito que o login
+  ainda é o de quem abriu a página. No PR 3, isso vale para o chat e as receitas do funcionário: sem a conferência, uma
+  execução começada numa aba de funcionário seria cobrada de quem entrou depois em outra aba. Avisar a aba antes do
+  clique (ao voltar para ela) ficou de fora: dá mais trabalho e o aviso no clique já evita o engano.
 
 ## Processo
 

@@ -2,6 +2,8 @@
 // Roda no servidor, porque qualquer um pode mandar qualquer coisa para as ações. Só dados e funções puras.
 
 import { cleanName, emailProblem, nameProblem, normalizeEmail, text } from "@/lib/auth/forms";
+import type { CurrentMember } from "@/lib/auth/member";
+import type { Viewer } from "@/lib/auth/viewer";
 
 /** Teto mais alto aceito: R$ 100.000,00 por mês. Acima disso é quase certo um erro de digitação. */
 export const BUDGET_MAX_CENTS = 10_000_000;
@@ -35,10 +37,42 @@ export function budgetInputValue(cents: number | null): string {
   return (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-/** O id da pessoa que vem do formulário: só passa se tiver o formato de um id do banco. */
-export function parseMemberId(formData: FormData): string | null {
-  const id = text(formData, "memberId");
+/** O id de uma pessoa que vem do formulário: só passa se tiver o formato de um id do banco. */
+export function parseMemberId(formData: FormData, field = "memberId"): string | null {
+  const id = text(formData, field);
   return UUID_PATTERN.test(id) ? id.toLowerCase() : null;
+}
+
+/** O campo escondido, em cada formulário da Equipe, com o id do dono que abriu o painel. */
+export const PAGE_OWNER_FIELD = "pageOwnerId";
+
+export type PageOwnerCheck = { ok: true; me: CurrentMember } | { ok: false; message: string };
+
+/**
+ * Confere se quem pede ainda é o dono que abriu o painel. As abas normais de um navegador dividem o mesmo login: se
+ * outra aba entrar com outra conta (ex.: o dono abre o convite e entra como o funcionário), os botões da aba do dono
+ * passam a pedir com esse login. Nada é mudado, e a tela explica o que houve, em vez de pular para a página da outra
+ * conta sem explicação.
+ */
+export function checkPageOwner(viewer: Viewer, pageOwnerId: string | null): PageOwnerCheck {
+  if (viewer.status === "member" && viewer.member.role === "owner" && viewer.member.id === pageOwnerId) {
+    return { ok: true, me: viewer.member };
+  }
+  if (viewer.status === "member") {
+    return {
+      ok: false,
+      message:
+        `Nada foi mudado. Neste navegador, quem está conectado agora é ${viewer.member.name}: as abas do navegador ` +
+        "dividem o mesmo login, e outra aba entrou com essa conta. Para mexer na equipe, clique em Sair, no topo, e " +
+        "entre de novo como dono.",
+    };
+  }
+  return {
+    ok: false,
+    message:
+      "Nada foi mudado. A sua conta de dono não está mais conectada neste navegador (ela pode ter saído em outra aba). " +
+      "Clique em Sair, no topo, e entre de novo como dono.",
+  };
 }
 
 export interface InviteValues {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { budgetInputValue, parseBudget, parseInviteForm, parseMemberId } from "./team-forms";
+import type { CurrentMember } from "@/lib/auth/member";
+import { budgetInputValue, checkPageOwner, parseBudget, parseInviteForm, parseMemberId } from "./team-forms";
 
 function form(fields: Record<string, string>): FormData {
   const data = new FormData();
@@ -86,5 +87,61 @@ describe("id da pessoa vindo do formulário", () => {
     );
     expect(parseMemberId(form({ memberId: "1; drop table members" }))).toBeNull();
     expect(parseMemberId(new FormData())).toBeNull();
+  });
+
+  it("lê também outro campo, como o do dono que abriu o painel", () => {
+    const data = form({ memberId: "1", pageOwnerId: "A0000000-0000-4000-8000-000000000001" });
+    expect(parseMemberId(data, "pageOwnerId")).toBe("a0000000-0000-4000-8000-000000000001");
+  });
+});
+
+describe("o dono que abriu o painel ainda é quem está conectado", () => {
+  const OWNER_ID = "a0000000-0000-4000-8000-000000000001";
+  const owner: CurrentMember = {
+    id: OWNER_ID,
+    companyId: "c0000000-0000-4000-8000-000000000001",
+    companyName: "Padaria Teste",
+    name: "Marina Souza",
+    email: "marina@example.com",
+    role: "owner",
+  };
+  const employee: CurrentMember = {
+    ...owner,
+    id: "b0000000-0000-4000-8000-000000000002",
+    name: "Leandro Lima",
+    email: "leandro@example.com",
+    role: "employee",
+  };
+
+  it("passa quando é o mesmo dono", () => {
+    expect(checkPageOwner({ status: "member", member: owner }, OWNER_ID)).toEqual({ ok: true, me: owner });
+  });
+
+  it("outra aba entrou como o funcionário: nada muda e o aviso diz quem está conectado", () => {
+    const result = checkPageOwner({ status: "member", member: employee }, OWNER_ID);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toContain("Nada foi mudado");
+      expect(result.message).toContain("Leandro Lima");
+    }
+  });
+
+  it("outro dono no mesmo navegador também é recusado (o convite iria para a empresa dele)", () => {
+    const otherOwner: CurrentMember = { ...owner, id: "d0000000-0000-4000-8000-000000000004", name: "Paulo Dias" };
+    const result = checkPageOwner({ status: "member", member: otherOwner }, OWNER_ID);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toContain("Paulo Dias");
+  });
+
+  it("ninguém conectado, ou uma conta desativada ou sem empresa: aviso de que a conta de dono saiu", () => {
+    for (const viewer of [{ status: "signed-out" }, { status: "disabled" }, { status: "no-company" }] as const) {
+      const result = checkPageOwner(viewer, OWNER_ID);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.message).toContain("não está mais conectada");
+    }
+  });
+
+  it("sem o id do dono no formulário, recusa", () => {
+    expect(checkPageOwner({ status: "member", member: owner }, null).ok).toBe(false);
   });
 });
