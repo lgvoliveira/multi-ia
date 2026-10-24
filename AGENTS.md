@@ -177,6 +177,8 @@ docs/                documento do projeto, diário de progresso e registro de fa
 qualquer outra mudança. Nunca pelo painel do Supabase (editor de tabelas ou de SQL): senão o banco deixa de bater com o
 repositório. No merge na `main`, o Supabase aplica as migrações novas sozinho (ligação com o GitHub, ver
 `docs/BANCO-DE-DADOS.md`). Migração já aplicada não se edita: a correção vem numa migração nova.
+O computador de desenvolvimento usa o **projeto de testes** do Supabase, nunca o de verdade; as migrações chegam nele
+pelo workflow "Banco de testes" (`.github/workflows/test-db.yml`), que também roda por botão num branch de PR.
 Toda tabela nova liga o RLS e recebe `grant` explícito só para quem precisa (nunca para `anon`); toda função nova tem o
 acesso de todos tirado (`revoke`) antes do `grant`. Dinheiro só se mexe pelas funções da carteira. Os testes em
 `supabase/tests/` conferem isso, e cada mudança de acesso vem com teste.
