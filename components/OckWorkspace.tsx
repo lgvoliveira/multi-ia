@@ -587,8 +587,88 @@ function MessageRow({ message }: { message: Message }) {
             ⬇️ Baixar {message.file.name}
           </a>
         )}
+        {text.trim() && (
+          <div className={styles.bubbleTools}>
+            <SpeakButton text={text} />
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+/** Botão "Ouvir": pede o áudio da resposta (TTS no servidor) e toca. Clicar de novo para. */
+function SpeakButton({ text }: { text: string }) {
+  const [state, setState] = useState<"idle" | "loading" | "playing">("idle");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const urlRef = useRef<string | null>(null);
+
+  const cleanup = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (urlRef.current) {
+      URL.revokeObjectURL(urlRef.current);
+      urlRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => cleanup, [cleanup]);
+
+  async function toggle() {
+    if (state === "playing") {
+      cleanup();
+      setState("idle");
+      return;
+    }
+    if (state === "loading") return;
+    setState("loading");
+    try {
+      const res = await fetch("/api/ock/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        setState("idle");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      urlRef.current = url;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => {
+        cleanup();
+        setState("idle");
+      };
+      audio.onerror = () => {
+        cleanup();
+        setState("idle");
+      };
+      await audio.play();
+      setState("playing");
+    } catch {
+      cleanup();
+      setState("idle");
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      className={styles.speakBtn}
+      onClick={() => void toggle()}
+      disabled={state === "loading"}
+      title={state === "playing" ? "Parar" : "Ouvir a resposta"}
+      aria-label={state === "playing" ? "Parar a leitura" : "Ouvir a resposta"}
+    >
+      {state === "playing" ? <StopIcon /> : <SpeakerIcon />}
+      <span className={styles.speakLabel}>
+        {state === "loading" ? "Gerando…" : state === "playing" ? "Parar" : "Ouvir"}
+      </span>
+    </button>
   );
 }
 
@@ -613,6 +693,23 @@ function SendIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M12 19V5M5 12l7-7 7 7" />
+    </svg>
+  );
+}
+
+function SpeakerIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M11 5 6 9H2v6h4l5 4z" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" />
+    </svg>
+  );
+}
+
+function StopIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="6" y="6" width="12" height="12" rx="2" />
     </svg>
   );
 }

@@ -7,6 +7,12 @@
 **Última atualização:** 09/10/2026 (noite, Parte A da etapa 4 concluída; Parte B começou: APIs diretas; chaves de teste chegam em 10/10)
 **Etapa atual:** 4 — Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela)
 
+> **Nota (24/10/2026):** este diário está atrás do produto — o app já virou a OCK (workspace
+> de IA com Chefe que roteia, chat do funcionário, upload, voz, geração de documento/imagem/
+> gráfico). Vale um dia de atualização do PROGRESSO/DOCUMENTO com o Luis. Nesta data, na branch
+> `feat/ock-voz-ouvir-resposta`: adicionada a **voz de volta** (botão "Ouvir" lê a resposta em
+> voz alta via TTS da OpenAI — `lib/ock/speak.ts`, `app/api/ock/speak`, botão em `OckWorkspace`).
+
 ---
 
 ## Links importantes
