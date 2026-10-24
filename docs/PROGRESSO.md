@@ -4,9 +4,9 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 24/10/2026 (etapa 5: projeto de testes do Supabase e PR 2a, login de verdade)
-**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco) no ar; PR 2a (login) aberto, esperando o teste do Luis no
-projeto de testes; próximo: PR 2b (convite)
+**Última atualização:** 24/10/2026 (etapa 5: PR 2a testado e no ar; PR 2b, convite de funcionário)
+**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco) e PR 2a (login) no ar; PR 2b (convite) aberto, esperando o
+teste do Luis; depois, PR 3 (trocar o código do parceiro)
 
 ---
 
@@ -116,7 +116,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco) no ar; PR 2a (login) aberto; faltam PR 2b (convite) e PR 3 (trocar o código) | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco) e PR 2a (login) no ar; PR 2b (convite) aberto; falta o PR 3 (trocar o código) | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -443,14 +443,67 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   servidor", que o login passou a usar). A pedido do Luis, o próprio PR 2a passou o Next.js para a 16.4.3 (num PR
   separado, os dois brigariam no `package-lock.json`). Conferido de novo: checagens, build e o roteiro no Chrome.
 
+**Projeto de testes e login conferidos (24/10, Luis, com o chat do Claude e o `docs/GUIA-PROJETO-DE-TESTES.md`)**
+- Projeto `multi-ia-teste` criado e configurado; o workflow "Banco de testes" ficou verde e as 11 tabelas apareceram
+  vazias. As chaves dele estão no `.env.local` do computador do Luis.
+- Login testado de verdade, todos os passos com o resultado esperado: cadastro da empresa, "Confira o seu e-mail", o
+  link de confirmação abrindo o Painel do dono, `companies` e `members` com 1 linha cada (`role` = `owner`), senha
+  errada com "E-mail ou senha incorretos", `/trabalho` em obras, `/dono` sem login mandando para Entrar, e o
+  "desativado" (status `disabled` mostrou "Seu acesso foi desativado"; o status voltou para `active`).
+- **Merge do PR #29 feito** (login de verdade na `main`). Com isso, a F22 andou: o site roda no computador do Luis,
+  ligado ao banco de testes (o chat e as receitas ainda em obras até o PR 3).
+- Correções no guia, do que ele encontrou: deixar vazio o campo "GitHub (optional)" ao criar o projeto de testes; a
+  *Site URL* vem vazia e só salva preenchida; clicar dentro do `.env.local` antes do Ctrl + S (senão vai para o
+  terminal) e conferir que a bolinha da aba sumiu; abrir um terminal novo para o `npm run dev`, porque o do Claude Code
+  fica ocupado.
+
+**PR 2b da etapa 5 — convite de funcionário e a parte "Equipe" do painel (24/10, Claude Code; issue #27, PR #30)**
+- **O que ficou pronto:** no Painel do dono, "Convidar um funcionário" (nome, e-mail e teto do mês, que pode ficar vazio
+  = sem teto). O sistema gera um link que vale 24 horas e funciona uma vez só, com botões **Copiar o link** e **Mandar
+  pelo WhatsApp** (abre o WhatsApp com a mensagem pronta). O funcionário abre o link (`/convite/...`), vê a empresa e o
+  e-mail com que vai entrar, cria a própria senha (digitada duas vezes) e entra. Abrir a página não gasta o convite (a
+  prévia do link no WhatsApp também abre a página); só o botão gasta.
+- **No cartão de cada funcionário:** etiquetas "Convite pendente", "Convite vencido" e "Senha nova pendente", com até
+  quando o link vale (horário de Brasília); **Mudar teto**; **Gerar link novo** (para quem não aceitou a tempo ou
+  perdeu a senha: o link anterior para de valer, e a senha antiga vale até o link novo ser usado); **Desativar** (com
+  confirmação) e **Reativar**.
+- **Como funciona por dentro:** o convite cria o login do funcionário no Supabase Auth (só com o e-mail, sem senha e
+  sem mandar e-mail), a pessoa em `members` e uma linha na tabela nova `member_invites`, que guarda só o resumo (sha256)
+  do código do link. Aceitar apaga o convite na mesma operação que confere o código e o prazo, grava a senha e entra;
+  os outros aparelhos da pessoa são desconectados. Teto e situação mudam pela sessão do dono (o banco só deixa mexer nos
+  funcionários da empresa dele). Detalhes no `BANCO-DE-DADOS.md` ("Como o funcionário entra").
+- **Migração nova** (`20261024210001_member_invites.sql`) com 19 testes do banco novos (`04_invites`). A tabela foi
+  criada no projeto de testes pelo workflow "Banco de testes", rodado pelo Claude no branch do PR; no projeto de verdade,
+  ela entra sozinha no merge.
+- **Decisão de desenho do Claude (no lugar do convite embutido do Supabase):** o código, o prazo e o "uma vez só" ficam
+  numa tabela nossa, não no "Email OTP Expiration" do Supabase. Assim o painel sabe quem ainda não aceitou, o prazo não
+  depende de uma opção do painel do Supabase, e um convite de uma empresa não interfere no de outra.
+- **Ajuste visual:** os campos e botões dos formulários de entrada e cadastro (PR 2a) saíam na fonte padrão do sistema,
+  não na do site; corrigido junto.
+- **Como foi conferido:** lint, tipos, 216 testes (35 novos: código do link, senha repetida, teto em reais, convite com
+  um Supabase de mentira em memória) e build. Banco: ensaio local (PGlite) com as 6 migrações e os 110 testes do banco;
+  para saber se os testes novos pegam erro, o Claude estragou de propósito 6 cópias da migração (código legível pelo dono,
+  sem conferir o dono, sessão criando convite, sem a chave dupla, sem o formato do resumo, sem RLS): todas ficaram
+  vermelhas. **Teste de verdade, de ponta a ponta**, contra o projeto de testes: um roteiro temporário comandou um Chrome
+  separado (dono numa janela, funcionária noutra) e passou por 28 conferências, de convidar a desativar, reativar e
+  trocar a senha pelo link novo, sem nenhum erro no navegador; telas fotografadas no computador e em 320 px. Para isso, o
+  Claude criou no projeto de testes donos de teste pelo servidor (empresas "Empresa de teste do Claude", e-mails
+  `@example.com`); são dados de mentira e podem ficar.
+- **Falhas:** F11 e F12 com andamento (as ações do dono e o convite chegaram). Novas: **F32** (o e-mail do funcionário
+  não é conferido: é só o nome de entrada) e **F33** (o dono consegue entrar na conta de um funcionário usando ele mesmo
+  o link de senha nova; hoje não mostra nada, mas com as conversas de volta no PR 3, iria contra a decisão de que o dono
+  não lê conversas). A F33 precisa de uma decisão do Luis antes de empresas reais.
+- **Guia do teste:** `docs/GUIA-TESTE-CONVITE.md`, para o Luis seguir com o chat do Claude.
+
 ## Próximo passo
 
-1. **Luis, no chat do Claude:** seguir o `docs/GUIA-PROJETO-DE-TESTES.md` (merge do PR #28 feito em 24/10): criar o
-   projeto `multi-ia-teste`, configurar o login, ligar ao GitHub (segredo `SUPABASE_TEST_DB_URL` e *Run workflow*),
-   pôr as chaves no `.env.local` e testar o PR #29 (login). Se tudo der certo, fazer o merge do #29.
+1. **Luis, no chat do Claude:** seguir o `docs/GUIA-TESTE-CONVITE.md` para testar o PR #30 (convite). Se tudo der certo,
+   fazer o merge do #30 e conferir a tabela `member_invites` no projeto de verdade.
 2. **Luis, de volta ao Claude Code:** contar como foi (o fim do guia diz o quê).
-3. **Claude Code** (esforço Extra alto): PR 2b, convite de funcionário por link e a parte "Equipe" do painel (issue #27).
-4. Depois: PR 3 (trocar o código do parceiro para o banco novo; F13, F16, F22 a F28).
+3. **Decidir a F33** (pode ser no chat do Claude, anexando `docs/FALHAS.md`): aceitar por enquanto, ou já limitar o
+   "link novo" a quem não aceitou o convite (quem perder a senha ficaria sem saída até existir o envio de e-mail, F30).
+4. **Claude Code** (esforço Extra alto): PR 3, trocar o código do parceiro para o banco novo (chat, receitas, gastos e
+   entregas no painel; F13, F16, F22 a F28).
 5. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.

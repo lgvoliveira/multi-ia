@@ -1,5 +1,6 @@
-// Conferência dos formulários de cadastro e de entrada. Roda no servidor (as ações recebem o que o navegador mandou,
-// e qualquer um pode mandar qualquer coisa). Os limites batem com os do banco (migração 1) e do Supabase Auth.
+// Conferência dos formulários de cadastro, de entrada e da senha do convite. Roda no servidor (as ações recebem o
+// que o navegador mandou, e qualquer um pode mandar qualquer coisa). Os limites batem com os do banco (migração 1) e do
+// Supabase Auth.
 
 export const NAME_MAX_CHARS = 120;
 export const EMAIL_MAX_CHARS = 254;
@@ -23,13 +24,13 @@ export type FormResult<Values, Field extends string> =
   /** `values` volta sem a senha, para preencher o formulário de novo. */
   | { ok: false; errors: Partial<Record<Field, string>>; values: Partial<Values> };
 
-function text(formData: FormData, field: string): string {
+export function text(formData: FormData, field: string): string {
   const value = formData.get(field);
   return typeof value === "string" ? value : "";
 }
 
 /** Nome com espaços normais: tira as pontas e junta espaços repetidos. */
-function cleanName(value: string): string {
+export function cleanName(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
 
@@ -37,13 +38,13 @@ export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function nameProblem(value: string, what: string): string | undefined {
+export function nameProblem(value: string, what: string): string | undefined {
   if (!value) return `Preencha ${what}.`;
   if (value.length > NAME_MAX_CHARS) return `Use até ${NAME_MAX_CHARS} caracteres.`;
   return undefined;
 }
 
-function emailProblem(value: string): string | undefined {
+export function emailProblem(value: string): string | undefined {
   if (!value) return "Preencha o e-mail.";
   if (value.length > EMAIL_MAX_CHARS || !EMAIL_PATTERN.test(value)) return "Confira o e-mail: ele parece incompleto.";
   return undefined;
@@ -102,6 +103,26 @@ export function parseSignIn(formData: FormData): FormResult<SignInValues, keyof 
   return { ok: true, values };
 }
 
+export interface NewPasswordValues {
+  password: string;
+  confirm: string;
+}
+
+/**
+ * Senha criada pelo funcionário ao aceitar o convite, digitada duas vezes. Se ele errar a digitação, não há como
+ * recuperar sozinho (o "Esqueci a senha" depende de e-mail, F30): só com um link novo do dono.
+ */
+export function parseNewPassword(formData: FormData): FormResult<NewPasswordValues, keyof NewPasswordValues> {
+  const values: NewPasswordValues = { password: text(formData, "password"), confirm: text(formData, "confirm") };
+  const errors: Partial<Record<keyof NewPasswordValues, string>> = {};
+  const passwordError = passwordProblem(values.password);
+  if (passwordError) errors.password = passwordError;
+  else if (values.confirm !== values.password) errors.confirm = "As duas senhas não são iguais. Digite de novo.";
+
+  if (Object.keys(errors).length > 0) return { ok: false, errors, values: {} };
+  return { ok: true, values };
+}
+
 /** O que a ação de cadastro devolve para a tela. */
 export type SignUpState =
   | { status: "idle" }
@@ -114,3 +135,9 @@ export type SignInState =
   | { status: "idle" }
   | { status: "invalid"; errors: Partial<Record<keyof SignInValues, string>>; values: Partial<SignInValues> }
   | { status: "error"; message: string; values: Partial<SignInValues> };
+
+/** O que a ação de aceitar o convite devolve (quando dá certo, ela leva direto para o trabalho). */
+export type AcceptInviteState =
+  | { status: "idle" }
+  | { status: "invalid"; errors: Partial<Record<keyof NewPasswordValues, string>> }
+  | { status: "error"; message: string };

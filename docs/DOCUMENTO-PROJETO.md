@@ -65,6 +65,7 @@ muda pouco: receitas e textos mais específicos. Risco anotado em F02 do `FALHAS
     extrato, mas não mexe neles (F25).
 - **Funcionário:** recebe do dono um convite (um link que só funciona uma vez e vale 24 horas, mandado por WhatsApp ou
   como o dono preferir), cria a própria senha e trabalha no **workspace**. Só ele conhece a senha (decisão do Luis, 24/10).
+  Se perder a senha, o dono gera um link de senha nova, do mesmo jeito (até existir o envio de e-mail, F30).
 
 ### Três jeitos de trabalhar no workspace (decisão do Luis, 22/10)
 
@@ -91,7 +92,11 @@ são produtos separados e ficam para integrações futuras.
 ### O que existe hoje no código (atualizado em 24/10)
 
 - Login de verdade (etapa 5, PR 2a): o dono cria a conta da empresa e confirma o e-mail; dono e funcionário entram pela
-  mesma tela, e cada um vai para a sua página. O painel do dono mostra a equipe; o convite de funcionário vem no PR 2b.
+  mesma tela, e cada um vai para a sua página.
+- Painel do dono com a equipe (etapa 5, PR 2b): o dono convida um funcionário (nome, e-mail e teto do mês) e recebe um
+  link para mandar, com botões para copiar e para abrir o WhatsApp com a mensagem pronta. O funcionário abre, cria a
+  própria senha e entra. O dono muda o teto, desativa e reativa, e gera um link novo para quem não aceitou a tempo ou
+  perdeu a senha. Crédito, gastos e entregas de cada funcionário chegam no PR 3.
 - Workspace com chat, ainda nas tabelas antigas: fica com um aviso de "em obras" até o PR 3.
 - O Chefe já escolhe sozinho a IA, o nível, o esforço e a ação (responder, imagem, código, pesquisa, documento,
   gráfico ou projeto em .zip). **Falta** o funcionário poder escolher.

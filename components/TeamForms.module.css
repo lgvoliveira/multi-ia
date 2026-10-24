@@ -1,0 +1,162 @@
+/* Formulários da parte "Equipe" do painel do dono: convidar (InviteEmployeeForm) e o cartão de cada pessoa
+   (MemberActions). */
+
+.stack,
+.inviteForm,
+.inlineForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.inviteForm {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--invite-field-min-width)), 1fr));
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-soft);
+}
+
+.input {
+  font-family: inherit;
+  width: 100%;
+  min-width: 0;
+  height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  font-size: var(--text-md);
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--color-error-text);
+}
+
+.hint,
+.fieldError,
+.confirmText {
+  margin: 0;
+  line-height: var(--line-height-body);
+}
+
+.hint,
+.fieldError {
+  font-size: var(--text-sm);
+}
+
+.hint {
+  color: var(--color-text-muted);
+}
+
+.fieldError {
+  color: var(--color-error-text);
+}
+
+.confirmText {
+  font-size: var(--text-md);
+  color: var(--color-text-body);
+}
+
+.error {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  font-size: var(--text-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-error-text);
+  background: var(--color-error-bg);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.primaryButton,
+.secondaryButton,
+.smallButton,
+.smallPrimary,
+.smallDanger {
+  font-family: inherit;
+  border-radius: var(--radius-control);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.primaryButton,
+.secondaryButton {
+  align-self: flex-start;
+  height: var(--control-height);
+  padding: 0 var(--space-5);
+  font-size: var(--text-md);
+}
+
+.smallButton,
+.smallPrimary,
+.smallDanger {
+  height: var(--control-height-sm);
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.primaryButton,
+.smallPrimary {
+  border: none;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+}
+
+.primaryButton:hover,
+.smallPrimary:hover {
+  background: var(--color-primary-hover);
+}
+
+.secondaryButton,
+.smallButton {
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-soft);
+  background: var(--color-surface);
+}
+
+.secondaryButton:hover,
+.smallButton:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.smallDanger {
+  border: none;
+  color: var(--color-on-primary);
+  background: var(--color-error-text);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.smallButton:disabled,
+.smallPrimary:disabled,
+.smallDanger:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

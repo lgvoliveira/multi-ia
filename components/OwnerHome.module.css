@@ -46,6 +46,13 @@
   gap: var(--space-4);
 }
 
+.sectionLead {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: var(--line-height-body);
+  color: var(--color-text-body);
+}
+
 .sectionTitle {
   margin: 0;
   font-family: var(--font-display);
@@ -74,10 +81,23 @@
   border-radius: var(--radius-card);
   padding: var(--space-4) var(--space-5);
   display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.personTop {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+}
+
+.personNote {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
 }
 
 .personMain {
@@ -116,6 +136,7 @@
 }
 
 .tag,
+.tagWarning,
 .tagMuted {
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-pill);
@@ -126,6 +147,11 @@
 .tag {
   color: var(--color-status-working-text);
   background: var(--color-status-working-bg);
+}
+
+.tagWarning {
+  color: var(--color-warning-text);
+  background: var(--color-warning-bg);
 }
 
 .tagMuted {

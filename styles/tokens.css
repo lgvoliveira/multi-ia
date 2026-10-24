@@ -118,6 +118,7 @@
   --page-narrow-width: 880px;
   --text-max-width: 720px;
   --form-max-width: 440px; /* cadastro e entrada */
+  --invite-field-min-width: 200px; /* painel do dono: abaixo disso, os campos do convite vão um embaixo do outro */
   --card-min-width: 250px; /* largura mínima de um cartão de receita */
   /* Tela "Montar o time": abaixo destas larguras, as peças passam para a linha de baixo */
   --team-min-width: 560px;
