@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import { OckWorkspace } from "@/components/OckWorkspace";
+import { UnderConstruction } from "@/components/UnderConstruction";
+import { requireMember } from "@/lib/auth/viewer";
 
 export const metadata: Metadata = {
   title: "Trabalhar com o time",
-  description: "Descreva a tarefa; o Chefe escolhe a melhor IA e mostra o custo.",
+  description: "Peça tarefas ao time de IAs da sua empresa.",
 };
 
-export default async function TrabalhoPage(props: PageProps<"/trabalho">) {
-  const params = await props.searchParams;
-  const member = typeof params.member === "string" ? params.member : "";
-  return <OckWorkspace memberId={member} />;
+// Só quem é da empresa e está ativo abre esta página. Quem é vem do login, nunca do endereço.
+// O workspace (components/OckWorkspace.tsx) volta no PR 3, ligado ao banco novo.
+export default async function TrabalhoPage() {
+  const me = await requireMember();
+  return <UnderConstruction me={me} />;
 }
