@@ -48,7 +48,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F28 | Apagar um arquivo direto pelo banco deixa o conteúdo guardado | Segurança / LGPD | Baixa | Aberta |
 | F29 | O saldo da empresa pode ficar negativo | Negócio | Baixa | Aceita |
 | F30 | E-mails do login só chegam para a equipe do Supabase | Código | Média | Aberta |
-| F31 | Next.js 16.4.0 com falhas de segurança graves conhecidas | Segurança | Alta | Aberta |
+| F31 | Next.js 16.4.0 com falhas de segurança graves conhecidas | Segurança | Alta | Resolvida |
 
 ## Negócio
 
@@ -286,7 +286,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   domínio, um serviço de e-mail com o endereço da marca. Junto, entra o "Esqueci minha senha" do dono.
 
 ### F31 — Next.js 16.4.0 com falhas de segurança graves conhecidas
-- **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 24/10/2026
+- **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 24/10/2026
 - **O problema:** a versão instalada do Next.js (16.4.0) tem três falhas graves publicadas: execução de código pela
   otimização de imagens com SVG (GHSA-2464-fhr4-w9xw), travamento do site pelas "ações do servidor"
   (GHSA-p3m5-59mp-jv5r) e execução de código em funções com `use cache` (GHSA-673q-mjm6-r5xr). O próprio Next.js passou
@@ -294,6 +294,10 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   passou a usar ações do servidor.
 - **O que fazer:** atualizar para a 16.4.3, que corrige as três (junto com o `eslint-config-next`), num PR pequeno, antes
   de publicar qualquer coisa.
+- **Resolvida (24/10/2026, PR 2a, a pedido do Luis):** Next.js e `eslint-config-next` na 16.4.3. As correções de
+  segurança vieram na 16.4.1; a 16.4.2 e a 16.4.3 só corrigem defeitos (um deles no `proxy.ts`, que o login usa). Entrou
+  no próprio PR 2a, e não num PR separado, porque os dois mudam o `package-lock.json` e brigariam no merge. O `npm
+  audit` não acusa mais o Next.js, e o build e o `npm run dev` não param mais no aviso.
 
 ## Processo
 

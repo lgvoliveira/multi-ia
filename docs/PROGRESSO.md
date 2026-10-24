@@ -438,17 +438,16 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   configurado. As telas de quem está logado foram fotografadas com dados de mentira numa página temporária, já apagada.
 - **Ainda não conferido:** o login de verdade, com o projeto de testes (depende do Luis criar o projeto e as chaves).
 - **Falhas:** F10, F11 e F12 resolvidas; F13 e F16 com andamento; F14 corrigida no texto (estava "Decidida" no
-  detalhe). Nova **F31**: o Next.js 16.4.0 tem três falhas de segurança graves (uma nas "ações do servidor", que o login
-  passou a usar); a 16.4.3 corrige. O próprio Next.js avisa no `npm run build` e no `npm run dev`, que param na
-  primeira vez e seguem quando repetidos.
+  detalhe). Nova **F31**, já resolvida: o Next.js 16.4.0 tinha três falhas de segurança graves (uma nas "ações do
+  servidor", que o login passou a usar). A pedido do Luis, o próprio PR 2a passou o Next.js para a 16.4.3 (num PR
+  separado, os dois brigariam no `package-lock.json`). Conferido de novo: checagens, build e o roteiro no Chrome.
 
 ## Próximo passo
 
 1. **Luis:** fazer o merge do PR do projeto de testes. Depois, criar o projeto `multi-ia-teste` e configurar (passo a
    passo na conversa de 24/10 e no `BANCO-DE-DADOS.md`): opções de login, chaves no `.env.local`, segredo
    `SUPABASE_TEST_DB_URL` no GitHub e o botão *Run workflow* em *Actions → Banco de testes*.
-2. **Luis:** testar o PR 2a com o projeto de testes (roteiro no PR) e fazer o merge. Decidir sobre a atualização do
-   Next.js para a 16.4.3 (F31), num PR pequeno.
+2. **Luis:** testar o PR 2a com o projeto de testes (roteiro no PR e na conversa de 24/10) e fazer o merge.
 3. **Claude Code** (esforço Extra alto): PR 2b, convite de funcionário por link e a parte "Equipe" do painel (issue #27).
 4. Depois: PR 3 (trocar o código do parceiro para o banco novo; F13, F16, F22 a F28).
 5. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
