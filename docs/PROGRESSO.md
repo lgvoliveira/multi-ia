@@ -4,8 +4,8 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 24/10/2026 (etapa 5 começou: proposta do banco novo em `docs/BANCO-DE-DADOS.md`; falhas F23 a F27)
-**Etapa atual:** etapa 5 — Base para empresas. Proposta do banco feita; faltam 3 decisões do Luis para escrever as migrações
+**Última atualização:** 24/10/2026 (etapa 5, PR 1: banco novo em migrações, com testes das regras de acesso; PR #24)
+**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco) pronto para o merge; próximo: PR 2 (login de verdade)
 
 ---
 
@@ -19,7 +19,7 @@
   https://claude.ai/artifact/XWxF7wU57nRp5Yq7PTZY3n
 - Documento no repositório: `docs/DOCUMENTO-PROJETO.md` (versão oficial; o online é para leitura e pode ficar defasado)
 - Falhas e riscos: `docs/FALHAS.md` (lista viva; toda falha nova percebida entra lá, com status)
-- Desenho do banco de dados: `docs/BANCO-DE-DADOS.md` (proposta de 24/10, com as decisões pendentes no fim)
+- Desenho do banco de dados: `docs/BANCO-DE-DADOS.md` (explica as migrações de `supabase/migrations/`, que são a versão oficial)
 
 ## Resumo da ideia (atualizado em 22/10/2026)
 
@@ -115,7 +115,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento (24/10): proposta do banco feita, faltam decisões | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco) no PR #24; faltam PR 2 (login) e PR 3 (trocar o código) | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -353,23 +353,60 @@ Paulo), sem usar as tabelas do Supabase do parceiro. As tabelas passam a viver n
   tentativas que falharam não é registrado) e F27 (qualquer pessoa lê as execuções direto no banco com a chave pública).
   F14 passou a "Decidida" (banco do zero com migrações).
 - Orientação para ligar o GitHub ao Supabase (opções no `BANCO-DE-DADOS.md`): "Deploy to production" ligado,
-  "Automatic branching" desligado (é pago). Falta conferir se a ligação foi feita assim.
+  "Automatic branching" desligado (é pago). Conferida pelo Luis no mesmo dia (abaixo).
 - Regra nova no AGENTS.md (seção 8): mudança de tabela só por migração no GitHub, nunca pelo painel do Supabase.
 
 **Decisões do Luis (24/10, Cowork):** teto do funcionário **por mês** (renova dia 1º); o dono vê **só o resumo e as
 entregas**, sem ler conversas (F05, opção a); **"Traga sua chave" fora** do banco novo. Detalhes no fim do
-`BANCO-DE-DADOS.md`.
+`BANCO-DE-DADOS.md`; `DOCUMENTO-PROJETO.md` atualizado com as três.
+
+**Projeto novo no Supabase (24/10, Luis):** conta e projeto `multi-ia` (Gmail do projeto, organização `multi-ia`, plano
+Free, região São Paulo), ligado ao repositório. Ligação do GitHub conferida (pasta `.`, branch `main`, *Deploy to
+production* ligado, *Automatic branching* desligado por ser do plano Pro). Opções de segurança no `BANCO-DE-DADOS.md`.
+
+**PR 1 da etapa 5 — banco novo (24/10, Claude Code; issue #23, PR #24)**
+- `supabase/config.toml` (configuração do banco local, gerada pela ferramenta do Supabase) e 5 migrações em
+  `supabase/migrations/`: empresas e pessoas; carteira (extrato, reservas e as funções do dinheiro); trabalho (receitas
+  próprias, execuções, narração, conversas, tarefas, arquivos); a tabela interna `ai_calls`; a pasta fechada `files`.
+- `supabase/seed.sql`: empresa de exemplo (dona Marina, funcionários Ana e Bruno, R$ 200 de crédito), só para o banco
+  local e as checagens.
+- 91 testes do banco em `supabase/tests/database/` (estrutura, regras de acesso com duas empresas de mentira, carteira).
+  Rodam nas checagens do GitHub, num banco temporário igual ao do Supabase (parte "Banco de dados" do `ci.yml`).
+- **Ferramenta nova aprovada pelo Luis (24/10):** a ferramenta oficial do Supabase (Supabase CLI, versão 2.120.0), só
+  nas checagens do GitHub. Nada instalado no computador nem no `package.json`.
+- **Decisões de desenho** (detalhes no `BANCO-DE-DADOS.md`):
+  - O dono acompanha os funcionários pelo extrato: cada gasto tem uma descrição escrita pelo servidor ("Criar um site ·
+    Programador"), a IA e a data. É assim que ele vê "quem, quando, receita ou IA, custo" sem ler pedidos (decisão 2).
+  - Nem o nosso servidor grava direto no extrato: só pelas funções `wallet_reserve`, `wallet_charge` e
+    `wallet_close_hold`. Recarga e ajuste (`private.wallet_topup` e `private.wallet_adjust`) só pelo editor de SQL do
+    painel do Supabase (F25). O comando da recarga está no `BANCO-DE-DADOS.md`.
+  - Se o custo real passar da estimativa, a cobrança entra assim mesmo e o servidor é avisado para pausar; o saldo pode
+    ficar um pouco negativo (F29, aceita).
+  - Reserva esquecida aberta (servidor caiu) para de segurar o saldo depois de 1 hora.
+  - Pela sessão de quem está logado dá para ler o que é seu, criar conversas e receitas próprias e apagar o próprio
+    trabalho (LGPD). Execuções, tarefas, arquivos e dinheiro são gravados só pelo servidor.
+- **Como foi conferido:** antes de enviar, um ensaio local (PGlite, um Postgres que roda dentro do Node, só na pasta
+  temporária do Claude, sem instalar nada no projeto); depois as checagens do GitHub, no Postgres 17 do Supabase:
+  migrações e empresa de exemplo montaram sem erro e os 91 testes passaram. Para saber se os testes pegam erros de
+  verdade, o Claude estragou de propósito 6 cópias das migrações (regras abertas, funções sem trava, extrato editável,
+  teto sem conferência...): todas deixaram a checagem vermelha.
+- Falhas: F14 resolvida; F23 a F27 passaram a "Decidida" (o banco novo resolve, falta trocar o código no PR 3);
+  F05 com andamento; novas F28 (arquivo apagado direto pelo banco deixa o conteúdo na pasta) e F29 (saldo negativo).
+- **Ainda não conferido:** o login dos usuários da empresa de exemplo (fica para o PR 2) e a versão do Postgres do
+  projeto de verdade (as checagens usam a 17; conferir em *Project Settings → Infrastructure*).
+- **Atenção nas checagens:** o GitHub às vezes demora a baixar as imagens do Supabase ("toomanyrequests" no registro);
+  nesta vez ele tentou de novo sozinho e passou. Se a parte "Banco de dados" falhar só por isso, basta rodar de novo
+  (*Re-run jobs*).
 
 ## Próximo passo
 
-1. **Feito (24/10):** conta e projeto novo `multi-ia` criados no Supabase (Gmail do projeto, organização `multi-ia`,
-   plano Free, região São Paulo), já ligado ao repositório `lgvoliveira/multi-ia`. Opções de segurança no
-   `BANCO-DE-DADOS.md`. Ligação do GitHub conferida e ativada em 24/10 (pasta `.`, branch `main`, *Deploy to production*
-   ligado, *Automatic branching* desligado por ser do plano Pro).
-2. **De volta ao Claude Code** (esforço Extra alto), com as decisões: PR 1 da etapa 5, com as migrações, a empresa de
-   exemplo e o teste das regras de acesso. O Claude guia a criação das chaves do projeto novo no `.env.local`.
-3. Depois: PR 2 (login de verdade, cadastro da empresa e convite de funcionário; F10 a F13) e PR 3 (trocar o código do
-   parceiro para o banco novo; F16, F22 a F27).
+1. **Luis:** fazer o merge do PR #24. No merge, o Supabase aplica as migrações sozinho no projeto novo. Conferir no
+   painel do Supabase: *Integrations → GitHub* sem erro, as 11 tabelas em *Table Editor* e a pasta `files` em *Storage*.
+2. **Claude Code** (esforço Extra alto): PR 2 da etapa 5, login de verdade, cadastro da empresa e convite de funcionário
+   (F10 a F13). Começa propondo a biblioteca `@supabase/ssr` (login do Supabase no Next.js) e decidindo onde o Luis testa
+   o login: no projeto de verdade (ainda sem empresas reais) ou num segundo projeto grátis só para testes. O Claude guia a
+   criação das chaves do projeto novo no `.env.local`.
+3. Depois: PR 3 (trocar o código do parceiro para o banco novo; F16, F22 a F28).
 4. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.
@@ -391,8 +428,7 @@ entregas**, sem ler conversas (F05, opção a); **"Traga sua chave" fora** do ba
 
 **No chat do Claude (claude.ai), para discutir decisões:**
 1. Anexe `docs/PROGRESSO.md`, `docs/BANCO-DE-DADOS.md` e `docs/FALHAS.md` (o chat não lê a pasta sozinho).
-2. Cole: "Estamos no projeto da plataforma multi-IA. Leia os arquivos anexados e me ajude a decidir as 3 questões
-   pendentes do fim do BANCO-DE-DADOS.md."
+2. Cole: "Estamos no projeto da plataforma multi-IA. Leia os arquivos anexados e me ajude a decidir [o assunto]."
 
 **No Cowork (discussões, documentos, planejamento):**
 1. Conecte a pasta `C:\Users\Luis\projetos\multi-ia`.

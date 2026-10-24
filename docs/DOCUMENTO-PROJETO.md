@@ -5,6 +5,7 @@
 > **Falhas e riscos conhecidos:** `docs/FALHAS.md` (lista viva, atualizada a cada falha nova).
 
 Oct 8, 2026 · @Luis Gustavo Vilela Oliveira · **Revisado em 22/10/2026: o produto passou a ser para empresas.**
+Atualizado em 24/10/2026 com as decisões do banco: teto por mês, o que o dono vê, "Traga sua chave" fora.
 
 ## Visão e problema
 
@@ -55,8 +56,13 @@ muda pouco: receitas e textos mais específicos. Risco anotado em F02 do `FALHAS
 
 ### Dois lados: o dono e o funcionário
 
-- **Dono da empresa:** cadastra os funcionários, define o teto de gasto de cada um, carrega crédito na empresa e
+- **Dono da empresa:** cadastra os funcionários, define o teto de gasto de cada um, paga o crédito da empresa e
   acompanha, por funcionário, o que foi entregue, o que foi feito e quanto foi gasto (também por IA).
+  - **O que o dono vê (decisão do Luis, 24/10):** o resumo do trabalho de cada um (quem fez, quando, com qual receita
+    ou IA, quanto custou) e as entregas. Ele **não** lê pedidos, respostas nem conversas dos funcionários. Passar a
+    mostrar as conversas no futuro exige avisar os funcionários antes.
+  - **O crédito** só é lançado pela plataforma, depois do pagamento (no MVP, Pix conferido à mão). O dono vê o saldo e o
+    extrato, mas não mexe neles (F25).
 - **Funcionário:** entra com o login que a empresa criou e trabalha no **workspace**.
 
 ### Três jeitos de trabalhar no workspace (decisão do Luis, 22/10)
@@ -140,14 +146,19 @@ CANAIS                         MOTOR                                IAs VIA API
 09/10/2026: a troca de IA funciona melhor quando as IAs falham separadas e não há taxa de intermediário).
 
 **Chaves das IAs:** a plataforma usa as próprias chaves ("chaves-mãe"), só no servidor; a empresa nunca vê nem conecta
-chave. A página "Minhas chaves" (traga sua chave) existe no código, mas ainda não está decidido se continua no produto
-para empresas.
+chave. **O "Traga sua chave" fica fora do produto para empresas** (decisão do Luis, 24/10): "sem chave de API" é um
+dos diferenciais, e guardar chaves é a parte mais sensível de um banco. A página "Minhas chaves" ainda existe no código
+e sai quando o código passar para o banco novo. Se a ideia voltar, entra numa mudança própria.
+
+**Banco de dados:** desenho, regras de acesso e carteira em `docs/BANCO-DE-DADOS.md`; as tabelas vivem no repositório,
+como migrações (`supabase/migrations/`).
 
 ## Modelo de negócio e precificação
 
 **A empresa paga, não o funcionário.** A empresa assina o serviço e tem uma **carteira de créditos**; cada tarefa dos
 funcionários consome créditos pelo custo real das IAs mais a margem da plataforma. O dono define o **teto de gasto** de
-cada funcionário, e a plataforma pode travar também o gasto total da empresa.
+cada funcionário, **por mês** (renova todo dia 1º, à meia-noite de Brasília; decisão do Luis, 24/10), e nada começa
+sem saldo na carteira da empresa.
 
 **Em aberto (F04 do `FALHAS.md`):**
 
@@ -155,7 +166,6 @@ cada funcionário, e a plataforma pode travar também o gasto total da empresa.
   mistura.
 - Margem sobre o custo das IAs e como lidar com a variação do dólar.
 - Se haverá plano de teste grátis para empresas e como ele funciona.
-- Se o "Traga sua chave" continua (era um plano mais barato para a pessoa comum).
 
 **A conta central:** quanto a empresa paga *versus* quanto as IAs custam de verdade para o uso dos funcionários dela.
 Internamente, o custo real em dólar de cada tarefa fica registrado para definir preço e margem.
@@ -208,7 +218,8 @@ porque os funcionários entregam melhor ou mais rápido e o dono enxerga e contr
 As regras abaixo valem para o MVP e entram no `AGENTS.md` como especificação para o código.
 
 **Com o produto para empresas:** onde se lê "usuário", leia o funcionário. O "saldo" é a carteira da empresa, e o
-funcionário nunca passa do teto que o dono definiu para ele. O que o dono enxerga do histórico ainda está em aberto (F05).
+funcionário nunca passa do teto do mês que o dono definiu para ele. Do histórico dos funcionários, o dono vê só o
+resumo e as entregas (decisão de 24/10, acima).
 
 **Erro de uma IA no meio da execução**
 
@@ -218,7 +229,8 @@ funcionário nunca passa do teto que o dono definiu para ele. O que o dono enxer
    A IA que assumiu continua no papel até o fim da execução.
 3. Se ainda falhar, pausa sem perder nada: as etapas concluídas ficam salvas, e o usuário escolhe tentar de novo, trocar a IA ou cancelar. Ao retomar, continua da etapa que falhou.
 4. Etapa que falhou não é cobrada.
-5. Erro na chave do próprio usuário: avisa e não passa a usar créditos da plataforma sem autorização.
+5. Erro na chave do próprio usuário: avisa e não passa a usar créditos da plataforma sem autorização. (Só vale se o
+   "Traga sua chave" voltar; hoje ele está fora.)
 
 **Créditos e estimativa**
 
@@ -233,7 +245,7 @@ funcionário nunca passa do teto que o dono definiu para ele. O que o dono enxer
 
 - Para o usuário: pedido, resultado final, time usado (papéis, IAs e instruções), cada etapa com entrada, saída, status e tempo, créditos cobrados, forma de pagamento e o botão "rodar de novo".
 - Só interno: modelo exato, tokens e custo em dólar por etapa, erros técnicos, trocas de IA e uso por receita.
-- Privacidade (LGPD): o usuário pode apagar qualquer item ou a conta inteira. As chaves de API nunca aparecem no histórico e ficam guardadas à parte, criptografadas. O tempo de guarda pode variar por plano.
+- Privacidade (LGPD): o usuário pode apagar qualquer item ou a conta inteira. O conteúdo (pedidos, respostas, conversas, arquivos) vai embora, mas a linha "gastou R$ X em tal dia" fica no extrato, porque é registro financeiro da empresa. As chaves de API nunca aparecem no histórico e ficam guardadas à parte, criptografadas. O tempo de guarda pode variar por plano.
 
 **Limites**
 
@@ -295,7 +307,5 @@ O GitHub é o ponto de encontro: as duas IAs leem o mesmo repositório e convers
 
 - Nome e marca (OCK é provisório)
 - Formato do preço, margem e plano de teste (F04)
-- O que o dono vê: só entregas e gastos, ou as conversas inteiras (F05)
-- Se o "Traga sua chave" continua
 - Se e quando nichar (F02)
 - Cronograma, considerando o ritmo de cerca de 1 h por dia útil e sessões mais longas no fim de semana

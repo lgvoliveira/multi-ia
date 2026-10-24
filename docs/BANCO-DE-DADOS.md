@@ -1,11 +1,12 @@
-# Banco de dados — proposta da etapa 5
+# Banco de dados
 
-> **Status (24/10/2026):** proposta aprovada. **As 3 decisões foram tomadas pelo Luis em 24/10** (fim deste arquivo).
-> Nenhuma migração foi escrita ainda. Este arquivo é a referência do banco até as migrações em
-> `supabase/migrations/` existirem; a partir daí, elas são a versão oficial das tabelas.
+> **Status (24/10/2026):** proposta aprovada e decisões tomadas pelo Luis (fim deste arquivo). As migrações estão no
+> PR #24 (etapa 5, PR 1). Depois do merge, **a versão oficial das tabelas são as migrações** em `supabase/migrations/`;
+> este arquivo explica o desenho em português e precisa mudar junto quando elas mudarem.
 
 O banco é refeito **do zero**, num projeto novo do Supabase (Gmail do projeto, região São Paulo), sem usar as tabelas
-que o parceiro criou no Supabase dele (`ock_*`, `runs`, `run_events`, `run_steps`, `run_secrets`).
+que o parceiro criou no Supabase dele (`ock_*`, `runs`, `run_events`, `run_steps`, `run_secrets`). O código atual ainda
+usa o banco antigo; ele passa para o banco novo nos PRs 2 e 3 da etapa 5.
 
 ## As três ideias do desenho
 
@@ -21,55 +22,62 @@ segurança, manda convites e recupera senhas. As nossas tabelas não guardam sen
 pessoa logada pertence a tal empresa, com tal papel.
 
 **3. A carteira funciona como um extrato.** Cada movimento é uma linha que nunca é apagada nem editada: recarga (+),
-gasto (−) ou ajuste (±). O saldo é a soma das linhas, como num extrato de banco. O dinheiro só se mexe por quatro
-funções dentro do próprio banco (reservar, cobrar, fechar a reserva, recarregar), que travam a carteira da empresa
-enquanto conferem e lançam. Assim duas tarefas rodando ao mesmo tempo não conseguem gastar o mesmo real.
+gasto (−) ou ajuste (±). O saldo é a soma das linhas, como num extrato de banco. O dinheiro só se mexe por funções
+dentro do próprio banco, que travam a carteira da empresa enquanto conferem e lançam. Assim duas tarefas rodando ao
+mesmo tempo não conseguem gastar o mesmo real.
 
 ## As tabelas
 
-Nomes em inglês, como pede o AGENTS.md.
+Nomes em inglês, como pede o AGENTS.md. Valores em centavos de real.
 
-**Empresa e pessoas**
+**Empresa e pessoas** (migração 1)
 
 | Tabela | O que guarda |
 |---|---|
 | `companies` | A empresa: nome e data de criação. O crédito não fica aqui, porque vem do extrato. |
-| `members` | As pessoas da empresa: ligação com o login (Supabase Auth), nome, e-mail, papel (`owner` dono, `employee` funcionário), teto de gasto e situação (ativo ou desativado). No MVP, cada login pertence a uma empresa só. |
+| `members` | As pessoas da empresa: ligação com o login (Supabase Auth), nome, e-mail, papel (`owner` dono, `employee` funcionário), teto de gasto por mês (`monthly_budget_cents`; vazio = sem teto) e situação (`active` ou `disabled`). No MVP, cada login pertence a uma empresa só. Ninguém apaga uma pessoa: quem sai é desativado. |
 
-**Dinheiro**
-
-| Tabela | O que guarda |
-|---|---|
-| `wallet_entries` | O extrato. Cada linha: tipo (recarga, gasto, ajuste), valor em centavos de real, quem gastou, com qual IA e de qual execução ou tarefa o gasto veio. |
-| `wallet_holds` | As reservas: o valor separado antes de uma execução ou tarefa começar, e quanto dele já foi cobrado. |
-
-**Trabalho**
+**Dinheiro** (migração 2)
 
 | Tabela | O que guarda |
 |---|---|
-| `custom_recipes` | As receitas próprias, no mesmo formato das prontas, e se cada uma é só de quem criou ou da empresa toda. As receitas prontas continuam no código (`lib/recipes/`), porque assim passam por revisão e pelos testes. |
-| `runs` | Cada execução de receita: pedido, time, etapas, resultado, status (com o novo "pausada"), estimativa e valor cobrado. |
+| `wallet_entries` | O extrato. Cada linha: tipo (`topup` recarga, `charge` gasto, `adjustment` ajuste), valor, quem gastou, com qual IA, de qual execução ou tarefa veio, e uma descrição escrita pelo servidor ("Criar um site · Programador"), nunca com o pedido do funcionário. Não aceita edição nem exclusão. |
+| `wallet_holds` | As reservas: o valor separado antes de uma execução ou tarefa começar, quanto dele já foi cobrado, se está aberta ou fechada e até quando segura o saldo (reserva esquecida aberta, por exemplo se o servidor cair, para de segurar sozinha). |
+
+**Trabalho** (migração 3)
+
+| Tabela | O que guarda |
+|---|---|
+| `custom_recipes` | As receitas próprias, no mesmo formato das prontas, e se cada uma é só de quem criou (`private`) ou da empresa toda (`company`). As receitas prontas continuam no código (`lib/recipes/`), porque assim passam por revisão e pelos testes. |
+| `runs` | Cada execução de receita: pedido, time, etapas, resultado, status (com o novo `paused`), estimativa e o estado do motor para continuar de onde parou. Três colunas são só internas: o erro técnico e o controle de quem está rodando a execução. |
 | `run_events` | A narração ao vivo (o que aparece nos cartões enquanto as IAs trabalham). |
 | `conversations` | As conversas da tarefa rápida. |
-| `tasks` | Cada pedido dentro de uma conversa: pedido, resposta, o que a plataforma recomendou (IA, nível, esforço) e o que o funcionário escolheu de fato. Dá para medir quantas vezes as pessoas trocam a recomendação (F03). |
-| `files` | Arquivos que o funcionário envia e entregas que as IAs produzem, ligados à tarefa ou execução de origem. O conteúdo fica numa pasta fechada do Supabase e só sai por link temporário gerado pelo servidor depois de conferir quem pede. |
+| `tasks` | Cada pedido dentro de uma conversa: pedido, resposta, o que a plataforma fez (responder, documento...), o que ela recomendou (IA, nível, esforço) e o que o funcionário escolheu de fato. Dá para medir quantas vezes as pessoas trocam a recomendação (F03). |
+| `files` | Arquivos que o funcionário envia (`upload`) e entregas que as IAs produzem (`delivery`), ligados à tarefa ou execução de origem. O conteúdo fica na pasta fechada `files` do Storage, no caminho `<empresa>/<pessoa>/...`, e só sai por link temporário gerado pelo servidor depois de conferir quem pede. |
 
-**Uso interno** (nenhuma regra libera a leitura: só o nosso servidor enxerga)
+**Uso interno** (migração 4; nenhuma regra libera a leitura: só o nosso servidor enxerga)
 
 | Tabela | O que guarda |
 |---|---|
-| `ai_calls` | Toda chamada a uma IA, inclusive as que falharam: modelo exato, tokens, custo em dólar, câmbio usado, se foi cobrada e o erro técnico. Base para preço e margem (F04, F26). |
+| `ai_calls` | Toda chamada a uma IA, inclusive as que falharam: modelo exato, tokens, custo em dólar, câmbio usado, se foi cobrada e o erro técnico. Base para preço e margem (F04, F26). O servidor só acrescenta linhas; não muda nem apaga. |
+
+**A pasta fechada** (migração 5): `files`, no Storage do Supabase. Não é pública e não tem regra de acesso nenhuma, então
+só o servidor lê e grava nela.
 
 **O que sai em relação ao banco antigo:** as senhas (vão para o Supabase Auth), a empresa fixa "demo", o crédito
-guardado na empresa, o gasto guardado no funcionário e o código anônimo que identifica o dono de uma execução (passa a
-ser o funcionário logado).
+guardado na empresa, o gasto guardado no funcionário, as chaves de API dos usuários (`run_secrets`) e o código anônimo
+que identifica o dono de uma execução (passa a ser o funcionário logado).
+
+**Ligações que garantem a empresa certa:** quando uma linha aponta para uma pessoa (ou uma tarefa aponta para uma
+conversa), o banco confere que as duas são da mesma empresa. Nem um erro no nosso código consegue ligar o gasto de uma
+empresa a uma pessoa de outra.
 
 ## A carteira, num exemplo
 
 A agência tem R$ 200,00 de saldo. A Ana pede a receita "Criar um site", com estimativa de R$ 3,00.
 
-1. **Reserva:** numa operação só, o banco confere se a empresa tem saldo e se a Ana não passa do teto dela, e separa
-   R$ 3,00. O saldo disponível cai para R$ 197,00. O extrato ainda não muda.
+1. **Reserva:** numa operação só, o banco confere se a Ana está ativa, se a empresa tem saldo e se a Ana não passa do
+   teto do mês, e separa R$ 3,00. O saldo disponível cai para R$ 197,00. O extrato ainda não muda.
 2. **Cobrança por etapa:** cada etapa concluída vira uma linha de gasto no extrato, pelo consumo real
    ("Ana · Criar um site · Programador (GPT) · −R$ 0,90"). Etapa que falhou não vira linha; o custo dela fica só na
    `ai_calls`.
@@ -80,8 +88,34 @@ Como a pré-autorização do cartão num hotel: bloqueiam um valor na entrada, m
 Se o custo for passar da estimativa, a execução pausa antes da próxima etapa e pergunta. A tarefa rápida usa a mesma
 reserva, com uma estimativa pequena.
 
-- **Recarga:** só a plataforma lança (F25). No MVP, o Luis ou o parceiro roda um comando no painel do Supabase depois
-  de receber o Pix. O dono vê o saldo e o extrato, mas não mexe neles.
+**Quando o custo real passa da estimativa:** o consumo da IA já aconteceu, então a cobrança entra assim mesmo (a
+plataforma não absorve diferenças) e o banco avisa o servidor que a reserva estourou. Se a empresa estava sem folga, o
+saldo pode ficar um pouco negativo; aí nenhuma reserva nova passa até a próxima recarga (F29).
+
+**O teto do mês** conta os gastos da pessoa desde o dia 1º, à meia-noite de Brasília, mais o que ela tem reservado no
+momento. O extrato guarda tudo, de todos os meses; só a conferência do teto olha o mês corrente.
+
+### As funções do dinheiro
+
+| Função | Quem chama | O que faz |
+|---|---|---|
+| `wallet_reserve` | o servidor | Reserva o valor estimado. Recusa com `insufficient_balance` (sem saldo), `monthly_budget_exceeded` (passaria do teto) ou `member_inactive` (pessoa desativada). |
+| `wallet_charge` | o servidor | Cobra uma etapa ou tarefa concluída e devolve quanto sobra da reserva (negativo = passou da estimativa). |
+| `wallet_close_hold` | o servidor | Fecha a reserva e devolve o total cobrado. |
+| `private.wallet_topup` | **só o painel do Supabase** | Recarga, depois de receber o Pix (F25). |
+| `private.wallet_adjust` | **só o painel do Supabase** | Ajuste para corrigir um lançamento (+ devolve, − cobra). |
+
+Nem o nosso servidor grava direto no extrato ou nas reservas: só por essas funções. E nem ele consegue lançar recarga.
+
+**Como lançar uma recarga (no MVP, à mão):** no painel do Supabase, abra *SQL Editor* e rode, trocando o id da empresa
+e o valor em centavos:
+
+```sql
+select private.wallet_topup('<id da empresa>', 20000, 'Pix de 24/10');  -- R$ 200,00; devolve o saldo novo
+```
+
+Isso não muda tabela nenhuma (só acrescenta uma linha ao extrato), então não fere a regra de "tabela só por migração".
+
 - **Funcionário que sai:** é desativado e perde o acesso na hora, mas não é apagado; o extrato guarda o que ele gastou
   (F23). Se ele pedir para apagar os dados (LGPD), o conteúdo das conversas e dos arquivos vai embora, mas a linha
   "gastou R$ X em tal dia" fica, porque é registro financeiro da empresa.
@@ -92,40 +126,71 @@ reserva, com uma estimativa pequena.
 |---|---|---|
 | Empresa e lista de funcionários | só o próprio cadastro | todos |
 | Extrato e reservas | só os próprios gastos | tudo |
-| Receitas próprias | as dele e as da empresa | as da empresa |
-| Execuções, conversas e tarefas | as próprias | só o resumo (quem, quando, receita ou IA, custo), sem pedidos nem respostas |
-| Arquivos | os próprios | as entregas de todos |
+| Receitas próprias | as dele e as da empresa | as da empresa (e as dele) |
+| Execuções, conversas e tarefas | as próprias | só as próprias. Dos funcionários, vê o resumo pelo extrato (quem, quando, receita ou IA, custo), sem pedidos nem respostas |
+| Arquivos | os próprios | os próprios e as entregas de todos |
 | `ai_calls` | não | não |
 
-Nenhuma tela grava direto no banco: tudo passa pelas rotas do nosso servidor, que conferem o pedido. As rotas comuns
-entram no banco com a sessão de quem está logado (o "crachá"), não com a chave-mestra que o código usa hoje: se uma
-rota esquecer de filtrar pela empresa, o próprio banco barra. A chave-mestra fica só para o dinheiro e para a parte do
-servidor que leva as execuções adiante. Para isso, no PR do login, o Claude vai propor a biblioteca oficial do Supabase
-para login no Next.js (`@supabase/ssr`); só instala com aprovação.
+## Quem grava o quê
+
+Pela sessão de quem está logado (o "crachá"), o banco deixa fazer só isto, sempre dentro das regras acima:
+
+| Quem | Pode |
+|---|---|
+| Funcionário e dono | criar, renomear e apagar as próprias conversas; criar, mudar e apagar as próprias receitas; apagar as próprias tarefas, arquivos e execuções que já pararam (LGPD) |
+| Dono | mudar nome, teto e situação (ativo/desativado) dos funcionários; mudar e apagar as receitas da empresa |
+| Ninguém pela sessão | escolher a empresa ou o autor de uma linha (vêm sozinhos de quem está logado), mudar papel, lançar dinheiro, ler as colunas internas |
+
+O resto (criar empresa e pessoas, gravar execuções, tarefas e arquivos, e o dinheiro) é feito pelo servidor, com a
+chave-mestra. As rotas comuns entram no banco com a sessão de quem está logado: se uma rota esquecer de filtrar pela
+empresa, o próprio banco barra. A chave-mestra fica só para o dinheiro e para a parte do servidor que leva as execuções
+adiante. Para isso, no PR do login, o Claude vai propor a biblioteca oficial do Supabase para login no Next.js
+(`@supabase/ssr`); só instala com aprovação.
+
+Como a sessão consegue gravar conversas e receitas sem passar pelas nossas telas, o servidor confere o formato de uma
+receita própria de novo antes de rodá-la.
 
 ## Migrações
 
 **Migração** é um arquivo SQL numerado que cria ou muda tabelas. Quem roda os arquivos em ordem monta o banco
 igualzinho, do zero. Ficam em `supabase/migrations/`:
 
-1. empresas e pessoas, com as regras de acesso
-2. carteira: extrato, reservas e as quatro funções do dinheiro
-3. trabalho: receitas próprias, execuções, conversas, tarefas e arquivos
-4. a tabela interna `ai_calls`
-5. a pasta fechada dos arquivos
+1. `..._companies_and_members.sql`: empresas e pessoas, com as regras de acesso
+2. `..._wallet.sql`: carteira (extrato, reservas e as funções do dinheiro)
+3. `..._work.sql`: trabalho (receitas próprias, execuções, conversas, tarefas e arquivos)
+4. `..._ai_calls.sql`: a tabela interna `ai_calls`
+5. `..._files_bucket.sql`: a pasta fechada dos arquivos
 
-Junto vão uma empresa de exemplo (um dono e dois funcionários, em `supabase/seed.sql`) e um teste das regras de
-acesso: duas empresas de mentira, conferindo que uma não enxerga nada da outra e que um funcionário não lê o que é do
-colega.
+**Regras para as próximas migrações:** toda tabela nova liga o RLS e diz com `grant` exatamente o que cada papel pode
+fazer (o projeto não dá acesso automático a tabelas novas, e a chave pública sem login, `anon`, não recebe acesso a
+nada); toda função nova tem o acesso de todos tirado (`revoke`) e só ganha `grant` para quem precisa. As checagens
+abaixo falham se isso for esquecido.
 
-**Ordem dos PRs da etapa 5:**
-1. Migrações, empresa de exemplo e teste das regras. O código antigo ainda não usa o banco novo.
-2. Login de verdade, cadastro da empresa e convite de funcionário (F10 a F13).
-3. Troca do código do parceiro para o banco novo (F16, F23 a F27).
+**Empresa de exemplo:** `supabase/seed.sql`, com a dona Marina e os funcionários Ana e Bruno (logins e a senha de
+teste no começo do arquivo). Só existe no banco local e nas checagens; o banco de verdade nunca recebe esse arquivo.
+
+## Testes do banco
+
+Ficam em `supabase/tests/database/` (formato pgTAP, que é SQL com conferências):
+
+- `01_structure`: toda tabela com RLS ligado; a chave pública sem login sem acesso a nada; quem pode chamar cada função;
+  ninguém lê a `ai_calls`; ninguém grava direto no extrato; a pasta de arquivos fechada.
+- `02_access`: duas empresas de mentira. Uma não enxerga nada da outra, um funcionário não lê o que é do colega, o dono
+  vê o extrato, as pessoas e as entregas mas não as execuções, conversas e tarefas dos funcionários, e quem é
+  desativado perde o acesso na hora.
+- `03_wallet`: reserva, cobrança pelo consumo real, fechamento, teto do mês (inclusive a virada do mês no horário de
+  Brasília), falta de saldo e o extrato que não pode ser editado.
+
+**Onde rodam:** nas checagens do GitHub (`.github/workflows/ci.yml`, parte "Banco de dados"), com a ferramenta oficial
+do Supabase (aprovada pelo Luis em 24/10), num banco temporário que some no fim. O banco de verdade não é tocado.
+Rodar no computador exige o Docker, que não está instalado; por enquanto, quem confere é o GitHub.
+
+**Limite conhecido:** os testes rodam numa conexão só, então não simulam dois pedidos ao mesmo tempo. A proteção contra
+isso (F24) é a trava da carteira da empresa dentro de cada função do dinheiro.
 
 ## Ligação do GitHub com o Supabase
 
-Orientada em 24/10. No projeto novo do Supabase (*Project Settings → Integrations → GitHub*):
+Orientada em 24/10 e conferida pelo Luis. No projeto novo do Supabase (*Project Settings → Integrations → GitHub*):
 
 | Opção | Escolha | Por quê |
 |---|---|---|
@@ -136,17 +201,19 @@ Orientada em 24/10. No projeto novo do Supabase (*Project Settings → Integrati
 | **Automatic branching** | desligado | Exige o plano pago (Pro) e cobra por hora |
 
 A ligação não coloca chave no código (as chaves vão à mão para o `.env.local`), e os dados de exemplo (`seed.sql`) não
-vão para o banco no merge. Para desfazer: desconectar em *Project Settings → Integrations* e revogar em
-*Settings → Applications* no GitHub.
+vão para o banco no merge. As configurações de login do `supabase/config.toml` também não vão: elas valem só para o
+banco local. Para desfazer: desconectar em *Project Settings → Integrations* e revogar em *Settings → Applications* no
+GitHub.
 
 **Opções de segurança escolhidas na criação do projeto (24/10):** *Enable Data API* ligada; *Automatically expose new
 tables* **desligada** (nenhuma tabela nova fica acessível pela chave pública sozinha); *Enable automatic RLS* **ligada**
-(rede de proteção: toda tabela nova do `public` já nasce com as regras de acesso ligadas). Consequência para as
-migrações: cada tabela que as telas usam precisa de `grant` explícito para o papel `authenticated` (e nunca para `anon`,
-salvo decisão), além de ligar o RLS e criar as políticas. `ai_calls` não recebe `grant` nenhum.
+(rede de proteção: toda tabela nova do `public` já nasce com as regras de acesso ligadas). As migrações não dependem
+dessas opções: ligam o RLS e dão as permissões explicitamente, então o banco local e o das checagens ficam iguais ao de
+verdade.
 
 **Regra:** mudança de tabela só por migração no GitHub, nunca pelo editor de tabelas ou de SQL do painel do Supabase.
-Senão o banco deixa de bater com o repositório (F14). Vale para todos, inclusive o parceiro.
+Senão o banco deixa de bater com o repositório (F14). Vale para todos, inclusive o parceiro. Lançar recarga e ajuste
+pelo editor de SQL é permitido, porque não muda tabela.
 
 ## Decisões tomadas (Luis, 24/10/2026)
 

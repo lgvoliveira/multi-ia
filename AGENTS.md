@@ -88,6 +88,8 @@ lib/runs/            a execução vista de fora: o que dos eventos pode chegar a
                      (public-events.ts), a conferência do pedido que chega pela internet
                      (parse-request.ts, SÓ do servidor) e o envio dos eventos em linhas (ndjson.ts)
 styles/tokens.css    TODAS as cores, fontes, espaçamentos e arredondamentos
+supabase/            banco de dados: migrations/ (a versão oficial das tabelas), seed.sql (empresa de exemplo, só
+                     local) e tests/ (testes do banco, rodam nas checagens). Explicação em docs/BANCO-DE-DADOS.md
 docs/                documento do projeto, diário de progresso e registro de falhas (FALHAS.md)
 .github/workflows/   checagens automáticas (CI) que rodam em todo pull request
 ```
@@ -174,7 +176,10 @@ docs/                documento do projeto, diário de progresso e registro de fa
 **Banco de dados:** toda mudança de tabela entra por **migração** (arquivo SQL em `supabase/migrations/`), num PR como
 qualquer outra mudança. Nunca pelo painel do Supabase (editor de tabelas ou de SQL): senão o banco deixa de bater com o
 repositório. No merge na `main`, o Supabase aplica as migrações novas sozinho (ligação com o GitHub, ver
-`docs/BANCO-DE-DADOS.md`).
+`docs/BANCO-DE-DADOS.md`). Migração já aplicada não se edita: a correção vem numa migração nova.
+Toda tabela nova liga o RLS e recebe `grant` explícito só para quem precisa (nunca para `anon`); toda função nova tem o
+acesso de todos tirado (`revoke`) antes do `grant`. Dinheiro só se mexe pelas funções da carteira. Os testes em
+`supabase/tests/` conferem isso, e cada mudança de acesso vem com teste.
 
 ## 9. Escopo do MVP
 
