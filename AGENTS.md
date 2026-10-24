@@ -6,17 +6,20 @@
 
 ## 1. O projeto em poucas linhas
 
-Plataforma brasileira onde qualquer pessoa monta um **time de IAs** (Claude, GPT, Gemini)
-que trabalham juntas numa tarefa, sem precisar saber o que é API.
-O usuário escolhe uma **receita** (ex.: "Criar um site simples"), recebe um time com papéis
-(chefe, programador, revisor) e a IA recomendada para cada um, ajusta se quiser e acompanha
-cada IA trabalhando na tela até o resultado final.
+Plataforma brasileira de IA **para empresas pequenas e médias** (nome provisório no código: **OCK**).
+A empresa assina e cadastra os funcionários. Cada funcionário usa as IAs (Claude, GPT, Gemini) no trabalho do dia a dia,
+de três jeitos: **receita pronta** (um time de IAs já montado para um serviço, ex.: "Criar um site"), **receita própria**
+(ele monta a dele) ou **tarefa rápida** (só pede, como num chat). A plataforma recomenda a IA, o nível do modelo e o
+esforço, mas o funcionário pode escolher outra coisa. O **dono** vê o que cada funcionário entregou, o que fez e quanto
+gastou, e define um teto de gasto para cada um.
 
-- Público: usuário comum e pequenas empresas no Brasil, **não** desenvolvedores.
-- Diferenciais: tudo em português, preço em reais (Pix), receitas prontas, sem chave de API.
-- Nome provisório na interface: **Multi-IA**.
+- Público: empresas pequenas e médias no Brasil e seus funcionários, **não** desenvolvedores. Amplo por enquanto, de propósito.
+- Diferenciais: várias IAs num lugar, receitas prontas, controle do dono, tudo em português, preço em reais, sem chave de API.
+- Até 19/10/2026 o produto era para a pessoa comum; o motor, as receitas e as regras de segurança daquela fase continuam valendo.
 - Visão completa, regras de negócio e telas: `docs/DOCUMENTO-PROJETO.md`.
 - Estado atual e próximos passos: `docs/PROGRESSO.md`.
+- **Falhas e riscos conhecidos: `docs/FALHAS.md`.** Percebeu uma falha nova (negócio, produto, código, segurança ou
+  processo)? Anote lá, no mesmo PR, com o próximo número livre. Resolveu uma? Mude o status e escreva como.
 
 ## 2. Quem é quem
 
@@ -78,11 +81,13 @@ lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts)
                      dados e pode ir para a tela; registry.ts entrega as IAs e é SÓ do servidor
 lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema, etapas);
                      validate.ts confere toda receita nos testes
+lib/ock/             o workspace para empresas: empresa e funcionários (company.ts), o Chefe que recomenda
+                     a IA (chief.ts), preços (pricing.ts) e os arquivos gerados (documento, gráfico, projeto)
 lib/runs/            a execução vista de fora: o que dos eventos pode chegar ao usuário
                      (public-events.ts), a conferência do pedido que chega pela internet
                      (parse-request.ts, SÓ do servidor) e o envio dos eventos em linhas (ndjson.ts)
 styles/tokens.css    TODAS as cores, fontes, espaçamentos e arredondamentos
-docs/                documento do projeto e diário de progresso
+docs/                documento do projeto, diário de progresso e registro de falhas (FALHAS.md)
 .github/workflows/   checagens automáticas (CI) que rodam em todo pull request
 ```
 
@@ -167,13 +172,16 @@ docs/                documento do projeto e diário de progresso
 
 ## 9. Escopo do MVP
 
-**Entra:** cadastro e login; 4 receitas (Criar site simples, Escrever e revisar texto, Pesquisa com
-checagem cruzada, Comitê de investimento); trocar a IA de cada papel; execução em sequência
-(chefe → executores → revisor → consolidação) mostrando cada etapa; histórico; Claude, GPT e Gemini via API;
-contador de créditos.
+Revisado em 22/10/2026, com o produto para empresas (detalhes em `docs/DOCUMENTO-PROJETO.md`).
 
-**Fica de fora por enquanto:** pagamento real (acesso por convite), "Traga sua chave", upload de arquivos,
-vídeo, execução de código no servidor ("oficina na nuvem"), conector MCP, WhatsApp, projeto próprio totalmente livre.
+**Entra:** cadastro da empresa e login de verdade (dono e funcionários); painel do dono (funcionários, teto de gasto,
+crédito da empresa, entregas e gastos por funcionário e por IA); workspace com receitas prontas, receita própria e
+tarefa rápida; as 4 receitas do MVP (Criar site simples, Escrever e revisar texto, Pesquisa com checagem cruzada,
+Comitê de investimento); recomendação de IA com escolha livre do funcionário; histórico; Claude, GPT e Gemini via API,
+com medição de custo; geração de arquivos (PDF, Word, Excel, gráficos).
+
+**Fica de fora por enquanto:** pagamento real (empresas convidadas, crédito carregado à mão), vídeo, execução de código
+no servidor ("oficina na nuvem"), conector MCP, WhatsApp, nichar para um tipo de empresa.
 (O JavaScript "de enfeite" dos sites gerados não conta como execução de código: ele só roda na prévia isolada, no navegador.)
 Não implemente nada desta lista sem pedido explícito.
 
