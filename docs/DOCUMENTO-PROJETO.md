@@ -63,7 +63,8 @@ muda pouco: receitas e textos mais específicos. Risco anotado em F02 do `FALHAS
     mostrar as conversas no futuro exige avisar os funcionários antes.
   - **O crédito** só é lançado pela plataforma, depois do pagamento (no MVP, Pix conferido à mão). O dono vê o saldo e o
     extrato, mas não mexe neles (F25).
-- **Funcionário:** entra com o login que a empresa criou e trabalha no **workspace**.
+- **Funcionário:** recebe do dono um convite (um link que só funciona uma vez e vale 24 horas, mandado por WhatsApp ou
+  como o dono preferir), cria a própria senha e trabalha no **workspace**. Só ele conhece a senha (decisão do Luis, 24/10).
 
 ### Três jeitos de trabalhar no workspace (decisão do Luis, 22/10)
 
@@ -87,15 +88,17 @@ que resolve melhor pelo menor custo. O funcionário sempre pode escolher outra c
 Cada papel é um modelo de IA com uma instrução específica (o "prompt de sistema"). Ferramentas como Claude Code e Codex
 são produtos separados e ficam para integrações futuras.
 
-### O que existe hoje no código (PR #19, 20/10)
+### O que existe hoje no código (atualizado em 24/10)
 
-- Página inicial ("sou dono" ou "sou funcionário"), painel do dono, login do funcionário e workspace com chat.
+- Login de verdade (etapa 5, PR 2a): o dono cria a conta da empresa e confirma o e-mail; dono e funcionário entram pela
+  mesma tela, e cada um vai para a sua página. O painel do dono mostra a equipe; o convite de funcionário vem no PR 2b.
+- Workspace com chat, ainda nas tabelas antigas: fica com um aviso de "em obras" até o PR 3.
 - O Chefe já escolhe sozinho a IA, o nível, o esforço e a ação (responder, imagem, código, pesquisa, documento,
   gráfico ou projeto em .zip). **Falta** o funcionário poder escolher.
 - O chat gera arquivos: PDF, Word, Excel, CSV, gráficos e projeto em .zip. Aceita voz e arquivos enviados.
 - A receita "Criar um site" existe, mas **fora** do workspace. Faltam as receitas, a receita própria e a ligação com
   a empresa e os gastos (F08 do `FALHAS.md`).
-- O login e o painel do dono ainda são de demonstração (F10 a F13 do `FALHAS.md`).
+- O painel antigo do dono (gastos por IA, tarefas, crédito) saiu no PR 2a; volta no PR 3, ligado ao banco novo.
 
 ## Receitas iniciais
 

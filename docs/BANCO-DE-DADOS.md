@@ -145,8 +145,14 @@ Pela sessão de quem está logado (o "crachá"), o banco deixa fazer só isto, s
 O resto (criar empresa e pessoas, gravar execuções, tarefas e arquivos, e o dinheiro) é feito pelo servidor, com a
 chave-mestra. As rotas comuns entram no banco com a sessão de quem está logado: se uma rota esquecer de filtrar pela
 empresa, o próprio banco barra. A chave-mestra fica só para o dinheiro e para a parte do servidor que leva as execuções
-adiante. Para isso, no PR do login, o Claude vai propor a biblioteca oficial do Supabase para login no Next.js
-(`@supabase/ssr`); só instala com aprovação.
+adiante. A sessão chega ao servidor pela biblioteca oficial do Supabase para login no Next.js (`@supabase/ssr`,
+aprovada pelo Luis e instalada no PR 2a, em 24/10).
+
+**Como a empresa nasce (PR 2a):** no cadastro, o Supabase Auth cria só o login do dono, com o nome da empresa e o dele
+guardados junto. A empresa e o dono só entram nas tabelas no primeiro acesso, com o e-mail já confirmado, pelo servidor
+(`lib/auth/company-signup.ts`). Assim um cadastro abandonado não deixa empresa nenhuma. A empresa nasce com o mesmo id
+do login do dono: se o primeiro acesso for processado duas vezes ao mesmo tempo, a segunda tentativa esbarra na mesma
+chave e não sobra uma empresa vazia.
 
 Como a sessão consegue gravar conversas e receitas sem passar pelas nossas telas, o servidor confere o formato de uma
 receita própria de novo antes de rodá-la.

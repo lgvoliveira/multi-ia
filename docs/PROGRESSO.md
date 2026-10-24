@@ -4,8 +4,8 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 24/10/2026 (etapa 5: banco no ar; decisões do login; projeto de testes do Supabase)
-**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco) no ar; agora: projeto de testes e PR 2a (login de verdade)
+**Última atualização:** 24/10/2026 (etapa 5: projeto de testes do Supabase e PR 2a, login de verdade)
+**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco) no ar; PR 2a (login) aberto; próximo: PR 2b (convite)
 
 ---
 
@@ -115,7 +115,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco) no ar; faltam PR 2a e 2b (login e convite) e PR 3 (trocar o código) | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco) no ar; PR 2a (login) aberto; faltam PR 2b (convite) e PR 3 (trocar o código) | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -415,14 +415,43 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
 - **Falha nova F30:** o envio de e-mail embutido no Supabase só entrega para a equipe do projeto, até 2 por hora. Antes da
   primeira empresa real, ligar um serviço de e-mail próprio.
 
+**PR 2a da etapa 5 — login de verdade (24/10, Claude Code; issue #26)**
+- **O que ficou pronto:** o dono cria a conta da empresa em `/cadastro` (nome da empresa, nome, e-mail, senha de 8+
+  caracteres) e recebe um e-mail de confirmação; dono e funcionário entram pela mesma tela (`/entrar`) e cada um vai
+  para a sua página; "Sair" no topo, que mostra o nome e a empresa de quem está logado. `/dono` só abre para o dono e
+  mostra a equipe; `/trabalho` e as receitas só para quem é da empresa e está ativo, com um aviso de "em obras" até o
+  PR 3. Quem foi desativado vê um aviso e não entra. Página de erro em português (`app/error.tsx`).
+- **Como funciona por dentro:** a biblioteca `@supabase/ssr` guarda o login num cookie seguro; o `proxy.ts` (o antigo
+  "middleware", que no Next.js 16 mudou de nome) renova o login a cada página; cada página protegida confere o login e
+  lê o cadastro no banco com a sessão da pessoa (`lib/auth/viewer.ts`). A empresa e o dono só entram nas tabelas no
+  primeiro acesso, com o e-mail confirmado (`lib/auth/company-signup.ts`).
+- **Saiu:** o login antigo (senha temporária, código na URL), o painel antigo do dono e as rotas `/api/ock/login`,
+  `change-password`, `company`, `member` e `summary`, com as funções que apagavam funcionário (F23) e deixavam o
+  dono mudar o crédito (F25). O painel de gastos volta no PR 3, no banco novo.
+- **Nomes novos no `.env.local`:** `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SECRET_KEY` (os tipos de chave
+  atuais do Supabase), no lugar de `..._ANON_KEY` e `..._SERVICE_ROLE_KEY`.
+- **Ficaram guardados, sem uso, até o PR 3:** o chat (`components/OckWorkspace.tsx`) e a tela da receita
+  (`components/RecipeFlow.tsx`). As rotas `/api/ock/*` e `/api/runs` ainda não conferem o login (F16, PR 3).
+- **Como foi conferido:** lint, tipos, 181 testes (22 novos: formulários, cadastro pendente, criação da empresa, equipe)
+  e build. No navegador (roteiro temporário no Chrome, computador e celular de 320 px), sem as chaves do Supabase: as
+  páginas protegidas mandam para "Entrar", os erros aparecem campo a campo e o formulário avisa que o login não está
+  configurado. As telas de quem está logado foram fotografadas com dados de mentira numa página temporária, já apagada.
+- **Ainda não conferido:** o login de verdade, com o projeto de testes (depende do Luis criar o projeto e as chaves).
+- **Falhas:** F10, F11 e F12 resolvidas; F13 e F16 com andamento; F14 corrigida no texto (estava "Decidida" no
+  detalhe). Nova **F31**: o Next.js 16.4.0 tem três falhas de segurança graves (uma nas "ações do servidor", que o login
+  passou a usar); a 16.4.3 corrige. O próprio Next.js avisa no `npm run build` e no `npm run dev`, que param na
+  primeira vez e seguem quando repetidos.
+
 ## Próximo passo
 
 1. **Luis:** fazer o merge do PR do projeto de testes. Depois, criar o projeto `multi-ia-teste` e configurar (passo a
    passo na conversa de 24/10 e no `BANCO-DE-DADOS.md`): opções de login, chaves no `.env.local`, segredo
    `SUPABASE_TEST_DB_URL` no GitHub e o botão *Run workflow* em *Actions → Banco de testes*.
-2. **Claude Code** (esforço Extra alto): PR 2a, login de verdade. Depois, PR 2b, convite de funcionário.
-3. Depois: PR 3 (trocar o código do parceiro para o banco novo; F16, F22 a F28).
-4. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
+2. **Luis:** testar o PR 2a com o projeto de testes (roteiro no PR) e fazer o merge. Decidir sobre a atualização do
+   Next.js para a 16.4.3 (F31), num PR pequeno.
+3. **Claude Code** (esforço Extra alto): PR 2b, convite de funcionário por link e a parte "Equipe" do painel (issue #27).
+4. Depois: PR 3 (trocar o código do parceiro para o banco novo; F13, F16, F22 a F28).
+5. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.
 

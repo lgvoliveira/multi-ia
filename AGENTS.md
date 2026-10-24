@@ -82,8 +82,13 @@ lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts)
                      dados e pode ir para a tela; registry.ts entrega as IAs e é SÓ do servidor
 lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema, etapas);
                      validate.ts confere toda receita nos testes
-lib/ock/             o workspace para empresas: empresa e funcionários (company.ts), o Chefe que recomenda
-                     a IA (chief.ts), preços (pricing.ts) e os arquivos gerados (documento, gráfico, projeto)
+lib/auth/            o login (Supabase Auth): quem está vendo a página (viewer.ts, com requireMember para
+                     páginas protegidas), o cliente com a sessão de quem está logado (session.ts), a renovação
+                     do login a cada página (refresh-session.ts, chamado pelo proxy.ts da raiz) e o cadastro
+                     da empresa no primeiro acesso do dono (company-signup.ts). Tudo SÓ do servidor, menos
+                     member.ts e forms.ts, que são dados e conferências puras
+lib/ock/             o workspace para empresas: empresa e funcionários (company.ts, ainda no banco antigo, e
+                     team.ts), o Chefe que recomenda a IA (chief.ts), preços (pricing.ts) e os arquivos gerados
 lib/runs/            a execução vista de fora: o que dos eventos pode chegar ao usuário
                      (public-events.ts), a conferência do pedido que chega pela internet
                      (parse-request.ts, SÓ do servidor) e o envio dos eventos em linhas (ndjson.ts)
