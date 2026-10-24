@@ -18,6 +18,7 @@ gastou, e define um teto de gasto para cada um.
 - Até 19/10/2026 o produto era para a pessoa comum; o motor, as receitas e as regras de segurança daquela fase continuam valendo.
 - Visão completa, regras de negócio e telas: `docs/DOCUMENTO-PROJETO.md`.
 - Estado atual e próximos passos: `docs/PROGRESSO.md`.
+- Desenho do banco de dados (tabelas, carteira, quem vê o quê): `docs/BANCO-DE-DADOS.md`.
 - **Falhas e riscos conhecidos: `docs/FALHAS.md`.** Percebeu uma falha nova (negócio, produto, código, segurança ou
   processo)? Anote lá, no mesmo PR, com o próximo número livre. Resolveu uma? Mude o status e escreva como.
 
@@ -169,6 +170,11 @@ docs/                documento do projeto, diário de progresso e registro de fa
 4. Abra um **pull request** dizendo: o que mudou, por quê, e como testar. Referencie a issue (`Closes #12`).
 5. A outra IA revisa e comenta no PR. Divergências ficam registradas lá.
 6. O **Luis** decide e faz o merge.
+
+**Banco de dados:** toda mudança de tabela entra por **migração** (arquivo SQL em `supabase/migrations/`), num PR como
+qualquer outra mudança. Nunca pelo painel do Supabase (editor de tabelas ou de SQL): senão o banco deixa de bater com o
+repositório. No merge na `main`, o Supabase aplica as migrações novas sozinho (ligação com o GitHub, ver
+`docs/BANCO-DE-DADOS.md`).
 
 ## 9. Escopo do MVP
 

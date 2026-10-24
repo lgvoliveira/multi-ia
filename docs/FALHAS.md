@@ -31,7 +31,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F11 | Painel do dono sem login e senhas temporárias expostas | Segurança | Alta | Aberta |
 | F12 | Senha temporária guardada sem criptografia | Segurança | Média | Aberta |
 | F13 | Só existe uma empresa, fixa no código ("demo") | Código | Alta | Aberta |
-| F14 | As tabelas do banco (Supabase) não estão no repositório | Código | Alta | Aberta |
+| F14 | As tabelas do banco (Supabase) não estão no repositório | Código | Alta | Decidida |
 | F15 | Pacote `xlsx` com falhas de segurança conhecidas | Segurança | Média | Aberta |
 | F16 | Rotas que gastam IA de verdade abertas para qualquer um | Segurança | Alta | Aberta |
 | F17 | Preços das IAs e câmbio fixos no código | Código | Média | Aberta |
@@ -40,6 +40,11 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F20 | Mudança grande de produto entrou num PR só, sem registro nos documentos | Processo | Média | Decidida |
 | F21 | O parceiro usa a conta do GitHub do Luis | Processo / Segurança | Média | Aberta |
 | F22 | O OCK nunca rodou no computador do Luis | Processo | Média | Aberta |
+| F23 | Apagar um funcionário devolve o gasto dele ao crédito da empresa | Código | Alta | Aberta |
+| F24 | Gasto e teto falham com pedidos ao mesmo tempo | Código | Média | Aberta |
+| F25 | O próprio dono define o crédito da empresa | Negócio / Segurança | Alta | Aberta |
+| F26 | O custo das tentativas que falharam não fica registrado | Código | Média | Aberta |
+| F27 | Qualquer pessoa pode ler as execuções direto no banco | Segurança | Alta | Aberta |
 
 ## Negócio
 
@@ -136,10 +141,13 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O que fazer:** cadastro de empresa e todas as rotas olhando a empresa de quem está logado (junto com F10 e F11).
 
 ### F14 — As tabelas do banco não estão no repositório
-- **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 22/10/2026
+- **Gravidade:** Alta · **Status:** Decidida · **Anotada:** 22/10/2026
 - **O problema:** o código depende de tabelas no Supabase que o parceiro criou, mas não há nenhum arquivo descrevendo
   essas tabelas. Ninguém além dele consegue montar o banco, e uma mudança nele não fica registrada.
-- **O que fazer:** pedir ao parceiro o esquema e salvá-lo no repositório como "migrações" (arquivos SQL em ordem).
+- **Decisão (Luis, 24/10):** em vez de pedir o esquema ao parceiro, refazer o banco do zero num projeto novo do
+  Supabase, com as tabelas no repositório como migrações (`supabase/migrations/`). Proposta em `docs/BANCO-DE-DADOS.md`.
+  Regra nova no AGENTS.md: mudança de tabela só por migração, nunca pelo painel do Supabase. Resolvida quando as
+  migrações entrarem na `main`.
 
 ### F15 — Pacote `xlsx` com falhas de segurança conhecidas
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 22/10/2026
@@ -169,6 +177,47 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 ### F19 — Testado só no Chrome
 - **Gravidade:** Baixa · **Status:** Aberta · **Anotada:** etapa 4 (T7), trazida para cá em 22/10/2026
 - **O que fazer:** testar no Firefox e no Safari na rodada de testes com empresas.
+
+### F23 — Apagar um funcionário devolve o gasto dele ao crédito da empresa
+- **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 24/10/2026
+- **O problema:** o gasto da empresa é a soma do gasto guardado em cada funcionário (`lib/ock/company.ts`). Ao apagar
+  um funcionário, o código apaga também as tarefas, conversas e arquivos dele, e o gasto some da conta: o crédito volta
+  para a empresa e o histórico do que foi gasto se perde. Apagar e recriar um funcionário "zera" o gasto, e a plataforma
+  paga as IAs do mesmo jeito.
+- **O que fazer:** na proposta do banco novo (24/10), a carteira vira um extrato em que nenhuma linha é apagada; quem sai
+  da empresa é desativado, não apagado; e apagar o conteúdo (LGPD) não apaga o gasto.
+
+### F24 — Gasto e teto falham com pedidos ao mesmo tempo
+- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 24/10/2026
+- **O problema:** o custo de uma tarefa é somado ao gasto lido no começo do pedido (`recordTask`), e a recarga lê o total
+  e depois grava o novo (`addCompanyCredit`). Com dois pedidos ao mesmo tempo, um custo some. A conferência do teto
+  também acontece antes de a IA rodar, sem reservar nada: vários pedidos juntos passam todos e estouram o teto.
+- **O que fazer:** mexer no dinheiro só por funções do banco que travam a carteira da empresa enquanto conferem e lançam
+  (proposta do banco novo, 24/10).
+
+### F25 — O próprio dono define o crédito da empresa
+- **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 24/10/2026
+- **O problema:** o painel do dono tem "recarregar" e "definir o crédito" (inclusive ilimitado), sem pagamento nenhum.
+  Mesmo com o login de verdade (F11), o dono poderia se dar crédito à vontade, e quem paga as IAs é a plataforma.
+- **O que fazer:** só a plataforma lança recargas (no MVP, à mão, depois de receber o Pix); o dono vê o saldo e o
+  extrato, mas não mexe neles.
+
+### F26 — O custo das tentativas que falharam não fica registrado
+- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 09/10/2026 (no PROGRESSO), trazida para cá em 24/10/2026
+- **O problema:** uma tentativa que cai no meio já consumiu tokens, que a plataforma paga mas não cobra (regra "etapa que
+  falhou não é cobrada"). Esse custo não fica guardado em lugar nenhum, então a conta da margem (F04) sai otimista.
+- **O que fazer:** registrar toda chamada de IA, inclusive as que falharam, numa tabela interna (proposta do banco novo).
+
+### F27 — Qualquer pessoa pode ler as execuções direto no banco
+- **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 24/10/2026
+- **O problema:** a tela das receitas acompanha a execução lendo as tabelas `runs` e `run_events` direto do Supabase, com
+  a chave pública e sem login (`lib/runs/live-client.ts`). Essa chave vai junto com o site, então qualquer pessoa pode
+  usá-la. Para o navegador ler sem login, o banco precisa deixar qualquer um ler essas tabelas, e aí dá para listar as
+  execuções de todo mundo, com pedido e respostas. Sem o esquema do parceiro (F14) não dá para saber se outras tabelas
+  também estão abertas: se as `ock_*` estiverem sem regras de acesso, a mesma chave lê os funcionários e as senhas
+  temporárias.
+- **O que fazer:** no banco novo, toda tabela nasce com regras de acesso (RLS) e o navegador só lê com a sessão de quem
+  está logado. Avisar o parceiro, caso o banco antigo esteja no ar com dados de verdade.
 
 ## Processo
 
