@@ -1,6 +1,9 @@
 # Multi-IA
 
-Plataforma brasileira para montar um time de IAs (Claude, GPT, Gemini) que trabalham juntas numa tarefa.
+Plataforma brasileira de IA para empresas pequenas e médias: os funcionários usam várias IAs (Claude, GPT, Gemini),
+sozinhas ou em times prontos ("receitas"), e o dono acompanha entregas e gastos.
+
+- Registro de falhas e riscos: [`docs/FALHAS.md`](docs/FALHAS.md)
 
 - Regras do projeto para as IAs: [`AGENTS.md`](AGENTS.md)
 - Documento do projeto: [`docs/DOCUMENTO-PROJETO.md`](docs/DOCUMENTO-PROJETO.md)

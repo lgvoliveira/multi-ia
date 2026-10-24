@@ -4,8 +4,8 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 09/10/2026 (noite, Parte A da etapa 4 concluída; Parte B começou: APIs diretas; chaves de teste chegam em 10/10)
-**Etapa atual:** 4 — Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela)
+**Última atualização:** 22/10/2026 (o produto passou a ser para empresas: PR #19 do parceiro + decisões do Luis; criado o `docs/FALHAS.md`)
+**Etapa atual:** alinhar a visão nova com o parceiro; depois, etapa 5 — Base para empresas
 
 ---
 
@@ -18,21 +18,58 @@
 - Protótipo das telas (canvas de design, 10 telas clicáveis):
   https://claude.ai/artifact/XWxF7wU57nRp5Yq7PTZY3n
 - Documento no repositório: `docs/DOCUMENTO-PROJETO.md` (versão oficial; o online é para leitura e pode ficar defasado)
+- Falhas e riscos: `docs/FALHAS.md` (lista viva; toda falha nova percebida entra lá, com status)
 
-## Resumo da ideia
+## Resumo da ideia (atualizado em 22/10/2026)
 
-Plataforma brasileira onde qualquer pessoa monta um "time de IAs" (Claude, GPT, Gemini)
-que trabalham juntas numa tarefa, sem precisar saber o que é API.
-Produto geral, mas com "receitas" prontas: o usuário escolhe o objetivo
-(ex.: criar um site) e o time de IAs já vem montado, com papéis (chefe, programador,
-revisor) e a IA recomendada para cada um. Pode editar ou criar projeto próprio.
+Plataforma brasileira de IA **para empresas pequenas e médias** (ex.: uma agência de marketing). A empresa assina,
+cadastra os funcionários, e cada funcionário usa as IAs (Claude, GPT, Gemini) no trabalho do dia a dia, de três jeitos:
+**receita pronta** (um time de IAs já montado para um serviço), **receita própria** (o funcionário monta a dele) ou
+**tarefa rápida** (só pede, como num chat). A plataforma recomenda a IA e o nível do modelo, mas o funcionário escolhe
+livremente. O dono acompanha o que cada funcionário entregou, o que fez e quanto gastou, e define um teto de gasto para
+cada um. Nome provisório no código: **OCK**. Visão completa no `DOCUMENTO-PROJETO.md`.
+
+Até 19/10 a ideia era para a pessoa comum (uma pessoa, uma conta). O histórico das etapas 3 e 4, mais abaixo, é dessa
+fase e continua valendo para o motor, as receitas e a segurança.
+
+## Virada para empresas (20 a 22/10/2026)
+
+**O que entrou no PR #19** (feito pelo parceiro com a conta do GitHub do Luis; merge em 20/10; um commit só, ~100 arquivos):
+- **IAs reais** ligadas (`lib/providers/real.ts`): era a T9 da etapa 4. Sem chave no `.env.local`, cada IA continua simulada.
+  Chaves da plataforma: `OCK_CLAUDE_KEY`, `OCK_GPT_KEY` e `OCK_GEMINI_KEY` (nomes no `.env.example`).
+- **Supabase**: guarda as execuções (`lib/runs/store.ts`) e os dados da empresa (`lib/ock/company.ts`).
+- **"Minhas chaves"** (`/chaves`): chaves do próprio usuário, criptografadas (AES-256-GCM).
+- **OCK**: a página inicial pergunta "dono ou funcionário"; `/dono` (funcionários, teto de cada um, crédito da empresa,
+  gasto por IA e economia); `/entrar` (login do funcionário com senha temporária que ele troca); `/trabalho` (chat do
+  funcionário com várias conversas, voz e envio de arquivos).
+- **Chefe roteador** (`lib/ock/chief.ts`): para cada pedido escolhe uma IA, o nível do modelo (econômico, padrão,
+  potente), o esforço e a ação (responder, imagem, código, pesquisa, documento, gráfico ou projeto).
+- **Arquivos gerados:** PDF, Word, Excel, CSV, gráficos e projeto em .zip. Bibliotecas novas: `@supabase/supabase-js`,
+  `docx`, `jszip`, `pdf-lib`, `unpdf` e `xlsx`.
+- **Preços** das IAs e câmbio em `lib/ock/pricing.ts` (aproximados).
+- A receita "Criar um site" continua no código (`/recipes/create-site`), mas saiu da página inicial e não está no workspace.
+
+**Decisões do Luis (22/10, conversa no Cowork)**
+- **Público:** empresas pequenas e médias, **amplo** por enquanto, para testar; nichar depois (ex.: agências) se fizer
+  sentido, aproveitando o que já estiver pronto.
+- **O dono** vê o que cada funcionário entregou, o que fez e quanto gastou, e limita o teto de gasto de cada um.
+- **Receitas no centro**, dentro do workspace do funcionário, em três modos: receita pronta, receita própria e tarefa rápida.
+- **Escolha da IA:** a plataforma recomenda (IA, nível e esforço), mas o funcionário escolhe livremente
+  ("quero o melhor", "quero o Claude nesta tarefa").
+- **Registro de falhas:** `docs/FALHAS.md`, atualizado sempre que uma falha nova aparecer. Começou com 22 falhas
+  (F01 a F22), entre elas o login de demonstração, o painel do dono aberto e o banco fora do repositório.
+
+**Ainda não conferido:** o OCK nunca rodou no computador do Luis (falta o Supabase e as chaves no `.env.local`), e as
+checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 
 ## Decisões tomadas
 
-- Público: usuário comum e pequenas empresas no Brasil, não desenvolvedores.
+- Público: empresas pequenas e médias no Brasil e seus funcionários, não desenvolvedores (mudou em 22/10; antes era
+  o usuário comum e a pequena empresa).
 - Diferenciais: português, preço em reais (Pix), receitas prontas, sem precisar de chave de API.
-- Monetização: assinatura mensal em reais com créditos incluídos (a plataforma paga as APIs).
-  Planos: Grátis, Padrão, "Traga sua chave" (mais barato) e, no futuro, Conector MCP (low cost).
+- Monetização: a empresa paga, com uma carteira de créditos da empresa (a plataforma paga as APIs) e teto por
+  funcionário. Formato do preço em aberto (22/10). Os planos antigos (Grátis, Padrão, "Traga sua chave", Conector MCP)
+  eram para a pessoa comum e precisam ser revistos.
 - Claude entra sempre via API (assinaturas Claude não podem ser usadas em apps de terceiros).
   ChatGPT pode entrar via "Sign in with ChatGPT" no futuro (exige aprovação da OpenAI).
 - Chave própria (BYOK): conectada uma vez na conta (Configurações > Minhas chaves de API).
@@ -58,7 +95,8 @@ revisor) e a IA recomendada para cada um. Pode editar ou criar projeto próprio.
 
 - Disponibilidade: ~1 h por dia útil + sessões mais longas no sábado e domingo.
 - Está aprendendo; prefere explicações claras quando o tema é novo.
-- Tem um amigo como parceiro no projeto (papel ainda a registrar). É quem passa as chaves de teste das IAs em 10/10.
+- Tem um amigo como parceiro no projeto, que também programa (fez o PR #19, usando a conta do GitHub do Luis; ver F21
+  no `FALHAS.md`). Foi ele quem propôs levar o produto para empresas.
 - Ajustes de detalhe (visual, textos, pequenos comportamentos) ficam numa lista para depois de ter o MVP palpável
   (issues com a etiqueta "ajuste"). Exceções, resolvidas na hora: defeitos e o que muda a base (dados, segurança,
   créditos). Os ajustes que mais valem virão dos testes com usuários (etapa 6).
@@ -74,9 +112,14 @@ revisor) e a IA recomendada para cada um. Pode editar ou criar projeto próprio.
 | 1 | Ideia, discussão e documento do projeto | Concluída | Cowork |
 | 2 | Desenho das telas + regras de funcionamento | Concluída | Cowork |
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
-| 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Em andamento | Claude Code |
-| 5 | Demais receitas do MVP, login, histórico, créditos | A fazer | Claude Code |
-| 6 | Teste com 5 a 10 usuários e ajustes | A fazer | — |
+| 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
+| — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
+| 5 | Base para empresas: OCK rodando no computador do Luis, banco no repositório, login de verdade, cadastro de empresa, painel do dono protegido | A fazer | Claude Code |
+| 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
+| 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
+| 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
+
+As etapas 5 a 8 são uma proposta de 22/10, a confirmar com o parceiro.
 
 ## Etapa 3 — o que ficou pronto (08/10/2026)
 
@@ -298,17 +341,23 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 
 ## Próximo passo
 
-Em 10/10 (sábado), o amigo do Luis passa as chaves de teste e o Luis as coloca no `.env.local` (nunca no chat).
-O Claude confere as chaves com um teste que não gasta crédito nem mostra a chave. Depois: issue e PR da **T9**,
-começando pelo adaptador do Claude (sessão longa: esforço Extra alto).
-As issues T1 a T8 têm o número da tarefa (#1 a #8); a T9 fica com o próximo número livre no GitHub.
+1. **Alinhar com o parceiro (sem código):** ler juntos o `DOCUMENTO-PROJETO.md` revisado e o `FALHAS.md`, confirmar a
+   visão e as etapas 5 a 8, e combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa =
+   um PR pequeno, e o PROGRESSO atualizado em todo PR (F20).
+2. **Pedir ao parceiro** o esquema do banco (as tabelas que ele criou no Supabase) e como ele roda o OCK. O esquema
+   entra no repositório (F14).
+3. **Começar a etapa 5 no Claude Code** (esforço Extra alto): primeiro fazer o OCK rodar no computador do Luis (F22),
+   depois login de verdade e painel do dono protegido (F10, F11, F13).
 
 ## Decisões em aberto
 
-- Nome e marca da plataforma
-- Preço dos planos e quantidade de créditos
-- Modelo de cada papel (melhor e mais caro x mais barato): proposta na T9
-- Cronograma do MVP
+- Nome e marca (OCK é provisório)
+- Formato do preço (por empresa, por funcionário, pelo consumo), margem e plano de teste (F04)
+- O que o dono vê: só entregas e gastos, ou as conversas inteiras (F05)
+- Se o "Traga sua chave" continua no produto para empresas
+- Se e quando nichar (F02)
+- Modelo de cada papel e de cada nível (econômico, padrão, potente)
+- Cronograma
 
 ## Como retomar em uma conversa nova
 
@@ -319,4 +368,4 @@ As issues T1 a T8 têm o número da tarefa (#1 a #8); a T9 fica com o próximo n
 
 **No Cowork (discussões, documentos, planejamento):**
 1. Conecte a pasta `C:\Users\Luis\projetos\multi-ia`.
-2. Cole: "Estamos no projeto da plataforma multi-IA. Leia o docs/PROGRESSO.md e continue de onde paramos."
+2. Cole: "Estamos no projeto da plataforma multi-IA. Leia o docs/PROGRESSO.md e o docs/FALHAS.md e continue de onde paramos."

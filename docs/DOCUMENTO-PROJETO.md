@@ -1,52 +1,101 @@
-# Plataforma Multi-IA — Documento do Projeto
+# Plataforma Multi-IA (OCK) — Documento do Projeto
 
 > **Versão oficial:** este arquivo, no repositório. Atualizado pelo Claude ao fim de cada etapa.
 > Versão online (para leitura e compartilhamento, pode ficar defasada): https://claude.ai/code/artifact/2b5773d4-3ece-4278-9147-06cd89fda02d
+> **Falhas e riscos conhecidos:** `docs/FALHAS.md` (lista viva, atualizada a cada falha nova).
 
-Oct 8, 2026 · @Luis Gustavo Vilela Oliveira
+Oct 8, 2026 · @Luis Gustavo Vilela Oliveira · **Revisado em 22/10/2026: o produto passou a ser para empresas.**
 
 ## Visão e problema
 
-Uma plataforma brasileira onde qualquer pessoa monta um **time de IAs** (Claude, GPT, Gemini e outras) que trabalham juntas numa tarefa, sem precisar saber o que é API, token ou agente.
+Uma plataforma brasileira de IA **para empresas pequenas e médias**. A empresa assina o serviço, cadastra os
+funcionários, e cada funcionário usa as melhores IAs (Claude, GPT, Gemini e outras) nas tarefas e projetos do dia a dia,
+sozinhas ou trabalhando juntas em **receitas** prontas. O dono acompanha o que cada um entregou e quanto gastou, e
+define um teto de gasto para cada funcionário.
 
-**O problema:** ferramentas que conectam várias IAs já existem lá fora (LangGraph, CrewAI, n8n, Gumloop, OpenRouter), mas são técnicas, em inglês e cobradas em dólar. Para o usuário comum e para a pequena empresa brasileira, isso continua inacessível.
+Nome provisório no código: **OCK**. O nome definitivo e a marca ainda estão em aberto.
 
-**A aposta:** quem resolver a acessibilidade (português, receitas prontas, preço em reais) captura um público que as ferramentas globais não priorizam.
+**O problema:** nas empresas pequenas e médias, cada funcionário usa uma IA diferente, muitas vezes na conta pessoal,
+com dados de clientes, sem padrão de qualidade. O dono não sabe o que está sendo feito, quanto custa, nem se o resultado
+é bom. As soluções para empresas dos grandes laboratórios prendem a empresa a uma IA só e costumam ser cobradas em
+dólar, por usuário. As ferramentas que combinam várias IAs (LangGraph, CrewAI, n8n, Gumloop, OpenRouter) são técnicas
+e em inglês.
+
+**A aposta:** uma plataforma em português, cobrada em reais, que junta as melhores IAs num só lugar, traz receitas
+prontas para o trabalho de verdade e dá ao dono controle de uso e gasto.
+
+**Como a ideia mudou:** até 19/10/2026 o produto era para a pessoa comum (uma pessoa, uma conta). No PR #19 (20/10) o
+parceiro do Luis levou o produto para empresas, e em 22/10 o Luis confirmou essa direção e definiu como as receitas e a
+escolha da IA entram (seções abaixo). O motor, as receitas e as regras de segurança feitos até a etapa 4 continuam
+valendo.
 
 ## Público-alvo e proposta de valor
 
-O público inicial é quem já usa IA no dia a dia, mas não é desenvolvedor: freelancers, criadores de conteúdo, pequenas empresas e estudantes.
+**Quem compra:** empresas pequenas e médias no Brasil que prestam serviço e cujos funcionários fazem muito trabalho de
+texto, pesquisa, análise e criação. Exemplo típico: uma agência de marketing. Não é para empresas de ticket muito alto.
 
-| Diferencial | Por que importa no Brasil |
+**Quem usa:** os funcionários dessas empresas, que não são desenvolvedores.
+
+**Público amplo de propósito (decisão do Luis, 22/10):** por enquanto o produto serve qualquer PME, para testar com
+tipos diferentes de empresa. Se mais adiante fizer sentido focar num nicho (ex.: agências), o produto já estará pronto e
+muda pouco: receitas e textos mais específicos. Risco anotado em F02 do `FALHAS.md`.
+
+| Diferencial | Por que importa |
 | --- | --- |
-| Tudo em português | Interface, receitas e instruções das IAs pensadas para o brasileiro |
-| Preço em reais, com Pix | Elimina cartão internacional e crédito pré-pago em dólar |
-| Receitas prontas | O usuário escolhe o objetivo, e o time de IAs já vem montado |
-| Sem chave de API | A plataforma fornece o acesso; quem quiser pode trazer a própria chave |
+| Várias IAs num lugar só | A empresa não fica presa a uma IA; cada tarefa usa a mais adequada |
+| Receitas prontas para o trabalho | O funcionário escolhe o serviço e um time de IAs já vem montado |
+| Controle do dono | Vê o que cada funcionário entregou, o que fez e quanto gastou; define um teto por funcionário |
+| Tudo em português, preço em reais | Sem cartão internacional nem fatura em dólar |
+| Sem chave de API | A empresa nunca precisa criar conta nas empresas de IA |
+| Recomendação de IA com liberdade | A plataforma sugere a IA e o nível, mas o funcionário pode escolher outra |
+| LGPD | Argumento de confiança (os cuidados necessários estão em F05 do `FALHAS.md`) |
 | WhatsApp (futuro) | Canal onde o brasileiro realmente trabalha |
-| LGPD | Argumento de confiança para pequenas empresas |
 
-## Como funciona: receitas e times de IA
+## Como funciona
 
-O produto é geral, mas a porta de entrada é concreta: o usuário escolhe um objetivo e recebe um time de IAs pré-configurado, que pode editar.
+### Dois lados: o dono e o funcionário
 
-1. **Escolhe a receita**: por exemplo, “Criar um site”.
-2. **Vê o time recomendado**: cada papel já tem uma IA sugerida.
-   - Chefe (planeja e divide o trabalho): Claude
-   - Programador: GPT
-   - Revisor (critica e aponta erros): Gemini
-3. **Ajusta se quiser**: troca a IA de um papel, adiciona ou remove papéis.
-4. **Descreve a tarefa** em português.
-   - Ideia aprovada pelo Luis em 09/10, ainda sem data: em vez de uma caixa em branco, a receita faz perguntas guiadas
-     (ex.: nome do negócio, o que vende, WhatsApp, cores), para a pessoa não precisar saber escrever um bom pedido.
-5. **Acompanha o trabalho**: cada IA aparece trabalhando em sequência, e o chefe consolida o resultado.
-6. **Recebe o resultado** e pode pedir ajustes.
+- **Dono da empresa:** cadastra os funcionários, define o teto de gasto de cada um, carrega crédito na empresa e
+  acompanha, por funcionário, o que foi entregue, o que foi feito e quanto foi gasto (também por IA).
+- **Funcionário:** entra com o login que a empresa criou e trabalha no **workspace**.
 
-Quem preferir pode criar um **projeto próprio** do zero, definindo papéis e IAs.
+### Três jeitos de trabalhar no workspace (decisão do Luis, 22/10)
 
-Cada papel é um modelo de IA com uma instrução específica (o “prompt de sistema”). Ferramentas como Claude Code e Codex são produtos separados e ficam para integrações futuras.
+1. **Receita pronta:** o funcionário escolhe um serviço (ex.: "Criar um site", "Escrever e revisar um texto") e um time
+   de IAs já vem montado, com papéis (chefe, executor, revisor) e a IA recomendada para cada um. Ele pode trocar as IAs,
+   descreve o pedido e acompanha cada IA trabalhando até o resultado.
+2. **Receita própria:** se não houver receita pronta para o serviço, o funcionário monta a dele (papéis, IAs e
+   instruções).
+3. **Tarefa rápida:** para um serviço rápido, ele só pede, como num chat, sem montar receita.
+
+Ideia aprovada em 09/10, ainda sem data: nas receitas, em vez de uma caixa em branco, perguntas guiadas (ex.: nome do
+negócio, o que vende, cores), para o funcionário não precisar saber escrever um bom pedido.
+
+### Quem escolhe a IA (decisão do Luis, 22/10)
+
+A plataforma **recomenda** a IA, o nível do modelo (econômico, padrão ou potente) e o esforço para cada tarefa. Nas
+receitas, a recomendação vem em cada papel; na tarefa rápida, quem recomenda é o **Chefe**, que lê o pedido e sugere o
+que resolve melhor pelo menor custo. O funcionário sempre pode escolher outra coisa ("nesta tarefa quero o melhor",
+"quero o Claude"). A recomendação é o padrão, nunca uma trava.
+
+Cada papel é um modelo de IA com uma instrução específica (o "prompt de sistema"). Ferramentas como Claude Code e Codex
+são produtos separados e ficam para integrações futuras.
+
+### O que existe hoje no código (PR #19, 20/10)
+
+- Página inicial ("sou dono" ou "sou funcionário"), painel do dono, login do funcionário e workspace com chat.
+- O Chefe já escolhe sozinho a IA, o nível, o esforço e a ação (responder, imagem, código, pesquisa, documento,
+  gráfico ou projeto em .zip). **Falta** o funcionário poder escolher.
+- O chat gera arquivos: PDF, Word, Excel, CSV, gráficos e projeto em .zip. Aceita voz e arquivos enviados.
+- A receita "Criar um site" existe, mas **fora** do workspace. Faltam as receitas, a receita própria e a ligação com
+  a empresa e os gastos (F08 do `FALHAS.md`).
+- O login e o painel do dono ainda são de demonstração (F10 a F13 do `FALHAS.md`).
 
 ## Receitas iniciais
+
+As receitas ficam dentro do workspace do funcionário. A lista abaixo é a original; com o produto para empresas,
+vale acrescentar receitas do trabalho de uma PME (ex.: post e legenda para redes sociais, proposta comercial,
+relatório mensal para cliente). Essas novas ainda são ideias, não decisões.
 
 O MVP começa com receitas cujo resultado é texto ou código, que só exigem as APIs. As que precisam de ambiente de execução ficam para depois.
 
@@ -70,80 +119,96 @@ Fica de fora: edição criativa profissional (ritmo, montagem artística, efeito
 
 ## Arquitetura técnica
 
-O coração é um único motor de orquestração. Ele recebe pedidos de qualquer canal, executa as etapas do time e chama cada IA pela API dela.
+O coração continua sendo um motor separado da interface. Ele recebe pedidos de qualquer canal, executa as receitas (ou
+a tarefa rápida), chama cada IA pela API dela e mede o custo de cada passo, que é descontado da carteira da empresa e
+somado ao gasto do funcionário.
 
 ```
-CANAIS (onde o usuário entra)      MOTOR DE ORQUESTRAÇÃO            IAs VIA API
-- Plataforma web (principal)  -->  - Receitas e times          -->  - Claude (API Anthropic)
-- Conector MCP (futuro)       -->  - Executor de etapas        -->  - GPT (API OpenAI)
-- WhatsApp (futuro)           -->  - Créditos e cobrança       -->  - Gemini (API Google)
-                                          |
-                                          +--> Banco de dados (usuários, histórico, créditos)
-                                          +--> Oficina na nuvem (vídeo e código, fase 3)
+CANAIS                         MOTOR                                IAs VIA API
+- Web: painel do dono     -->  - Receitas e times              -->  - Claude (API Anthropic)
+- Web: workspace          -->  - Tarefa rápida + Chefe         -->  - GPT (API OpenAI)
+- Conector MCP (futuro)   -->  - Executor de etapas            -->  - Gemini (API Google)
+- WhatsApp (futuro)       -->  - Medição de custo
+                                      |
+                                      +--> Banco de dados (empresas, funcionários, tarefas, gastos, carteira)
+                                      +--> Arquivos gerados e enviados
+                                      +--> Oficina na nuvem (vídeo e código, fase 3)
 ```
 
-Como o motor é separado da interface, o conector MCP e o WhatsApp entram depois sem reconstruir nada. A oficina na nuvem (servidor com ffmpeg e afins) só entra quando houver receitas de vídeo ou de execução de código.
+**Stack:** Next.js com TypeScript (interface e servidor), Supabase (banco de dados, arquivos e, depois, login), Vercel
+(hospedagem) e os SDKs oficiais de cada IA, ligadas diretamente, sem intermediário como o OpenRouter (decidido em
+09/10/2026: a troca de IA funciona melhor quando as IAs falham separadas e não há taxa de intermediário).
 
-**Stack:** Next.js com TypeScript (interface e servidor), Supabase (login e banco de dados), Vercel (hospedagem) e os SDKs oficiais de cada IA, ligadas diretamente, sem intermediário como o OpenRouter (decidido em 09/10/2026: o plano “Traga sua chave” exige a ligação direta com cada empresa, a troca de IA funciona melhor quando as IAs falham separadas e não há taxa de intermediário).
+**Chaves das IAs:** a plataforma usa as próprias chaves ("chaves-mãe"), só no servidor; a empresa nunca vê nem conecta
+chave. A página "Minhas chaves" (traga sua chave) existe no código, mas ainda não está decidido se continua no produto
+para empresas.
 
 ## Modelo de negócio e precificação
 
-O modelo é uma assinatura mensal em reais com créditos de uso incluídos, porque o custo da plataforma cresce com o uso de cada cliente.
+**A empresa paga, não o funcionário.** A empresa assina o serviço e tem uma **carteira de créditos**; cada tarefa dos
+funcionários consome créditos pelo custo real das IAs mais a margem da plataforma. O dono define o **teto de gasto** de
+cada funcionário, e a plataforma pode travar também o gasto total da empresa.
 
-| Plano | Para quem | Como funciona |
-| --- | --- | --- |
-| Grátis | Quem está conhecendo | Poucas execuções por mês, para experimentar |
-| Padrão | Usuário comum | Mensalidade com créditos incluídos; a plataforma paga as APIs por trás |
-| Traga sua chave | Quem já tem conta de API | Mais barato; o consumo das IAs vai para a conta do próprio usuário |
-| Conector MCP (futuro) | Quem já vive no Claude ou no ChatGPT | Versão low cost: as receitas rodam dentro do chat que o usuário já assina |
+**Em aberto (F04 do `FALHAS.md`):**
 
-**A conta central:** quantos créditos o plano inclui *versus* quanto cada execução custa em API. Créditos extras podem ser comprados avulsos.
+- Formato da cobrança: mensalidade por empresa com créditos incluídos, valor por funcionário, só pelo consumo, ou uma
+  mistura.
+- Margem sobre o custo das IAs e como lidar com a variação do dólar.
+- Se haverá plano de teste grátis para empresas e como ele funciona.
+- Se o "Traga sua chave" continua (era um plano mais barato para a pessoa comum).
 
-**Assinaturas de consumo:** o “Sign in with ChatGPT”, lançado em 29/09/2026, permite usar o plano Plus/Pro em apps de terceiros, mas exige aprovação para produtos pagos. A Anthropic não permite o uso de assinaturas Claude em ferramentas de terceiros, então o Claude entra sempre via API.
+**A conta central:** quanto a empresa paga *versus* quanto as IAs custam de verdade para o uso dos funcionários dela.
+Internamente, o custo real em dólar de cada tarefa fica registrado para definir preço e margem.
+
+**Assinaturas de consumo:** a Anthropic não permite usar assinaturas Claude em ferramentas de terceiros, então o
+Claude entra sempre via API. O "Sign in with ChatGPT" (29/09/2026) permite usar o plano do ChatGPT em apps de terceiros,
+mas exige aprovação para produtos pagos e faz pouco sentido para empresas que pagam pela plataforma.
 
 ## Concorrência e riscos
 
-A versão genérica da ideia já existe; o diferencial precisa vir de acessibilidade e localização.
-
-| Tipo | Exemplos | Por que não atende o público-alvo |
+| Tipo | Exemplos | Ponto fraco para a PME brasileira |
 | --- | --- | --- |
-| Acesso unificado a modelos | OpenRouter | É só infraestrutura, para desenvolvedores |
+| Planos para empresas dos laboratórios | ChatGPT para equipes, Claude para equipes, Gemini no Google Workspace, Microsoft Copilot | Uma IA só; geralmente cobrados por usuário e em dólar; sem receitas para o trabalho brasileiro |
+| Acesso unificado a modelos | OpenRouter | Só infraestrutura, para desenvolvedores |
 | Frameworks multiagente | LangGraph, CrewAI, AutoGen | Exigem programação |
 | Automação no-code | n8n, Gumloop, Zapier Agents | Em inglês, em dólar, curva de aprendizado alta |
-| Os próprios laboratórios | Anthropic, OpenAI, Google | Cada um empurra o próprio modelo, não a combinação |
 
-**Riscos principais**
+O concorrente mais perigoso é o que a empresa **já paga**: muitas PMEs já têm Google Workspace (com Gemini) ou
+Microsoft 365 (com Copilot). O diferencial precisa estar nas receitas, na escolha entre várias IAs, no controle do dono
+e no preço em reais. O mercado brasileiro (players nacionais fazendo algo parecido) ainda não foi mapeado.
 
-- **Plataforma:** OpenAI, Anthropic ou Google lançam algo parecido. Defesa: português, reais, receitas locais e WhatsApp.
-- **Margem:** o custo de API varia com o uso. Defesa: limite de créditos por plano e escolha de modelos mais baratos para papéis simples.
-- **Valor percebido:** o usuário pode não ver vantagem em várias IAs *versus* uma só. Defesa: validar com usuários reais antes de escalar.
-- **Mercado brasileiro:** ainda não foi mapeado com cuidado. É preciso confirmar se há players nacionais fazendo isso.
+**Riscos e falhas:** a lista completa e atualizada fica em `docs/FALHAS.md`, com status de cada uma. Os principais hoje:
+produto virar commodity sem as receitas (F01), preço e margem (F04), LGPD (F05) e o login de demonstração (F10 a F13).
 
 ## Escopo do MVP
 
-O MVP prova uma coisa: um usuário leigo consegue rodar um time de IAs e acha o resultado melhor do que usar uma IA só.
+O MVP prova uma coisa: **uma empresa pequena ou média usa a plataforma no dia a dia e acha que vale pagar por ela**,
+porque os funcionários entregam melhor ou mais rápido e o dono enxerga e controla o uso.
 
 **Entra**
 
-- Cadastro e login
-- Tela de receitas com 4 receitas prontas (as marcadas como MVP acima)
-- Editor simples do time: trocar a IA de cada papel
-- Execução em sequência (chefe → executores → revisor → consolidação), mostrando cada etapa na tela
-- Histórico de execuções
-- 3 modelos disponíveis: Claude, GPT e Gemini, via API
-- Contador de créditos
+- Cadastro da empresa e login de verdade para o dono e para os funcionários
+- Painel do dono: funcionários, teto de gasto, crédito da empresa, entregas e gastos por funcionário e por IA
+- Workspace do funcionário com os três modos: receitas prontas, receita própria e tarefa rápida
+- As 4 receitas do MVP (marcadas na tabela acima), adaptadas ao uso dentro da empresa
+- Recomendação de IA, nível e esforço, com o funcionário livre para escolher
+- Histórico de tarefas e entregas
+- Claude, GPT e Gemini via API, com a medição do custo de cada tarefa
+- Geração de arquivos (PDF, Word, Excel, gráficos), que já existe
 
 **Fica de fora por enquanto**
 
-- Pagamento real (no início, acesso por convite)
-- “Traga sua chave”
-- Upload de arquivos, vídeo e execução de código
+- Pagamento real (no início, empresas convidadas, com crédito carregado à mão)
+- Vídeo e execução de código no servidor
 - Conector MCP e WhatsApp
-- Projeto próprio totalmente livre
+- Nichar para um tipo de empresa (F02)
 
 ## Regras de funcionamento
 
 As regras abaixo valem para o MVP e entram no `AGENTS.md` como especificação para o código.
+
+**Com o produto para empresas:** onde se lê "usuário", leia o funcionário. O "saldo" é a carteira da empresa, e o
+funcionário nunca passa do teto que o dono definiu para ele. O que o dono enxerga do histórico ainda está em aberto (F05).
 
 **Erro de uma IA no meio da execução**
 
@@ -197,6 +262,7 @@ O GitHub é o ponto de encontro: as duas IAs leem o mesmo repositório e convers
 | Quem | Papel | Onde trabalha |
 | --- | --- | --- |
 | Luis | Dono do produto: decide o que construir, aprova e testa | GitHub e plataforma rodando |
+| Parceiro do Luis | Sócio no projeto: discute o produto e também programa (fez o PR #19) | Claude Code, no mesmo repositório |
 | Claude | Arquiteto e programador principal: escreve especificações, quebra em tarefas, programa e revisa | Claude Code / Cowork, conectado ao repositório |
 | Codex | Segundo programador e revisor independente: pega tarefas isoladas e revisa PRs com outro olhar | Codex conectado ao mesmo repositório |
 
@@ -215,14 +281,21 @@ O GitHub é o ponto de encontro: as duas IAs leem o mesmo repositório e convers
 
 - [x] Desenhar as telas principais (receitas, editor do time, execução, resultado)
 - [x] Criar conta no GitHub e o repositório do projeto
-- [ ] Criar contas de API (Anthropic, OpenAI, Google) com limite baixo de gasto — em andamento (09/10): o fluxo já funciona na tela com a IA simulada; as contas são criadas com um e-mail só do projeto, crédito mínimo e recarga automática desligada
 - [x] Escrever o `AGENTS.md` com a stack e as regras
-- [ ] Construir o primeiro fluxo ponta a ponta: uma receita, três IAs, resultado na tela
-- [ ] Testar com 5 a 10 pessoas (colegas do Insper, conhecidos) e anotar o que travou
-- [ ] Mapear players brasileiros de IA e automação
+- [x] Primeiro fluxo ponta a ponta com IA simulada (etapa 4, Parte A)
+- [x] IAs reais ligadas no código (PR #19); falta conferir com chaves no computador do Luis
+- [ ] Alinhar a visão nova com o parceiro (este documento e o `FALHAS.md`)
+- [ ] Base para empresas: banco no repositório, login de verdade, cadastro de empresa, painel do dono protegido
+- [ ] Workspace com receitas prontas, receita própria e tarefa rápida; escolha livre da IA
+- [ ] Créditos, teto e preço
+- [ ] Conversar com 3 a 5 donos de empresa e testar com empresas reais
+- [ ] Mapear players brasileiros de IA para empresas
 
 **Decisões em aberto**
 
-- Nome e marca da plataforma
-- Preço dos planos e quantidade de créditos
-- Cronograma do MVP, considerando o ritmo de cerca de 1 h por dia útil e sessões mais longas no fim de semana
+- Nome e marca (OCK é provisório)
+- Formato do preço, margem e plano de teste (F04)
+- O que o dono vê: só entregas e gastos, ou as conversas inteiras (F05)
+- Se o "Traga sua chave" continua
+- Se e quando nichar (F02)
+- Cronograma, considerando o ritmo de cerca de 1 h por dia útil e sessões mais longas no fim de semana

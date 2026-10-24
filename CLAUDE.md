@@ -9,6 +9,9 @@ As regras deste projeto ficam no `AGENTS.md`, compartilhado com o Codex. Leia e 
 - **Diário do projeto:** ao fim de cada etapa (ou de uma sessão longa), atualize `docs/PROGRESSO.md`
   com o que ficou pronto, decisões tomadas e o próximo passo. Se uma decisão mudar o produto,
   atualize também `docs/DOCUMENTO-PROJETO.md`. Inclua essas mudanças num commit.
+- **Registro de falhas:** sempre que perceber uma falha nova numa conversa (negócio, produto, código, segurança ou
+  processo), anote em `docs/FALHAS.md` com o próximo número livre e avise o Luis. Quando uma falha for resolvida, mude o
+  status e escreva como. Inclua no commit.
 - **Troca de conversa:** avise o Luis quando for hora de abrir uma conversa nova. Diga onde abrir
   (Claude Code ou Cowork), qual mensagem colar e qual nível de esforço usar. Atualize o PROGRESSO antes.
 - **Quando sugerir o Cowork (app do Claude):** discussões de negócio, preço, nome e marca, documentos,
