@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createSiteRecipe } from "@/lib/recipes/create-site";
-import { parseRunRequest } from "./parse-request";
+import { isRunId, parseRunRequest } from "./parse-request";
 
 const VALID = { recipeId: "create-site", request: "Quero um site para minha confeitaria." };
 
@@ -10,10 +10,9 @@ function refusal(...problems: string[]) {
 
 describe("conferência do pedido que chega pela internet", () => {
   it("aceita um pedido válido e entrega ao motor a receita completa, com o time escolhido", () => {
-    expect(parseRunRequest({ ...VALID, team: { frontend: "claude" }, keys: { claude: "sk-x" } })).toEqual({
+    expect(parseRunRequest({ ...VALID, team: { frontend: "claude" } })).toEqual({
       ok: true,
       input: { recipe: createSiteRecipe, request: VALID.request, team: { frontend: "claude" } },
-      keys: { claude: "sk-x" },
     });
     expect(parseRunRequest(VALID).ok).toBe(true);
   });
@@ -49,5 +48,14 @@ describe("conferência do pedido que chega pela internet", () => {
     expect(parseRunRequest({ ...VALID, team: { designer: "claude", frontend: "llama" } })).toEqual(
       refusal('A receita não tem o papel "designer".', 'IA desconhecida para o papel "frontend": "llama".'),
     );
+  });
+});
+
+describe("id de execução que vem no endereço", () => {
+  it("só aceita o formato de um id do banco", () => {
+    expect(isRunId("0f8fad5b-d9cb-469f-a165-70867728950e")).toBe(true);
+    for (const id of ["", "run-123", "0f8fad5b-d9cb-469f-a165-70867728950", "' or 1=1 --"]) {
+      expect(isRunId(id)).toBe(false);
+    }
   });
 });

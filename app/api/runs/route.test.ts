@@ -1,35 +1,42 @@
-import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { CurrentMember } from "@/lib/auth/member";
+import type { Viewer } from "@/lib/auth/viewer";
 import { POST } from "./route";
 
 // A rota de criação não roda nada nem fala com a rede: só cria a execução e dispara o 1º segmento.
-// Trocamos o store (banco) e o disparo por dublês, e conferimos o que a rota pede a cada um.
+// Trocamos quem está logado, o store (banco) e o disparo por dublês, e conferimos o que a rota pede a cada um.
 
-const createRun = vi.hoisted(() => vi.fn((run: Record<string, unknown>): Promise<string> => {
-  void run;
-  return Promise.resolve("run-generated");
-}));
-const saveSecret = vi.hoisted(() => vi.fn((id: string, blob: string): Promise<void> => {
-  void id;
-  void blob;
-  return Promise.resolve();
-}));
+const createRun = vi.hoisted(() =>
+  vi.fn((run: Record<string, unknown>): Promise<string> => {
+    void run;
+    return Promise.resolve("run-generated");
+  }),
+);
 const triggerContinue = vi.hoisted(() => vi.fn());
+const viewer = vi.hoisted(() => ({ current: { status: "signed-out" } as Viewer }));
 
-vi.mock("@/lib/runs/store", () => ({ createRun, saveSecret }));
-vi.mock("@/lib/runs/trigger", () => ({ triggerContinue, originFromRequest: () => undefined }));
+vi.mock("@/lib/runs/store", () => ({ createRun }));
+vi.mock("@/lib/runs/trigger", () => ({ triggerContinue }));
+vi.mock("@/lib/auth/viewer", () => ({ getViewer: async () => viewer.current }));
+
+const ANA: CurrentMember = {
+  id: "11111111-1111-4111-8111-111111111111",
+  companyId: "c0000000-0000-4000-8000-000000000000",
+  companyName: "Doce Encanto",
+  name: "Ana Lima",
+  email: "ana@example.com",
+  role: "employee",
+};
 
 beforeEach(() => {
-  // encryptKeys precisa de uma chave secreta válida (hex de 32 bytes). Valor só de teste.
-  process.env.RUN_KEY_SECRET = "1".repeat(64);
+  viewer.current = { status: "member", member: ANA };
 });
 
 afterEach(() => {
   vi.clearAllMocks();
-  delete process.env.RUN_KEY_SECRET;
 });
 
-const BODY = { recipeId: "create-site", request: "Quero um site para minha confeitaria.", ownerToken: "token-dono" };
+const BODY = { recipeId: "create-site", request: "Quero um site para minha confeitaria.", pageMemberId: ANA.id };
 
 function post(body: string, contentType = "application/json"): Promise<Response> {
   return POST(
@@ -41,12 +48,8 @@ function post(body: string, contentType = "application/json"): Promise<Response>
   );
 }
 
-function sha256(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
 describe("rota POST /api/runs (cria a execução persistida)", () => {
-  it("cria a execução na fila, com o time e o plano, e devolve o id (201)", async () => {
+  it("cria a execução na fila, em nome da empresa e da pessoa logada, e devolve o id (201)", async () => {
     const response = await post(JSON.stringify({ ...BODY, team: { frontend: "claude" } }));
 
     expect(response.status).toBe(201);
@@ -55,9 +58,10 @@ describe("rota POST /api/runs (cria a execução persistida)", () => {
     expect(createRun).toHaveBeenCalledTimes(1);
     expect(createRun).toHaveBeenCalledWith(
       expect.objectContaining({
+        company_id: ANA.companyId,
+        member_id: ANA.id,
         recipe_id: "create-site",
         request: "Quero um site para minha confeitaria.",
-        owner_token: sha256("token-dono"),
         team: expect.objectContaining({ frontend: "claude" }),
       }),
     );
@@ -66,24 +70,39 @@ describe("rota POST /api/runs (cria a execução persistida)", () => {
     expect(plan.map((stage) => stage.stageId)).toEqual(["brief", "build", "review", "final"]);
 
     // Dispara o 1º segmento.
-    expect(triggerContinue).toHaveBeenCalledWith("run-generated", undefined);
+    expect(triggerContinue).toHaveBeenCalledWith("run-generated");
   });
 
-  it("guarda as chaves do usuário (criptografadas) quando ele conectou alguma", async () => {
-    await post(JSON.stringify({ ...BODY, keys: { claude: "sk-ant-abc" } }));
-
-    expect(saveSecret).toHaveBeenCalledTimes(1);
-    const [id, blob] = saveSecret.mock.calls[0];
-    expect(id).toBe("run-generated");
-    expect(typeof blob).toBe("string");
-    // O blob guardado não deixa a chave à mostra.
-    expect(blob).not.toContain("sk-ant-abc");
+  it("a empresa e a pessoa vêm do login, nunca do pedido", async () => {
+    await post(JSON.stringify({ ...BODY, company_id: "outra-empresa", member_id: "outra-pessoa" }));
+    expect(createRun).toHaveBeenCalledWith(expect.objectContaining({ company_id: ANA.companyId, member_id: ANA.id }));
   });
 
-  it("sem chaves conectadas, não guarda segredo nenhum", async () => {
-    await post(JSON.stringify(BODY));
-    expect(saveSecret).not.toHaveBeenCalled();
-    expect(createRun).toHaveBeenCalledTimes(1);
+  it("sem ninguém conectado, recusa (401) e não cria nada", async () => {
+    viewer.current = { status: "signed-out" };
+    const response = await post(JSON.stringify(BODY));
+    expect(response.status).toBe(401);
+    expect((await response.json()).problems[0]).toContain("não está mais conectada");
+    expect(createRun).not.toHaveBeenCalled();
+  });
+
+  it("quem foi desativado não começa execução (403)", async () => {
+    viewer.current = { status: "disabled" };
+    const response = await post(JSON.stringify(BODY));
+    expect(response.status).toBe(403);
+    expect(createRun).not.toHaveBeenCalled();
+  });
+
+  it("com o login trocado em outra aba, não faz nada e diz quem está conectado agora (409)", async () => {
+    viewer.current = {
+      status: "member",
+      member: { ...ANA, id: "22222222-2222-4222-8222-222222222222", name: "Bruno Teste" },
+    };
+    const response = await post(JSON.stringify(BODY));
+    expect(response.status).toBe(409);
+    expect((await response.json()).problems[0]).toContain("quem está conectado agora é Bruno Teste");
+    expect(createRun).not.toHaveBeenCalled();
+    expect(triggerContinue).not.toHaveBeenCalled();
   });
 
   it("recusa pedido inválido na hora, com a mensagem em português", async () => {

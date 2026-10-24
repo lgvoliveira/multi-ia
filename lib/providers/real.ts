@@ -1,4 +1,4 @@
-// Conectores REAIS das IAs: recebem a chave que a PESSOA conectou e chamam a API de cada empresa.
+// Conectores REAIS das IAs: recebem a chave da plataforma e chamam a API de cada empresa.
 // Cumprem o mesmo contrato (AiProvider) da IA simulada, então o motor não muda nada para usá-los.
 // A chave vem por parâmetro, é usada só nesta chamada e nunca é gravada nem registrada em log.
 //
@@ -19,8 +19,9 @@ type ImageInput = { mime: string; base64: string };
 
 // MODELO por IA e por NÍVEL (econômico/padrão/potente). É o ÚNICO lugar a ajustar os nomes dos modelos.
 // Famílias escolhidas pelo doc "Melhor IA por função": Claude Haiku/Sonnet/Opus 5.5; GPT-6 Luna/6.1 Sol/6 Astra;
-// Gemini Flash/Pro. ⚠️ Os NOMES DE API do GPT e do Gemini são a minha leitura do doc — confirme com o botão
-// "Ver modelos disponíveis" (aba de chaves do dono). Se algum ID estiver diferente, é só corrigir AQUI.
+// Gemini Flash/Pro. ⚠️ Os NOMES DE API do GPT e do Gemini são a minha leitura do doc — confirme na lista de modelos
+// de cada empresa antes de ligar as chaves (o botão "Ver modelos disponíveis" saiu com "Minhas chaves", em 24/10).
+// Se algum ID estiver diferente, é só corrigir AQUI.
 const MODELS_BY_TIER: Record<ProviderId, Record<ModelTier, string>> = {
   claude: { economico: "claude-haiku-5-5", padrao: "claude-sonnet-5-5", potente: "claude-opus-5-5" },
   gpt: { economico: "gpt-6-luna", padrao: "gpt-6.1-sol", potente: "gpt-6-astra" },

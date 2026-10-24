@@ -1,6 +1,6 @@
-// O lado do navegador: pede ao servidor para CRIAR uma execução e devolve o id dela.
+// O lado do navegador: pede ao servidor para CRIAR uma execução (e devolve o id dela) ou para cancelá-la.
 // A execução roda no servidor, persistida, em chamadas curtas e separadas; o navegador acompanha
-// depois pelo Realtime/replay (ver lib/runs/live-client.ts). Aqui não há mais transmissão ao vivo.
+// depois buscando as novidades (ver lib/runs/live-client.ts).
 
 import type { RunRefusalBody, RunRequestBody } from "./parse-request";
 
@@ -10,13 +10,8 @@ export const OFFLINE_PROBLEM =
   "Não conseguimos falar com o servidor. Confira sua internet e tente de novo.";
 export const SERVER_PROBLEM = "Algo deu errado do nosso lado. Tente de novo daqui a pouco.";
 
-/** O corpo que o navegador manda: o pedido, o time, as chaves conectadas e o token do dono. */
-export interface StartRunBody extends RunRequestBody {
-  /** Identidade anônima de quem iniciou, para poder cancelar depois (ver lib/runs/owner.ts). */
-  ownerToken: string;
-}
-
 export type RunStart = { ok: true; runId: string } | { ok: false; problems: string[] };
+export type RunCancel = { ok: true } | { ok: false; problems: string[] };
 
 export interface StartRunOptions {
   /** Cancela só o pedido de criação (não a execução, que já roda no servidor). */
@@ -26,7 +21,7 @@ export interface StartRunOptions {
 }
 
 /** Cria uma execução. Devolve o id, ou os problemas que o servidor apontou. */
-export async function startRun(body: StartRunBody, options: StartRunOptions = {}): Promise<RunStart> {
+export async function startRun(body: RunRequestBody, options: StartRunOptions = {}): Promise<RunStart> {
   const send = options.fetch ?? fetch;
   let response: Response;
   try {
@@ -55,7 +50,27 @@ export async function startRun(body: StartRunBody, options: StartRunOptions = {}
   return { ok: false, problems: [SERVER_PROBLEM] };
 }
 
-async function readProblems(response: Response): Promise<string[]> {
+/** Pede para cancelar a execução. `pageMemberId` é quem abriu a página, para o servidor conferir o login (F34). */
+export async function cancelRun(
+  runId: string,
+  pageMemberId: string,
+  options: Pick<StartRunOptions, "fetch"> = {},
+): Promise<RunCancel> {
+  const send = options.fetch ?? fetch;
+  try {
+    const response = await send(`${RUNS_URL}/${runId}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pageMemberId }),
+    });
+    return response.ok ? { ok: true } : { ok: false, problems: await readProblems(response) };
+  } catch {
+    return { ok: false, problems: [OFFLINE_PROBLEM] };
+  }
+}
+
+/** Os problemas que o servidor mandou ao recusar. Fora do formato combinado, um problema genérico. */
+export async function readProblems(response: Response): Promise<string[]> {
   try {
     const body: unknown = await response.json();
     if (isRefusal(body)) return body.problems;

@@ -1,108 +1,125 @@
 // POST /api/runs/[id]/continue: roda UM segmento (uma fase) de uma execução persistida e encadeia o próximo.
-// É interna: só o próprio servidor chama, com o segredo INTERNAL_RUN_SECRET. O navegador nunca chama isto.
-// Fluxo: reivindica a execução → reconstrói o estado do banco → roda um segmento → guarda eventos, etapas
-// e o novo estado → se acabou, encerra e apaga as chaves; senão, volta para a fila e dispara a próxima.
-// Se algo estourar no meio, a reserva (lease) é deixada intacta: o varredor retoma depois que ela vencer.
+// É interna: só o próprio servidor chama, com o segredo interno (lib/runs/internal-secret.ts). O navegador nunca.
+// Fluxo: reivindica a execução → reconstrói o estado do banco → roda um segmento, gravando a narração aos poucos
+// (F35) → guarda as chamadas às IAs e o novo estado → se acabou, encerra; senão, volta para a fila e dispara a próxima.
+// Enquanto a fase roda, renova a reserva a cada poucos segundos e, se a pessoa cancelou, para a IA no meio.
+// Se algo estourar no meio, a reserva para de ser renovada e vence logo: a próxima busca da tela retoma a execução.
+// Até a parte 3b do PR 3 (estimativa e cobrança), as receitas rodam só com a IA simulada, que não custa nada.
 
 import { runSegment } from "@/lib/engine/segment";
-import type { RunSnapshot } from "@/lib/engine/types";
-import { createGetProvider, type ProviderKeys } from "@/lib/providers/registry";
+import type { RunEvent, RunSnapshot } from "@/lib/engine/types";
+import { getProvider } from "@/lib/providers/registry";
 import { getRecipe } from "@/lib/recipes/catalog";
-import { decryptKeys } from "@/lib/runs/crypto";
-import { toPublicEvent, type PublicRunEvent } from "@/lib/runs/public-events";
+import { createEventBuffer } from "@/lib/runs/event-buffer";
+import { isInternalCall } from "@/lib/runs/internal-secret";
+import { toPublicEvent } from "@/lib/runs/public-events";
 import {
   appendEvents,
-  appendSteps,
   claimRun,
-  deleteSecret,
-  getSecret,
   loadRun,
+  recordAiCalls,
+  renewLease,
   saveSnapshot,
   setStatus,
+  type AiCallRow,
   type RunError,
   type RunRow,
-  type StepRow,
 } from "@/lib/runs/store";
-import { originFromRequest, triggerContinue } from "@/lib/runs/trigger";
+import { triggerContinue } from "@/lib/runs/trigger";
 
 // Um segmento pode levar minutos (uma fase com IAs reais): pede o teto de tempo de função.
 export const maxDuration = 300;
 
+/** De quanto em quanto tempo quem roda renova a reserva e confere se a pessoa cancelou. */
+const HEARTBEAT_MS = 2000;
+
 export async function POST(request: Request, context: RouteContext<"/api/runs/[id]/continue">): Promise<Response> {
-  if (request.headers.get("x-internal-secret") !== process.env.INTERNAL_RUN_SECRET) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  if (!isInternalCall(request)) return new Response("Unauthorized", { status: 401 });
 
   const { id } = await context.params;
 
   // Reivindica a execução para rodar agora. Se já está rodando em outro lugar (reserva válida) ou acabou, não faz nada.
   const row = await claimRun(id);
   if (!row) return new Response(null, { status: 200 });
+  const claimedAt = Date.now();
 
   try {
-    await runOneSegment(id, row, originFromRequest(request));
+    await runOneSegment(row, claimedAt);
     return new Response(null, { status: 200 });
   } catch (error) {
-    // Defeito nosso no meio do segmento: NÃO mexe na reserva. O varredor retoma quando ela vencer.
-    // Nunca registramos as chaves do usuário: só a mensagem do erro.
+    // Defeito nosso no meio do segmento: a reserva vence sozinha e a execução é retomada depois.
     console.error(`[api/runs/continue] Falha ao rodar o segmento de ${id}:`, error);
     return new Response(null, { status: 500 });
   }
 }
 
-/** Roda um segmento: reconstrói o estado, executa uma fase, guarda tudo e encadeia a próxima (ou encerra). */
-async function runOneSegment(id: string, row: RunRow, originHint?: string): Promise<void> {
+/**
+ * Roda um segmento: reconstrói o estado, executa uma fase, guarda tudo e encadeia a próxima (ou encerra).
+ * `claimedAt` é quando este servidor reivindicou a execução, no relógio dele.
+ */
+async function runOneSegment(row: RunRow, claimedAt: number): Promise<void> {
   const recipe = getRecipe(row.recipe_id);
   if (!recipe) throw new Error(`Receita desconhecida: "${row.recipe_id}".`);
 
-  const keys = await loadKeys(id);
-  const getProvider = createGetProvider(keys);
-
-  const snapshot = hydrate(row);
-
-  const events: PublicRunEvent[] = [];
-  const steps: StepRow[] = [];
+  const controller = new AbortController();
+  const heartbeat = startHeartbeat(row, controller);
+  // Se outro servidor assumiu a execução, nada mais deste segmento é gravado: ele recomeça a fase do zero.
+  const narration = createEventBuffer(async (events) => {
+    if (heartbeat.lost()) throw new Error("Outro servidor assumiu a execução no meio do segmento.");
+    await appendEvents(row, events);
+  });
+  const aiCalls: AiCallRow[] = [];
   let finalResult: string | null = null;
   let finalDurationMs: number | null = null;
   let runError: RunError | null = null;
+  let updated: RunSnapshot;
 
-  const generator = runSegment(snapshot, recipe, { getProvider });
-  let next = await generator.next();
-  while (!next.done) {
-    const event = next.value;
-    if (event.type === "step-finished") {
-      // Campos internos (modelo, tokens) existem AQUI, antes de toPublicEvent apagá-los: viram o histórico interno.
-      steps.push({
-        step_id: event.stepId,
-        round: event.round ?? 1,
-        provider: event.provider,
-        model: event.model,
-        input_tokens: event.usage.inputTokens,
-        output_tokens: event.usage.outputTokens,
-        truncated: event.truncated,
-        duration_ms: event.durationMs,
-        status: "done",
-      });
-    } else if (event.type === "run-finished") {
-      finalResult = event.result;
-      finalDurationMs = event.durationMs;
-    } else if (event.type === "run-failed") {
-      runError = {
-        stepId: event.stepId,
-        provider: event.provider,
-        retryable: event.retryable,
-        errorMessage: event.errorMessage,
-      };
+  try {
+    const generator = runSegment(hydrate(row), recipe, { getProvider, signal: controller.signal });
+    let next = await generator.next();
+    while (!next.done) {
+      let event = next.value;
+      logFailure(event);
+      if (event.type === "step-finished") {
+        // Campos internos (modelo, tokens) existem AQUI, antes de toPublicEvent apagá-los: viram o registro interno.
+        aiCalls.push({
+          company_id: row.company_id,
+          member_id: row.member_id,
+          run_id: row.id,
+          step_id: event.stepId,
+          provider: event.provider,
+          model: event.model,
+          input_tokens: event.usage.inputTokens,
+          output_tokens: event.usage.outputTokens,
+          status: "ok",
+          duration_ms: event.durationMs,
+        });
+      } else if (event.type === "run-finished") {
+        // O motor conta só o tempo deste segmento; a pessoa esperou desde que pediu.
+        event = { ...event, durationMs: waitedMs(row, claimedAt) };
+        finalResult = event.result;
+        finalDurationMs = event.durationMs;
+      } else if (event.type === "run-failed") {
+        runError = {
+          stepId: event.stepId,
+          provider: event.provider,
+          retryable: event.retryable,
+          errorMessage: event.errorMessage,
+        };
+      }
+      narration.push(toPublicEvent(event));
+      next = await generator.next();
     }
-    events.push(toPublicEvent(event));
-    next = await generator.next();
+    updated = next.value;
+    // A narração inteira vai para o banco ANTES de o status mudar (a tela confia nessa ordem).
+    await narration.flush();
+  } finally {
+    heartbeat.stop();
   }
-  const updated = next.value;
+  if (heartbeat.lost()) throw new Error("Outro servidor assumiu a execução no meio do segmento.");
 
-  // Guarda o histórico interno de etapas e os eventos (em ordem), e então o novo estado.
-  await appendSteps(id, steps);
-  await appendEvents(id, events);
-  await saveSnapshot(id, {
+  await recordAiCalls(aiCalls);
+  await saveSnapshot(row.id, {
     outputs: updated.outputs,
     results: updated.results,
     team: updated.team,
@@ -110,30 +127,75 @@ async function runOneSegment(id: string, row: RunRow, originHint?: string): Prom
   });
 
   if (updated.done) {
-    // Terminou (sucesso, falha ou cancelamento): encerra e apaga as chaves — não as guardamos além do necessário.
-    await setStatus(id, updated.status ?? "finished", {
+    // Terminou (sucesso, falha ou cancelamento): encerra.
+    await setStatus(row.id, updated.status ?? "finished", {
       result: finalResult,
       duration_ms: finalDurationMs,
       finished_at: new Date().toISOString(),
       lease_until: null,
       error: runError,
     });
-    await deleteSecret(id);
     return;
   }
 
   // Ainda há fases. Se a pessoa cancelou enquanto este segmento rodava, para a corrente aqui.
-  const fresh = await loadRun(id);
+  const fresh = await loadRun(row.id);
   if (fresh?.status === "cancelled") return;
   // Volta para a fila (libera a reserva) e dispara o próximo segmento.
-  await setStatus(id, "queued", { lease_until: null });
-  triggerContinue(id, originHint);
+  await setStatus(row.id, "queued", { lease_until: null });
+  triggerContinue(row.id);
 }
 
-/** Lê e descriptografa as chaves do usuário; sem chaves (ninguém conectou), roda tudo na IA simulada. */
-async function loadKeys(id: string): Promise<ProviderKeys> {
-  const blob = await getSecret(id);
-  return blob ? decryptKeys(blob) : {};
+/**
+ * Renova a reserva a cada poucos segundos enquanto a fase roda. Se a pessoa cancelou, para a IA no meio: o motor narra
+ * o cancelamento e devolve o estado. Se outro servidor pegou a execução (a reserva venceu antes), para também, e
+ * `lost()` passa a dizer que nada deste segmento deve ser gravado.
+ */
+function startHeartbeat(row: RunRow, controller: AbortController): { stop: () => void; lost: () => boolean } {
+  let lost = false;
+  const timer = setInterval(async () => {
+    try {
+      // row.attempt já é o número desta reivindicação (claimRun devolve a linha depois de somar 1).
+      const status = await renewLease(row.id, row.attempt);
+      if (status === null) lost = true;
+      if (status === null || status === "cancelled") controller.abort();
+    } catch (error) {
+      // Sem conseguir renovar agora: tenta de novo no próximo intervalo.
+      console.error(`[api/runs/continue] Não consegui renovar a reserva de ${row.id}:`, error);
+    }
+  }, HEARTBEAT_MS);
+  return { stop: () => clearInterval(timer), lost: () => lost };
+}
+
+/**
+ * Quanto a pessoa esperou, do pedido até agora. O pedido (created_at) e a reivindicação (updated_at, gravado pelo
+ * banco no claimRun) vêm do relógio do banco; o tempo desde a reivindicação vem do relógio deste servidor. Assim,
+ * um relógio do servidor adiantado ou atrasado em relação ao do banco não muda a conta.
+ */
+function waitedMs(row: RunRow, claimedAt: number): number {
+  const untilClaim = Date.parse(row.updated_at) - Date.parse(row.created_at);
+  return Math.max(0, untilClaim + (Date.now() - claimedAt));
+}
+
+/** Registra no terminal do servidor cada falha de IA, com a mensagem técnica (a tela nunca a recebe). */
+function logFailure(event: RunEvent): void {
+  switch (event.type) {
+    case "step-retrying":
+      console.warn(
+        `[api/runs] A etapa "${event.stepId}" falhou (${event.provider}); ` +
+          `tentativa ${event.attempt} daqui a ${event.delayMs} ms: ${event.errorMessage}`,
+      );
+      return;
+    case "step-switched":
+      console.warn(
+        `[api/runs] A etapa "${event.stepId}" falhou (${event.from}); ` +
+          `${event.to} assumiu o papel "${event.roleId}": ${event.errorMessage}`,
+      );
+      return;
+    case "run-failed":
+      console.error(`[api/runs] A etapa "${event.stepId}" falhou (${event.provider}): ${event.errorMessage}`);
+      return;
+  }
 }
 
 /** Reconstrói o RunSnapshot a partir da linha do banco, para a execução continuar de onde parou. */

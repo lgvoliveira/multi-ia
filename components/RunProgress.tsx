@@ -24,6 +24,8 @@ interface RunProgressProps {
   recipeName: string;
   request: string;
   run: RunState;
+  /** Aviso de algo que não deu certo enquanto o time trabalha (ex.: o login do navegador mudou). */
+  notice?: string | null;
   onCancel: () => void;
   onRestart: () => void;
 }
@@ -45,7 +47,7 @@ const DOCUMENT_PARTS: { key: keyof LiveDocument; label: string }[] = [
   { key: "reviewNotes", label: "Revisão do chefe" },
 ];
 
-export function RunProgress({ recipeName, request, run, onCancel, onRestart }: RunProgressProps) {
+export function RunProgress({ recipeName, request, run, notice, onCancel, onRestart }: RunProgressProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   // Leva o foco para o título quando esta tela aparece: quem usa leitor de tela fica sabendo da troca.
@@ -82,6 +84,11 @@ export function RunProgress({ recipeName, request, run, onCancel, onRestart }: R
       </div>
 
       {message && <p className={`${styles.message} ${styles[message.tone]}`}>{message.text}</p>}
+      {notice && run.status === "running" && (
+        <p className={`${styles.message} ${styles.messageError}`} role="alert">
+          {notice}
+        </p>
+      )}
 
       <p className={styles.request}>
         <span className={styles.requestLabel}>Seu pedido:</span> {request}
