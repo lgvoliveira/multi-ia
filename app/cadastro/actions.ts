@@ -3,23 +3,13 @@
 // Cadastro da empresa: cria o login do dono no Supabase Auth e manda o e-mail de confirmação. A empresa só nasce no
 // banco no primeiro acesso, com o e-mail confirmado (lib/auth/company-signup.ts).
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { LOGIN_NOT_CONFIGURED } from "@/lib/auth/config";
 import { ensureOwnerCompany, signupMetadata } from "@/lib/auth/company-signup";
 import { parseSignUp, type SignUpState } from "@/lib/auth/forms";
 import { signUpErrorMessage } from "@/lib/auth/messages";
 import { createSessionClient } from "@/lib/auth/session";
-
-/** O endereço deste site, para o link do e-mail voltar para cá (o Supabase só aceita os endereços liberados no painel). */
-async function siteOrigin(): Promise<string> {
-  const h = await headers();
-  const origin = h.get("origin");
-  if (origin) return origin;
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
-}
+import { siteOrigin } from "@/lib/auth/site-origin";
 
 export async function signUpCompany(_previous: SignUpState, formData: FormData): Promise<SignUpState> {
   const parsed = parseSignUp(formData);

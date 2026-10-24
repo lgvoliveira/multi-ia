@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSignIn, parseSignUp } from "./forms";
+import { parseNewPassword, parseSignIn, parseSignUp } from "./forms";
 
 function form(fields: Record<string, string>): FormData {
   const data = new FormData();
@@ -94,5 +94,37 @@ describe("conferência da entrada", () => {
       errors: { email: "Preencha o e-mail.", password: "Preencha a senha." },
       values: { email: "" },
     });
+  });
+});
+
+describe("conferência da senha criada no convite", () => {
+  it("aceita a senha repetida igual, sem mexer em espaços", () => {
+    expect(parseNewPassword(form({ password: " senha boa ", confirm: " senha boa " }))).toEqual({
+      ok: true,
+      values: { password: " senha boa ", confirm: " senha boa " },
+    });
+  });
+
+  it("pede pelo menos 8 caracteres e no máximo 72 bytes", () => {
+    expect(parseNewPassword(form({ password: "curta", confirm: "curta" }))).toEqual({
+      ok: false,
+      errors: { password: "A senha precisa de pelo menos 8 caracteres." },
+      values: {},
+    });
+    const long = "ç".repeat(37);
+    expect(parseNewPassword(form({ password: long, confirm: long }))).toEqual({
+      ok: false,
+      errors: { password: "A senha é longa demais." },
+      values: {},
+    });
+  });
+
+  it("avisa quando a repetição não bate, e nunca devolve a senha", () => {
+    expect(parseNewPassword(form({ password: "senha-boa-123", confirm: "senha-boa-12" }))).toEqual({
+      ok: false,
+      errors: { confirm: "As duas senhas não são iguais. Digite de novo." },
+      values: {},
+    });
+    expect(parseNewPassword(new FormData()).ok).toBe(false);
   });
 });
