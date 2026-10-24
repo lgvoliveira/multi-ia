@@ -321,3 +321,5 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O problema:** falta o Supabase e as chaves no `.env.local`. As checagens (lint, testes, build) do PR #19 também não
   foram conferidas pelo Luis.
 - **O que fazer:** primeira tarefa da etapa 5.
+- **Andamento (24/10/2026):** o site roda no computador do Luis, ligado ao projeto de testes do Supabase, e ele testou o
+  login de verdade (PR #29) com tudo dando certo. Falta o chat e as receitas, que voltam no PR 3, já no banco novo.

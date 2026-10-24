@@ -1,6 +1,9 @@
 # Guia: criar o projeto de testes do Supabase e testar o login
 
 > Escrito em 24/10/2026 (etapa 5) para o Luis fazer à mão, com a ajuda do chat do Claude (claude.ai).
+> **Status:** feito pelo Luis em 24/10/2026, com tudo dando o resultado esperado, e corrigido com o que ele encontrou
+> pelo caminho (partes A, B, D e E). Se precisar refazer (projeto de testes apagado, ou outra pessoa montando o dela),
+> o guia continua valendo; só o `git checkout feat/login` da parte E não é mais preciso, porque o login já está na `main`.
 > **Para o chat do Claude:** guie o Luis uma parte de cada vez, em português simples, e espere ele confirmar antes de
 > seguir. O painel do Supabase muda de vez em quando: se um nome de botão não bater, ajude a achar o equivalente pelo
 > print. **Nunca peça para ele colar no chat senhas, chaves ou o endereço do banco com a senha**; isso vai só para o
@@ -31,6 +34,8 @@ Tempo total: uns 30 minutos. Ferramentas: o navegador, o VS Code e o terminal do
    - **Project name:** `multi-ia-teste`
    - **Region:** South America (São Paulo)
    - **Plano:** Free
+   - **GitHub (optional):** deixe **vazio**. Só o projeto de verdade fica ligado ao GitHub, porque é ele que recebe as
+     migrações sozinho no merge. O de testes recebe pelo workflow da parte C.
 4. **Database password:** clique em *Generate a password* e copie a senha para o lugar seguro. Se ela tiver algum destes
    símbolos `@ # / : ? %`, gere outra até sair só letras e números (com símbolo, o endereço da parte C quebra).
 5. Opções de segurança (iguais às do projeto de verdade):
@@ -46,7 +51,8 @@ Tempo total: uns 30 minutos. Ferramentas: o navegador, o VS Code e o terminal do
 No menu da esquerda, **Authentication**:
 
 1. **URL Configuration**
-   - *Site URL*: `http://localhost:3000` → **Save**
+   - *Site URL*: o campo vem vazio, e o **Save** só funciona depois de preenchido. Digite `http://localhost:3000` →
+     **Save**
    - *Redirect URLs* → **Add URL**: `http://localhost:3000/**` → **Save**
 2. **Sign In / Providers → Email** (clique em "Email" para abrir as opções)
    - *Confirm email*: **ligado**
@@ -97,13 +103,17 @@ No menu da esquerda, **Authentication**:
    SUPABASE_SECRET_KEY=sb_secret_...
    ```
 4. Se o arquivo tiver linhas `NEXT_PUBLIC_SUPABASE_ANON_KEY` ou `SUPABASE_SERVICE_ROLE_KEY` (do banco antigo do
-   parceiro), apague essas linhas. Salve o arquivo (**Ctrl + S**).
+   parceiro), apague essas linhas.
+5. Salve: **clique dentro do arquivo** e aperte **Ctrl + S**. Sem o clique, o Ctrl + S pode ir para o terminal, e o
+   arquivo não é salvo. Confira que a bolinha branca ao lado do nome, na aba do arquivo, sumiu.
 
-**Deu certo se:** o arquivo tem as três linhas preenchidas. Ninguém além de você vê esse arquivo.
+**Deu certo se:** o arquivo tem as três linhas preenchidas e a aba está sem a bolinha. Ninguém além de você vê esse
+arquivo. Se o site mostrar "faltam as chaves do Supabase", o arquivo não foi salvo: volte ao passo 5.
 
 ## Parte E — Testar o login (10 min)
 
-1. No terminal do VS Code, na pasta do projeto:
+1. O terminal em que o Claude Code está rodando fica ocupado. Abra um **terminal novo**: no menu do VS Code,
+   **Terminal → New Terminal** (ou o **+** no canto do painel do terminal). Nele, na pasta do projeto:
    ```
    git checkout feat/login
    git pull

@@ -443,6 +443,20 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   servidor", que o login passou a usar). A pedido do Luis, o próprio PR 2a passou o Next.js para a 16.4.3 (num PR
   separado, os dois brigariam no `package-lock.json`). Conferido de novo: checagens, build e o roteiro no Chrome.
 
+**Projeto de testes e login conferidos (24/10, Luis, com o chat do Claude e o `docs/GUIA-PROJETO-DE-TESTES.md`)**
+- Projeto `multi-ia-teste` criado e configurado; o workflow "Banco de testes" ficou verde e as 11 tabelas apareceram
+  vazias. As chaves dele estão no `.env.local` do computador do Luis.
+- Login testado de verdade, todos os passos com o resultado esperado: cadastro da empresa, "Confira o seu e-mail", o
+  link de confirmação abrindo o Painel do dono, `companies` e `members` com 1 linha cada (`role` = `owner`), senha
+  errada com "E-mail ou senha incorretos", `/trabalho` em obras, `/dono` sem login mandando para Entrar, e o
+  "desativado" (status `disabled` mostrou "Seu acesso foi desativado"; o status voltou para `active`).
+- **Merge do PR #29 feito** (login de verdade na `main`). Com isso, a F22 andou: o site roda no computador do Luis,
+  ligado ao banco de testes (o chat e as receitas ainda em obras até o PR 3).
+- Correções no guia, do que ele encontrou: deixar vazio o campo "GitHub (optional)" ao criar o projeto de testes; a
+  *Site URL* vem vazia e só salva preenchida; clicar dentro do `.env.local` antes do Ctrl + S (senão vai para o
+  terminal) e conferir que a bolinha da aba sumiu; abrir um terminal novo para o `npm run dev`, porque o do Claude Code
+  fica ocupado.
+
 ## Próximo passo
 
 1. **Luis, no chat do Claude:** seguir o `docs/GUIA-PROJETO-DE-TESTES.md` (merge do PR #28 feito em 24/10): criar o
