@@ -226,6 +226,7 @@ pelo editor de SQL é permitido, porque não muda tabela.
 
 Decidido pelo Luis em 24/10/2026. O computador de desenvolvimento **não usa o banco de verdade**: usa um segundo
 projeto grátis do Supabase, `multi-ia-teste` (mesma organização, região São Paulo), só com dados de mentira.
+Passo a passo para criar e configurar: `docs/GUIA-PROJETO-DE-TESTES.md`.
 
 Por quê:
 - O computador guarda só chaves de teste. Se uma vazar, ficam expostos só dados de mentira. A chave-mestra do banco de

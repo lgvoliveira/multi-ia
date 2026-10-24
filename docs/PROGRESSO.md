@@ -5,7 +5,8 @@
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
 **Última atualização:** 24/10/2026 (etapa 5: projeto de testes do Supabase e PR 2a, login de verdade)
-**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco) no ar; PR 2a (login) aberto; próximo: PR 2b (convite)
+**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco) no ar; PR 2a (login) aberto, esperando o teste do Luis no
+projeto de testes; próximo: PR 2b (convite)
 
 ---
 
@@ -444,10 +445,10 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
 
 ## Próximo passo
 
-1. **Luis:** fazer o merge do PR do projeto de testes. Depois, criar o projeto `multi-ia-teste` e configurar (passo a
-   passo na conversa de 24/10 e no `BANCO-DE-DADOS.md`): opções de login, chaves no `.env.local`, segredo
-   `SUPABASE_TEST_DB_URL` no GitHub e o botão *Run workflow* em *Actions → Banco de testes*.
-2. **Luis:** testar o PR 2a com o projeto de testes (roteiro no PR e na conversa de 24/10) e fazer o merge.
+1. **Luis, no chat do Claude:** seguir o `docs/GUIA-PROJETO-DE-TESTES.md` (merge do PR #28 feito em 24/10): criar o
+   projeto `multi-ia-teste`, configurar o login, ligar ao GitHub (segredo `SUPABASE_TEST_DB_URL` e *Run workflow*),
+   pôr as chaves no `.env.local` e testar o PR #29 (login). Se tudo der certo, fazer o merge do #29.
+2. **Luis, de volta ao Claude Code:** contar como foi (o fim do guia diz o quê).
 3. **Claude Code** (esforço Extra alto): PR 2b, convite de funcionário por link e a parte "Equipe" do painel (issue #27).
 4. Depois: PR 3 (trocar o código do parceiro para o banco novo; F13, F16, F22 a F28).
 5. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
@@ -468,6 +469,11 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
 1. Abra o VS Code na pasta `C:\Users\Luis\projetos\multi-ia` e abra o terminal (Ctrl + ').
 2. Rode `git pull` (traz a versão mais nova do GitHub) e depois `claude`.
 3. Cole: "Estamos no projeto Multi-IA. Leia o AGENTS.md e o docs/PROGRESSO.md e continue de onde paramos."
+
+**No chat do Claude (claude.ai), para tarefas feitas à mão** (painéis do Supabase e do GitHub, configurações, testes):
+1. Anexe o guia da tarefa, que fica em `docs/` (ex.: `docs/GUIA-PROJETO-DE-TESTES.md`).
+2. Cole: "Estamos no projeto da plataforma multi-IA. Leia o guia anexado e me guie em cada parte, uma de cada vez."
+3. No fim, volte ao Claude Code contando como foi.
 
 **No chat do Claude (claude.ai), para discutir decisões:**
 1. Anexe `docs/PROGRESSO.md`, `docs/BANCO-DE-DADOS.md` e `docs/FALHAS.md` (o chat não lê a pasta sozinho).
