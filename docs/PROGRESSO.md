@@ -4,9 +4,10 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 24/10/2026 (etapa 5: aviso de troca de login testado e no ar; plano do PR 3 em 4 partes)
+**Última atualização:** 24/10/2026 (etapa 5: parte 3a do PR 3, receitas com login, pronta para o teste do Luis)
 **Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite) e o aviso de troca de
-login no ar; PR 3 (trocar o código do parceiro) dividido em 4 partes, começando pela 3a (receitas com login, issue #33)
+login no ar; PR 3 (trocar o código do parceiro) em 4 partes: a 3a (receitas com login, issue #33) está no PR, esperando
+o teste do Luis; depois, 3b (cobrança), 3c (chat) e 3d (painel do dono)
 
 ---
 
@@ -116,7 +117,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login) e PR 2b (convite) no ar; falta o PR 3 (trocar o código), em 4 partes | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login) e PR 2b (convite) no ar; PR 3 (trocar o código) em 4 partes, a 3a no PR | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -545,13 +546,46 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
 - **F33 aceita por enquanto** (Luis): ainda não há empresas reais; resolver antes da primeira, junto com o envio de
   e-mail próprio (F30).
 
+**PR 3a da etapa 5 — receitas com login (24/10, Claude Code; issue #33)**
+- **O que ficou pronto:** a receita "Criar um site" voltou (`/recipes/create-site`), para quem é da empresa e está ativo.
+  O "Em obras" do `/trabalho` ganhou o link **Abrir a receita "Criar um site"** (o chat volta na 3c). Cada execução fica
+  em `runs` com a empresa e a pessoa tiradas do login; saiu o código anônimo guardado no navegador. Ver, acompanhar e
+  cancelar só a própria execução: as rotas leem com a sessão de quem está logado, e o banco não devolve a de outra
+  pessoa (nem para o dono da empresa, pela decisão 2 de 24/10). Começar e cancelar conferem que o login ainda é o de
+  quem abriu a página (F34); a aba que perde o acesso avisa em vez de ficar parada.
+- **Narração ao vivo de novo (F35):** o servidor grava o texto das IAs a cada segundo, enquanto a fase roda, juntando os
+  pedaços de cada etapa; a tela busca as novidades a cada segundo pelo nosso servidor (saiu a leitura direta do
+  Supabase com a chave pública, F27).
+- **Achados e corrigidos no caminho:** F36 (execução parada no meio ficava parada para sempre: o "varredor" citado no
+  código não existia; agora a reserva é renovada a cada 2 s e a tela retoma a execução parada), F37 (Cancelar deixava a
+  fase ir até o fim; agora a IA para na hora), F38 ("Concluído em" mostrava só a última fase; a primeira correção
+  misturava o relógio do banco com o do computador, 5 s adiantado) e F39 (segurança: o endereço da chamada interna,
+  que leva um segredo, vinha do cabeçalho do pedido, que quem pede pode inventar; agora vem só da configuração).
+- **Saiu "Minhas chaves"** (decisão 3 de 24/10): a página `/chaves`, a conferência de chave, o "Ver modelos
+  disponíveis", as chaves guardadas no navegador e a criptografia delas. Saiu também o envio em linhas (`ndjson.ts`),
+  que ninguém usava desde o PR #19. As receitas rodam só com a IA simulada até a cobrança (3b).
+- **Sem configuração nova:** a chamada interna que leva a execução adiante usa um segredo tirado da
+  `SUPABASE_SECRET_KEY`; as variáveis `INTERNAL_RUN_SECRET` e `RUN_KEY_SECRET` saíram do `.env.example`.
+- **Cada etapa concluída** vira uma linha em `ai_calls` (modelo, tokens, tempo). Custo e tentativas que falharam entram
+  na 3b (F26).
+- **Como foi conferido:** lint, tipos, 254 testes (saíram os das peças apagadas; novos: rotas com login, fila da narração, retomada, segredo interno,
+  conferência da aba, busca de novidades) e build. **Teste de ponta a ponta** contra o projeto de testes, com um
+  roteiro no Chrome (duas empresas de mentira; funcionários Ana e Bruno): 37 conferências, todas certas — o texto
+  aparece com o cartão ainda trabalhando, o site fica pronto em ~27 s com "Concluído em 27 s", 6 linhas em `ai_calls`,
+  53 eventos na narração; o colega, o dono da empresa e o dono de outra empresa não veem a execução da Ana; sem login,
+  401; cancelar para o time de verdade; com o Bruno entrando noutra aba, a aba da Ana avisa, não cancela nem começa
+  nada, e a execução dela termina no servidor; uma execução deixada parada na fila foi retomada; desativada não começa;
+  sair da receita no meio e voltar retoma o acompanhamento; nenhum erro no navegador. Telas no computador e em 320 px.
+- **Guia do teste:** `docs/GUIA-TESTE-RECEITAS.md`, para o Luis seguir com o chat do Claude.
+
 ## Próximo passo
 
-1. **Claude Code** (esforço Extra alto): parte **3a** do PR 3 (issue #33). Os botões que mudam algo (começar e cancelar
-   uma execução) conferem, como o painel do dono, que o login ainda é o de quem abriu a página (F34). Depois, 3b, 3c e
-   3d, cada uma com a sua issue.
-2. **Luis:** se ainda não conferiu, ver se a tabela `member_invites` apareceu no projeto de verdade (Parte G do
-   `docs/GUIA-TESTE-CONVITE.md`).
+1. **Luis, no chat do Claude:** seguir o `docs/GUIA-TESTE-RECEITAS.md` para testar o PR da parte 3a. Se tudo der certo,
+   fazer o merge. Se ainda não conferiu, ver também se a tabela `member_invites` apareceu no projeto de verdade (Parte
+   G do `docs/GUIA-TESTE-CONVITE.md`).
+2. **Claude Code** (esforço Extra alto): parte **3b** do PR 3 (receitas cobrando: estimativa, reserva, cobrança por
+   etapa, pausa se for passar da estimativa, custo e tentativas que falharam em `ai_calls`; F24, F26). Antes de
+   começar, a issue precisa da aprovação do Luis. Depois, 3c (chat) e 3d (painel do dono).
 3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.
