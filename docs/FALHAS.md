@@ -49,6 +49,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F29 | O saldo da empresa pode ficar negativo | Negócio | Baixa | Aceita |
 | F30 | E-mails do login só chegam para a equipe do Supabase | Código | Média | Aberta |
 | F31 | Next.js 16.4.0 com falhas de segurança graves conhecidas | Segurança | Alta | Resolvida |
+| F32 | O e-mail do funcionário não é conferido | Segurança / Produto | Baixa | Aberta |
+| F33 | O dono consegue entrar na conta de um funcionário pelo link de senha nova | Segurança / LGPD | Média | Aberta |
 
 ## Negócio
 
@@ -142,6 +144,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Resolvida (24/10/2026, PR 2a):** `/dono` só abre para o dono logado, e a equipe é lida com a sessão dele (as regras
   do banco só mostram a empresa dele). A rota `/api/ock/company` e o painel antigo foram apagados. As ações do dono
   (convidar, teto, desativar) chegam no PR 2b, também conferidas pelo banco.
+- **Andamento (24/10/2026, PR 2b):** as ações do dono chegaram. Cada uma confere de novo, no servidor, que quem pede é
+  o dono logado; teto e situação mudam pela sessão dele (o banco só deixa mexer nos funcionários da empresa dele), e o
+  convite usa a empresa tirada do login, nunca do formulário.
 
 ### F12 — Senha temporária guardada sem criptografia
 - **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 22/10/2026
@@ -151,6 +156,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Resolvida (24/10/2026, PR 2a):** não existe mais senha temporária no código nem no banco novo: as senhas ficam só com
   o Supabase Auth. O convite do funcionário será um link de uso único, que o dono copia e manda (decisão do Luis, 24/10;
   PR 2b). O banco antigo do parceiro ainda guarda as temporárias: avisar junto com a F27.
+- **Andamento (24/10/2026, PR 2b):** o convite por link chegou: vale 24 horas, funciona uma vez só, e o banco guarda só
+  o resumo (sha256) do código, nunca o código. A senha é criada pelo próprio funcionário e vai direto para o Supabase
+  Auth. Duas falhas novas apareceram no caminho: F32 e F33.
 
 ### F13 — Só existe uma empresa, fixa no código
 - **Gravidade:** Alta · **Status:** Decidida · **Anotada:** 22/10/2026
@@ -298,6 +306,28 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   segurança vieram na 16.4.1; a 16.4.2 e a 16.4.3 só corrigem defeitos (um deles no `proxy.ts`, que o login usa). Entrou
   no próprio PR 2a, e não num PR separado, porque os dois mudam o `package-lock.json` e brigariam no merge. O `npm
   audit` não acusa mais o Next.js, e o build e o `npm run dev` não param mais no aviso.
+
+### F32 — O e-mail do funcionário não é conferido
+- **Gravidade:** Baixa · **Status:** Aberta · **Anotada:** 24/10/2026 (PR 2b)
+- **O problema:** no convite por link, o e-mail do funcionário é só o nome com que ele entra: nenhum e-mail é mandado
+  para conferir se o endereço existe e é dele (quem prova o convite é o link). Daí duas coisas: (1) se o dono digitar o
+  e-mail errado, esse vira o login da pessoa; ela vê o e-mail na página do convite, mas para corrigir o dono precisa
+  desativar e convidar de novo com o e-mail certo (o cadastro errado fica na lista como desativado); (2) um dono pode
+  ocupar o e-mail de outra pessoa, que depois não consegue criar a própria empresa com ele ("Já existe uma conta").
+- **O que fazer:** quando houver envio de e-mail próprio (F30), mandar um e-mail de confirmação ao funcionário e ter
+  um jeito de liberar um e-mail ocupado. Até lá, a página do convite mostra o e-mail com destaque.
+
+### F33 — O dono consegue entrar na conta de um funcionário pelo link de senha nova
+- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 24/10/2026 (PR 2b)
+- **O problema:** "Gerar link novo" serve para quem perdeu a senha (critério da issue #27). Mas quem gera o link é o
+  dono, e quem tem o link cria a senha. Um dono mal-intencionado pode abrir o link ele mesmo, criar uma senha e entrar
+  como o funcionário. Hoje isso não mostra nada (o chat está em obras), mas quando o PR 3 trouxer as conversas de volta,
+  ele leria o que o funcionário escreveu, contra a decisão de 24/10 de que o dono não lê conversas (F05).
+- **O que já ajuda:** usar o link desconecta os outros aparelhos do funcionário e a senha antiga para de funcionar, então
+  ele percebe na próxima entrada. O link só existe a pedido do dono e vale 24 horas.
+- **O que fazer (proposta, a decidir com o Luis antes de empresas reais):** quando houver envio de e-mail próprio (F30),
+  a senha nova vai por e-mail direto ao funcionário, e o "link novo" do dono fica só para quem ainda não aceitou o
+  convite. Outra peça possível: avisar o funcionário, na entrada, que a senha foi trocada por um link do dono.
 
 ## Processo
 

@@ -30,6 +30,7 @@
 }
 
 .button {
+  font-family: inherit;
   height: var(--control-height);
   padding: 0 var(--space-5);
   border: none;

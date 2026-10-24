@@ -2,7 +2,8 @@
 
 > **Status (24/10/2026):** proposta aprovada e decisões tomadas pelo Luis (fim deste arquivo). As migrações entraram na
 > `main` no PR #24 e já estão no projeto de verdade (conferido pelo Luis: 11 tabelas vazias, pasta `files` privada,
-> Postgres 17.11, a mesma versão das checagens). **A versão oficial das tabelas são as migrações** em
+> Postgres 17.11, a mesma versão das checagens). A migração 6 (convites, PR 2b) chega a ele no merge do PR 2b.
+> **A versão oficial das tabelas são as migrações** em
 > `supabase/migrations/`; este arquivo explica o desenho em português e precisa mudar junto quando elas mudarem.
 
 O banco é refeito **do zero**, num projeto novo do Supabase (Gmail do projeto, região São Paulo), sem usar as tabelas
@@ -64,6 +65,12 @@ Nomes em inglês, como pede o AGENTS.md. Valores em centavos de real.
 
 **A pasta fechada** (migração 5): `files`, no Storage do Supabase. Não é pública e não tem regra de acesso nenhuma, então
 só o servidor lê e grava nela.
+
+**Convites** (migração 6, PR 2b)
+
+| Tabela | O que guarda |
+|---|---|
+| `member_invites` | O link que o funcionário ainda não usou: de quem é, o tipo (`invite` primeiro convite, `reset` senha nova), até quando vale (24 horas) e o **resumo** (sha256) do código que vai no link, nunca o código em si. Uma linha por pessoa: um link novo troca o código, e o antigo para de valer. A linha é apagada quando o link é usado. |
 
 **O que sai em relação ao banco antigo:** as senhas (vão para o Supabase Auth), a empresa fixa "demo", o crédito
 guardado na empresa, o gasto guardado no funcionário, as chaves de API dos usuários (`run_secrets`) e o código anônimo
@@ -130,6 +137,7 @@ Isso não muda tabela nenhuma (só acrescenta uma linha ao extrato), então não
 | Receitas próprias | as dele e as da empresa | as da empresa (e as dele) |
 | Execuções, conversas e tarefas | as próprias | só as próprias. Dos funcionários, vê o resumo pelo extrato (quem, quando, receita ou IA, custo), sem pedidos nem respostas |
 | Arquivos | os próprios | os próprios e as entregas de todos |
+| Convites (`member_invites`) | não | os da empresa (quem, tipo e prazo), nunca o resumo do código |
 | `ai_calls` | não | não |
 
 ## Quem grava o quê
@@ -139,7 +147,7 @@ Pela sessão de quem está logado (o "crachá"), o banco deixa fazer só isto, s
 | Quem | Pode |
 |---|---|
 | Funcionário e dono | criar, renomear e apagar as próprias conversas; criar, mudar e apagar as próprias receitas; apagar as próprias tarefas, arquivos e execuções que já pararam (LGPD) |
-| Dono | mudar nome, teto e situação (ativo/desativado) dos funcionários; mudar e apagar as receitas da empresa |
+| Dono | mudar nome, teto e situação (ativo/desativado) dos funcionários; mudar e apagar as receitas da empresa. Convidar e gerar link novo, só pelo servidor (abaixo) |
 | Ninguém pela sessão | escolher a empresa ou o autor de uma linha (vêm sozinhos de quem está logado), mudar papel, lançar dinheiro, ler as colunas internas |
 
 O resto (criar empresa e pessoas, gravar execuções, tarefas e arquivos, e o dinheiro) é feito pelo servidor, com a
@@ -154,6 +162,16 @@ guardados junto. A empresa e o dono só entram nas tabelas no primeiro acesso, c
 do login do dono: se o primeiro acesso for processado duas vezes ao mesmo tempo, a segunda tentativa esbarra na mesma
 chave e não sobra uma empresa vazia.
 
+**Como o funcionário entra (PR 2b):** o dono preenche nome, e-mail e teto no painel. O servidor confere pela sessão que
+quem pede é o dono e, com a chave-mestra, cria o login do funcionário no Supabase Auth (com o e-mail, ainda sem senha e
+sem mandar e-mail nenhum), a pessoa em `members` e o convite em `member_invites`. O link (`/convite/<código>`) aparece
+uma vez só para o dono, que o manda (ex.: pelo WhatsApp). Abrir o link só mostra o convite: a prévia do link no WhatsApp
+não o gasta. Quando a pessoa cria a senha, o servidor apaga o convite na mesma operação que confere o código e o prazo
+(dois envios ao mesmo tempo não usam o mesmo link), grava a senha no Supabase Auth e entra. Se a senha não puder ser
+gravada, o convite volta. "Gerar link novo" serve para quem não aceitou a tempo (continua `invite`) e para quem perdeu a
+senha (`reset`); a senha antiga vale até o link novo ser usado, e usar o link desconecta os outros aparelhos da pessoa.
+O prazo de 24 horas fica na nossa tabela; não depende do *Email OTP Expiration* do Supabase.
+
 Como a sessão consegue gravar conversas e receitas sem passar pelas nossas telas, o servidor confere o formato de uma
 receita própria de novo antes de rodá-la.
 
@@ -167,6 +185,7 @@ igualzinho, do zero. Ficam em `supabase/migrations/`:
 3. `..._work.sql`: trabalho (receitas próprias, execuções, conversas, tarefas e arquivos)
 4. `..._ai_calls.sql`: a tabela interna `ai_calls`
 5. `..._files_bucket.sql`: a pasta fechada dos arquivos
+6. `..._member_invites.sql`: os convites dos funcionários (PR 2b)
 
 **Regras para as próximas migrações:** toda tabela nova liga o RLS e diz com `grant` exatamente o que cada papel pode
 fazer (o projeto não dá acesso automático a tabelas novas, e a chave pública sem login, `anon`, não recebe acesso a
@@ -187,6 +206,9 @@ Ficam em `supabase/tests/database/` (formato pgTAP, que é SQL com conferências
   desativado perde o acesso na hora.
 - `03_wallet`: reserva, cobrança pelo consumo real, fechamento, teto do mês (inclusive a virada do mês no horário de
   Brasília), falta de saldo e o extrato que não pode ser editado.
+- `04_invites`: o dono vê os convites só da própria empresa e nunca o resumo do código; ninguém pela sessão cria, muda
+  ou apaga convite; o banco só aceita o resumo (nunca o código), um convite por pessoa e sempre da empresa dela; o
+  convite serve uma vez só e não depois do prazo.
 
 **Onde rodam:** nas checagens do GitHub (`.github/workflows/ci.yml`, parte "Banco de dados"), com a ferramenta oficial
 do Supabase (aprovada pelo Luis em 24/10), num banco temporário que some no fim. O banco de verdade não é tocado.
@@ -249,7 +271,7 @@ empresa de exemplo (`seed.sql`) não vai para lá: as contas de teste são criad
 | *URL Configuration* | *Site URL* | `http://localhost:3000` | O site roda no computador |
 | *URL Configuration* | *Redirect URLs* | `http://localhost:3000/**` | Os links de confirmação só podem voltar para o nosso site |
 | *Sign In / Providers → Email* | *Confirm email* | ligado | O dono confirma o e-mail antes de entrar |
-| *Sign In / Providers → Email* | *Email OTP Expiration* | `86400` (24 horas) | Prazo do link de confirmação e do convite do funcionário |
+| *Sign In / Providers → Email* | *Email OTP Expiration* | `86400` (24 horas) | Prazo do link de confirmação do cadastro (o do convite do funcionário fica na tabela `member_invites`) |
 | *Sign In / Providers → Email* | *Minimum password length* | `8` | Senha mínima |
 
 No projeto de verdade, as mesmas opções, com o endereço do site no ar, na publicação. As opções de segurança da criação

@@ -78,7 +78,7 @@ No menu da esquerda, **Authentication**:
 
 **Deu certo se:** a execução fica com o símbolo verde, e no *Table Editor* do projeto de testes aparecem 11 tabelas:
 `ai_calls`, `companies`, `conversations`, `custom_recipes`, `files`, `members`, `run_events`, `runs`, `tasks`,
-`wallet_entries` e `wallet_holds`. Todas vazias.
+`wallet_entries` e `wallet_holds`. Todas vazias. (Depois do PR do convite, são 12: entra também `member_invites`.)
 
 **Se ficar vermelho:** clique na execução, depois em "Aplicar as migrações" e leia a última mensagem.
 - "Falta o segredo SUPABASE_TEST_DB_URL": o nome do segredo está diferente (confira letra por letra) ou ele não foi salvo.

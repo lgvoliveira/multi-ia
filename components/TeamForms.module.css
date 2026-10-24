@@ -36,6 +36,7 @@
 }
 
 .input {
+  font-family: inherit;
   width: 100%;
   min-width: 0;
   height: var(--control-height);
@@ -98,6 +99,7 @@
 .smallButton,
 .smallPrimary,
 .smallDanger {
+  font-family: inherit;
   border-radius: var(--radius-control);
   font-weight: var(--weight-semibold);
   cursor: pointer;
