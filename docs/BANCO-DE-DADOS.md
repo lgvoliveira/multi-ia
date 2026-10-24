@@ -1,8 +1,8 @@
 # Banco de dados — proposta da etapa 5
 
-> **Status (24/10/2026):** proposta feita pelo Claude, **aguardando 3 decisões do Luis** (fim deste arquivo).
-> Nenhuma migração foi escrita ainda. Quando as decisões forem tomadas, este arquivo é atualizado e vira a referência
-> do banco; as migrações em `supabase/migrations/` passam a ser a versão oficial das tabelas.
+> **Status (24/10/2026):** proposta aprovada. **As 3 decisões foram tomadas pelo Luis em 24/10** (fim deste arquivo).
+> Nenhuma migração foi escrita ainda. Este arquivo é a referência do banco até as migrações em
+> `supabase/migrations/` existirem; a partir daí, elas são a versão oficial das tabelas.
 
 O banco é refeito **do zero**, num projeto novo do Supabase (Gmail do projeto, região São Paulo), sem usar as tabelas
 que o parceiro criou no Supabase dele (`ock_*`, `runs`, `run_events`, `run_steps`, `run_secrets`).
@@ -93,7 +93,7 @@ reserva, com uma estimativa pequena.
 | Empresa e lista de funcionários | só o próprio cadastro | todos |
 | Extrato e reservas | só os próprios gastos | tudo |
 | Receitas próprias | as dele e as da empresa | as da empresa |
-| Execuções, conversas e tarefas | as próprias | **depende da decisão 2** |
+| Execuções, conversas e tarefas | as próprias | só o resumo (quem, quando, receita ou IA, custo), sem pedidos nem respostas |
 | Arquivos | os próprios | as entregas de todos |
 | `ai_calls` | não | não |
 
@@ -139,22 +139,21 @@ A ligação não coloca chave no código (as chaves vão à mão para o `.env.lo
 vão para o banco no merge. Para desfazer: desconectar em *Project Settings → Integrations* e revogar em
 *Settings → Applications* no GitHub.
 
+**Opções de segurança escolhidas na criação do projeto (24/10):** *Enable Data API* ligada; *Automatically expose new
+tables* **desligada** (nenhuma tabela nova fica acessível pela chave pública sozinha); *Enable automatic RLS* **ligada**
+(rede de proteção: toda tabela nova do `public` já nasce com as regras de acesso ligadas). Consequência para as
+migrações: cada tabela que as telas usam precisa de `grant` explícito para o papel `authenticated` (e nunca para `anon`,
+salvo decisão), além de ligar o RLS e criar as políticas. `ai_calls` não recebe `grant` nenhum.
+
 **Regra:** mudança de tabela só por migração no GitHub, nunca pelo editor de tabelas ou de SQL do painel do Supabase.
 Senão o banco deixa de bater com o repositório (F14). Vale para todos, inclusive o parceiro.
 
-## Decisões pendentes (do Luis)
+## Decisões tomadas (Luis, 24/10/2026)
 
-1. **O teto do funcionário vale por mês ou é acumulado?** Recomendação do Claude: **por mês**, renovando todo dia 1º.
-   A empresa pensa em orçamento mensal, e o dono não precisa liberar o teto de novo a cada mês. O código do parceiro
-   usa acumulado.
-2. **O que o dono vê (F05)?**
-   - (a) Só o resumo de cada funcionário: quem fez, quando, com qual receita ou IA, quanto custou, e as entregas. Não lê
-     pedidos nem respostas.
-   - (b) Tudo, inclusive as conversas, com um aviso fixo na tela do funcionário.
-
-   Recomendação do Claude: **(a) por enquanto**. Passar para (b) depois, avisando os funcionários, é uma migração
-   pequena; voltar para (a) depois que as conversas já foram lidas não desfaz a leitura. Contra: o "resumo do dia" que o
-   parceiro fez lê as conversas e fica desligado até a decisão. Se não houver decisão, o Claude começa com (a).
-3. **O "Traga sua chave" fica fora do banco novo?** Recomendação do Claude: **fora**. "Sem chave de API" é um dos
-   diferenciais para empresas, e guardar chaves é a parte mais sensível de um banco. Se voltar, entra numa migração
-   própria.
+1. **Teto do funcionário: por mês.** Renova todo dia 1º, à meia-noite no horário de Brasília. O extrato guarda tudo;
+   só a conferência do teto olha os gastos do mês corrente. (O código do parceiro usava acumulado e muda no PR 3.)
+2. **O que o dono vê (F05): opção (a).** Só o resumo de cada funcionário (quem fez, quando, com qual receita ou IA,
+   quanto custou) e as entregas. Não lê pedidos nem respostas. O "resumo do dia" do parceiro fica desligado; se voltar,
+   é refeito usando só esses dados. Passar para (b) no futuro exige aviso aos funcionários e uma migração própria.
+3. **"Traga sua chave": fora do banco novo.** Nenhuma tabela guarda chave de API de empresa. Se voltar, entra numa
+   migração própria.

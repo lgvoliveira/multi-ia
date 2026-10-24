@@ -78,6 +78,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   conteúdo para melhorar os produtos do Google, então nunca pode receber dados de empresas reais.
 - **O que fazer:** decidir o que o dono vê (só entregas e gastos, ou as conversas inteiras); termos de uso e política de
   privacidade antes da primeira empresa real; Gemini no plano pago antes de qualquer cliente.
+- **Andamento (24/10/2026):** parte (1) decidida pelo Luis: o dono vê só o resumo e as entregas, não as conversas
+  (ver `BANCO-DE-DADOS.md`). Partes (2) e (3) continuam abertas.
 
 ### F06 — Vender para empresa é mais lento e trabalhoso
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 22/10/2026

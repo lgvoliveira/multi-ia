@@ -356,13 +356,16 @@ Paulo), sem usar as tabelas do Supabase do parceiro. As tabelas passam a viver n
   "Automatic branching" desligado (é pago). Falta conferir se a ligação foi feita assim.
 - Regra nova no AGENTS.md (seção 8): mudança de tabela só por migração no GitHub, nunca pelo painel do Supabase.
 
-**Aguardando o Luis** (vai discutir no chat do Claude): as 3 decisões do fim do `BANCO-DE-DADOS.md`: teto do
-funcionário por mês ou acumulado; o que o dono vê (F05); se o "Traga sua chave" fica fora do banco novo.
+**Decisões do Luis (24/10, Cowork):** teto do funcionário **por mês** (renova dia 1º); o dono vê **só o resumo e as
+entregas**, sem ler conversas (F05, opção a); **"Traga sua chave" fora** do banco novo. Detalhes no fim do
+`BANCO-DE-DADOS.md`.
 
 ## Próximo passo
 
-1. **Luis decide** as 3 questões do fim do `docs/BANCO-DE-DADOS.md` (no chat do Claude, ou no Cowork com o parceiro)
-   e confere a ligação do GitHub com o Supabase.
+1. **Feito (24/10):** conta e projeto novo `multi-ia` criados no Supabase (Gmail do projeto, organização `multi-ia`,
+   plano Free, região São Paulo), já ligado ao repositório `lgvoliveira/multi-ia`. Opções de segurança no
+   `BANCO-DE-DADOS.md`. Ligação do GitHub conferida e ativada em 24/10 (pasta `.`, branch `main`, *Deploy to production*
+   ligado, *Automatic branching* desligado por ser do plano Pro).
 2. **De volta ao Claude Code** (esforço Extra alto), com as decisões: PR 1 da etapa 5, com as migrações, a empresa de
    exemplo e o teste das regras de acesso. O Claude guia a criação das chaves do projeto novo no `.env.local`.
 3. Depois: PR 2 (login de verdade, cadastro da empresa e convite de funcionário; F10 a F13) e PR 3 (trocar o código do
@@ -375,9 +378,6 @@ funcionário por mês ou acumulado; o que o dono vê (F05); se o "Traga sua chav
 
 - Nome e marca (OCK é provisório)
 - Formato do preço (por empresa, por funcionário, pelo consumo), margem e plano de teste (F04)
-- O que o dono vê: só entregas e gastos, ou as conversas inteiras (F05)
-- Teto do funcionário: por mês ou acumulado (proposta do Claude: por mês)
-- Se o "Traga sua chave" continua no produto para empresas (proposta do Claude: fora do banco novo)
 - Se e quando nichar (F02)
 - Modelo de cada papel e de cada nível (econômico, padrão, potente)
 - Cronograma
