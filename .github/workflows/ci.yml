@@ -32,3 +32,22 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Monta um banco temporário com as migrações e a empresa de exemplo e roda os testes das regras de acesso e da
+  # carteira (supabase/tests/). O banco some no fim; o banco de verdade não é tocado.
+  database:
+    name: Banco de dados
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.120.0
+
+      # Só o que os testes usam: banco, login e Storage (o resto do Supabase local fica desligado).
+      - name: Montar o banco com as migrações
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit,realtime,postgres-meta
+
+      - name: Testes do banco
+        run: supabase test db
