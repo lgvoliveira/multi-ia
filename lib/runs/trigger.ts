@@ -3,40 +3,34 @@
 // a chamada saiu. Assim cada segmento roda numa chamada curta e separada, sobrevivendo ao navegador sair
 // e cabendo no teto de tempo da função. SÓ do servidor: usa o segredo interno, que nunca vai para o navegador.
 
+import { INTERNAL_SECRET_HEADER, internalRunSecret } from "./internal-secret";
+
 /**
- * Descobre o endereço do próprio site para a chamada interna.
- * Ordem: a dica do chamador (ex.: cabeçalho da requisição) → VERCEL_URL (produção/preview) →
- * variável pública de base → localhost no desenvolvimento.
+ * Descobre o endereço do próprio site para a chamada interna. NUNCA vem do pedido recebido: os cabeçalhos de um pedido
+ * (Host, X-Forwarded-Host) podem ser inventados por quem pede, e a chamada leva o segredo interno (F39).
+ * Ordem: VERCEL_URL (publicação na Vercel) → endereço configurado → o próprio computador, na porta do `npm run dev`.
+ * Na publicação, conferir se a proteção de acesso da Vercel deixa o site chamar a si mesmo por esse endereço.
  */
-export function resolveSelfOrigin(hint?: string): string {
-  if (hint) return hint;
+export function resolveSelfOrigin(): string {
   const vercel = process.env.VERCEL_URL;
   if (vercel) return `https://${vercel}`;
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXT_PUBLIC_SITE_URL;
   if (base) return base.replace(/\/+$/, "");
-  return "http://localhost:3000";
-}
-
-/** Tira o endereço de uma requisição recebida (cabeçalhos de proxy ou Host), para a chamada apontar ao mesmo host. */
-export function originFromRequest(request: Request): string | undefined {
-  const forwardedHost = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  if (!forwardedHost) return undefined;
-  const proto = request.headers.get("x-forwarded-proto") ?? (forwardedHost.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${forwardedHost}`;
+  return `http://localhost:${process.env.PORT ?? 3000}`;
 }
 
 /**
  * Chama /api/runs/<id>/continue sem esperar a resposta. Erro aqui não derruba quem chamou:
- * se a chamada se perder, o varredor de reservas vencidas retoma a execução depois.
+ * se a chamada se perder, a próxima busca de novidades da tela retoma a execução (lib/runs/resume.ts).
  */
-export function triggerContinue(runId: string, originHint?: string): void {
-  const origin = resolveSelfOrigin(originHint);
-  const secret = process.env.INTERNAL_RUN_SECRET ?? "";
+export function triggerContinue(runId: string): void {
+  const origin = resolveSelfOrigin();
+  const secret = internalRunSecret() ?? "";
   const url = `${origin}/api/runs/${runId}/continue`;
 
   const call = fetch(url, {
     method: "POST",
-    headers: { "x-internal-secret": secret },
+    headers: { [INTERNAL_SECRET_HEADER]: secret },
     // Impede o navegador/edge de reusar uma resposta antiga desta chamada interna.
     cache: "no-store",
   }).catch((error) => {

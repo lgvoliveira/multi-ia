@@ -4,8 +4,6 @@
 
 import type { RunInput, TeamChoice } from "@/lib/engine/types";
 import { findRunProblems } from "@/lib/engine/validate";
-import { isProviderId } from "@/lib/providers/catalog";
-import type { ProviderKeys } from "@/lib/providers/registry";
 import type { ProviderId } from "@/lib/providers/types";
 import { getRecipe } from "@/lib/recipes/catalog";
 
@@ -15,8 +13,8 @@ export interface RunRequestBody {
   request: string;
   /** IA escolhida para cada papel (id do papel → IA). */
   team?: Record<string, ProviderId>;
-  /** Chaves de API que a pessoa conectou (IA → chave). Usadas só nesta execução, nunca gravadas. */
-  keys?: ProviderKeys;
+  /** Quem abriu a página, para conferir que o login do navegador não mudou (F34). */
+  pageMemberId: string;
 }
 
 /** O que o servidor responde quando recusa o pedido. */
@@ -24,9 +22,7 @@ export interface RunRefusalBody {
   problems: string[];
 }
 
-export type ParsedRunRequest =
-  | { ok: true; input: RunInput; keys: ProviderKeys }
-  | { ok: false; problems: string[] };
+export type ParsedRunRequest = { ok: true; input: RunInput } | { ok: false; problems: string[] };
 
 /** Transforma o que chegou num pedido pronto para o motor ou na lista de problemas, em português. */
 export function parseRunRequest(body: unknown): ParsedRunRequest {
@@ -44,23 +40,20 @@ export function parseRunRequest(body: unknown): ParsedRunRequest {
   const input: RunInput = { recipe, request: body.request, team: body.team as TeamChoice | undefined };
   const problems = findRunProblems(input);
   if (problems.length > 0) return { ok: false, problems };
-  return { ok: true, input, keys: parseKeys(body.keys) };
-}
-
-/** Pega só as chaves em formato válido (IA conhecida → texto). Qualquer coisa estranha é ignorada. */
-function parseKeys(value: unknown): ProviderKeys {
-  if (!isPlainObject(value)) return {};
-  const keys: ProviderKeys = {};
-  for (const [id, key] of Object.entries(value)) {
-    if (isProviderId(id) && typeof key === "string" && key.trim()) keys[id] = key.trim();
-  }
-  return keys;
+  return { ok: true, input };
 }
 
 function refuse(problem: string): ParsedRunRequest {
   return { ok: false, problems: [problem] };
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Se o id de execução que veio no endereço tem o formato de um id do banco. Outro formato nem chega ao banco. */
+export function isRunId(value: string): boolean {
+  return UUID_PATTERN.test(value);
 }

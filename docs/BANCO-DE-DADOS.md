@@ -7,8 +7,8 @@
 > `supabase/migrations/`; este arquivo explica o desenho em português e precisa mudar junto quando elas mudarem.
 
 O banco é refeito **do zero**, num projeto novo do Supabase (Gmail do projeto, região São Paulo), sem usar as tabelas
-que o parceiro criou no Supabase dele (`ock_*`, `runs`, `run_events`, `run_steps`, `run_secrets`). O código atual ainda
-usa o banco antigo; ele passa para o banco novo nos PRs 2 e 3 da etapa 5.
+que o parceiro criou no Supabase dele (`ock_*`, `runs`, `run_events`, `run_steps`, `run_secrets`). O login, a equipe e as
+receitas já usam o banco novo (PRs 2a, 2b e 3a da etapa 5); o chat ainda usa o antigo e passa na parte 3c do PR 3.
 
 ## As três ideias do desenho
 
@@ -174,6 +174,14 @@ O prazo de 24 horas fica na nossa tabela; não depende do *Email OTP Expiration*
 
 Como a sessão consegue gravar conversas e receitas sem passar pelas nossas telas, o servidor confere o formato de uma
 receita própria de novo antes de rodá-la.
+
+**Como uma execução de receita anda (PR 3a):** o servidor cria a linha em `runs` com a empresa e a pessoa tiradas do
+login e roda uma fase de cada vez, numa chamada interna (`/api/runs/<id>/continue`). Quem roda "reserva" a execução
+por 60 segundos e renova a reserva a cada 2 segundos; se o servidor cair, a reserva vence e a execução é retomada na
+próxima vez que a tela pede novidades. A narração vai para `run_events` aos poucos, enquanto a fase roda. A tela lê a
+execução e a narração pelo nosso servidor, com a sessão de quem está logado: o banco só devolve as execuções da
+própria pessoa. Cancelar procura a execução pela sessão (a de outra pessoa nem aparece) e grava pela chave-mestra.
+Cada etapa concluída vira uma linha em `ai_calls` (modelo e tokens; o custo entra com a cobrança, na parte 3b).
 
 ## Migrações
 

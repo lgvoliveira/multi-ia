@@ -5,18 +5,17 @@
 //
 // Desde a execução persistida, "Começar" só CRIA a execução no servidor (que roda sozinha, em partes).
 // A tela acompanha pelo id: guarda ?run=<id> no endereço (dá para recarregar e continuar vendo),
-// busca o plano e o status, e escuta os eventos ao vivo (com replay do que já passou). Sair da página
+// busca o plano e o status, e busca as novidades a cada segundo (com replay do que já passou). Sair da página
 // e voltar NÃO interrompe o time: ele roda no servidor de qualquer jeito.
+// Começar e cancelar levam o id de quem abriu a página (memberId): se o login do navegador mudou em outra aba,
+// o servidor não faz nada e a tela mostra o aviso que ele mandou (F34).
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { readConnectedKeys } from "@/lib/keys/store";
-import { getProviderInfo } from "@/lib/providers/catalog";
 import type { ProviderId } from "@/lib/providers/types";
 import type { StageKind, Step } from "@/lib/recipes/types";
 import { forgetActiveRun, recallActiveRun, rememberActiveRun } from "@/lib/runs/active-run";
-import { startRun, SERVER_PROBLEM } from "@/lib/runs/client";
-import { subscribeRun } from "@/lib/runs/live-client";
-import { getOwnerToken } from "@/lib/runs/owner";
+import { cancelRun, readProblems, startRun, SERVER_PROBLEM } from "@/lib/runs/client";
+import { subscribeRun, type LostReason } from "@/lib/runs/live-client";
 import type { PublicPlannedStage } from "@/lib/runs/public-events";
 import {
   createRunState,
@@ -52,6 +51,8 @@ interface RunInfo {
 }
 
 interface RecipeFlowProps {
+  /** Quem abriu a página (o id no banco), para o servidor conferir que o login não mudou. */
+  memberId: string;
   recipeId: string;
   recipeName: string;
   roles: TeamRole[];
@@ -59,7 +60,17 @@ interface RecipeFlowProps {
   requestPlaceholder: string;
 }
 
-export function RecipeFlow({ recipeId, recipeName, roles, stages, requestPlaceholder }: RecipeFlowProps) {
+/** O que a tela diz quando não dá mais para acompanhar a execução. O time continua no servidor de qualquer jeito. */
+const LOST_NOTICES: Record<LostReason, string> = {
+  "signed-out":
+    "A sua conta não está mais conectada neste navegador (ela pode ter saído em outra aba). Entre de novo para " +
+    "continuar acompanhando. O time continua trabalhando.",
+  "not-found":
+    "Não dá para continuar acompanhando aqui: neste navegador, outra conta entrou (as abas do navegador dividem o " +
+    "mesmo login). Clique em Sair, no topo, e entre de novo com a sua conta. O time continua trabalhando.",
+};
+
+export function RecipeFlow({ memberId, recipeId, recipeName, roles, stages, requestPlaceholder }: RecipeFlowProps) {
   const [team, setTeam] = useState<Team>(() =>
     Object.fromEntries(roles.map((role) => [role.id, role.suggestedProvider])),
   );
@@ -68,7 +79,8 @@ export function RecipeFlow({ recipeId, recipeName, roles, stages, requestPlaceho
   const [problems, setProblems] = useState<string[]>([]);
   const [run, setRun] = useState<RunState | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
-  // Desliga a escuta da execução atual (canal em tempo real e pesca). Trocado a cada nova execução acompanhada.
+  const [notice, setNotice] = useState<string | null>(null);
+  // Desliga a busca de novidades da execução atual. Trocado a cada nova execução acompanhada.
   const unsubscribeRef = useRef<(() => void) | null>(null);
   // Marca qual execução a tela acompanha agora: callbacks de uma execução antiga são ignorados.
   const trackingRef = useRef<symbol | null>(null);
@@ -85,11 +97,14 @@ export function RecipeFlow({ recipeId, recipeName, roles, stages, requestPlaceho
       unsubscribeRef.current = null;
 
       let info: RunInfo | null = null;
+      let refusal: string[] = [SERVER_PROBLEM];
       try {
         const response = await fetch(`/api/runs/${id}`, { cache: "no-store" });
         if (response.ok) {
           const data: unknown = await response.json();
           if (data && typeof data === "object") info = data as RunInfo;
+        } else {
+          refusal = await readProblems(response);
         }
       } catch {
         // Sem o resumo agora: trata como problema abaixo.
@@ -99,7 +114,7 @@ export function RecipeFlow({ recipeId, recipeName, roles, stages, requestPlaceho
       const plan = info?.plan ?? null;
       if (!plan) {
         if (silent) forgetActiveRun(recipeId);
-        else setProblems([SERVER_PROBLEM]);
+        else setProblems(refusal);
         return;
       }
 
@@ -126,8 +141,9 @@ export function RecipeFlow({ recipeId, recipeName, roles, stages, requestPlaceho
       };
       unsubscribeRef.current = subscribeRun(id, {
         onEvent: (event) => apply({ type: "event", event }),
-        // A falha agora vem do status do servidor; o evento run-failed (replay) já encerra a tela.
-        onStatus: () => {},
+        onLost: (reason) => {
+          if (trackingRef.current === token) setNotice(LOST_NOTICES[reason]);
+        },
       });
     },
     [recipeId, stages],
@@ -152,23 +168,10 @@ export function RecipeFlow({ recipeId, recipeName, roles, stages, requestPlaceho
     setTeam(chosenTeam);
     setRequest(chosenRequest);
     setProblems([]);
-
-    // Sem a chave da IA, o agente daquele papel não roda: avisa quais IAs faltam conectar.
-    const keys = readConnectedKeys();
-    const needed = [...new Set(Object.values(chosenTeam))] as ProviderId[];
-    const missing = needed.filter((provider) => !keys[provider]);
-    if (missing.length > 0) {
-      const names = missing.map((provider) => getProviderInfo(provider).name).join(", ");
-      setProblems([
-        `Impossível rodar: conecte a chave de ${names} na aba "Minhas chaves de API". ` +
-          "Cada agente só trabalha com a chave da sua IA.",
-      ]);
-      return;
-    }
+    setNotice(null);
 
     setStarting(true);
-    const ownerToken = getOwnerToken();
-    const start = await startRun({ recipeId, request: chosenRequest, team: chosenTeam, keys, ownerToken });
+    const start = await startRun({ recipeId, request: chosenRequest, team: chosenTeam, pageMemberId: memberId });
     setStarting(false);
     if (!start.ok) {
       setProblems(start.problems);
@@ -181,21 +184,18 @@ export function RecipeFlow({ recipeId, recipeName, roles, stages, requestPlaceho
 
   async function handleCancel() {
     const id = runId;
-    // Mostra o cancelamento na hora; o servidor confirma e a corrente de segmentos para sozinha.
+    if (!id) return;
+    // Só marca como cancelado depois que o servidor confirma: se o login mudou, o time continua e a tela avisa.
+    const cancel = await cancelRun(id, memberId);
+    if (!cancel.ok) {
+      setNotice(cancel.problems.join(" "));
+      return;
+    }
+    setNotice(null);
     setRun((current) => current && runReducer(current, { type: "cancel" }));
     trackingRef.current = null;
     unsubscribeRef.current?.();
     unsubscribeRef.current = null;
-    if (!id) return;
-    try {
-      await fetch(`/api/runs/${id}/cancel`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ownerToken: getOwnerToken() }),
-      });
-    } catch {
-      // Sem internet: a execução no servidor segue; o usuário pode tentar de novo.
-    }
   }
 
   function handleRestart() {
@@ -204,6 +204,7 @@ export function RecipeFlow({ recipeId, recipeName, roles, stages, requestPlaceho
     unsubscribeRef.current = null;
     setRun(null);
     setRunId(null);
+    setNotice(null);
     forgetActiveRun(recipeId);
     clearRunParam();
   }
@@ -218,6 +219,7 @@ export function RecipeFlow({ recipeId, recipeName, roles, stages, requestPlaceho
         recipeName={recipeName}
         request={request}
         run={run}
+        notice={notice}
         onCancel={handleCancel}
         onRestart={handleRestart}
       />

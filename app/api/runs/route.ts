@@ -1,18 +1,18 @@
-// POST /api/runs: cria uma execução PERSISTIDA e dispara o primeiro segmento. Não roda nada aqui dentro
-// nem transmite narração: devolve só o id da execução. O navegador acompanha depois pelo Realtime/replay
-// (ver lib/runs/live-client.ts). A execução roda em chamadas curtas e separadas em /api/runs/[id]/continue,
-// sobrevivendo ao navegador sair e cabendo no teto de tempo da função.
+// POST /api/runs: cria uma execução PERSISTIDA, em nome de quem está logado, e dispara o primeiro segmento. Não roda
+// nada aqui dentro: devolve só o id. O navegador acompanha depois buscando as novidades (lib/runs/live-client.ts),
+// e a execução roda em chamadas curtas e separadas em /api/runs/[id]/continue, sobrevivendo ao navegador sair.
+// Só para quem é da empresa e está ativo; a empresa e a pessoa vêm do login, nunca do pedido.
 // Pedido inválido não começa: volta na hora, com a lista de problemas em português.
 
-import { createHash } from "node:crypto";
+import { checkPageMember, PAGE_MEMBER_FIELD } from "@/lib/auth/page-member";
+import { getViewer } from "@/lib/auth/viewer";
 import { resolveTeam } from "@/lib/engine/run";
 import type { ProviderId } from "@/lib/providers/types";
 import { stageSteps, type Recipe } from "@/lib/recipes/types";
-import { encryptKeys } from "@/lib/runs/crypto";
-import { parseRunRequest, type RunRefusalBody } from "@/lib/runs/parse-request";
+import { isPlainObject, parseRunRequest, type RunRefusalBody } from "@/lib/runs/parse-request";
 import type { PublicPlannedStage } from "@/lib/runs/public-events";
-import { createRun, saveSecret } from "@/lib/runs/store";
-import { originFromRequest, triggerContinue } from "@/lib/runs/trigger";
+import { createRun } from "@/lib/runs/store";
+import { triggerContinue } from "@/lib/runs/trigger";
 
 // Esta chamada só cria a execução e dispara o primeiro segmento: é curta por natureza.
 export const maxDuration = 15;
@@ -40,36 +40,35 @@ export async function POST(request: Request): Promise<Response> {
     return refuse(400, ["Não entendemos o pedido enviado."]);
   }
 
+  // Quem pede: logado, da empresa, ativo, e o mesmo que abriu a página (F34).
+  const check = checkPageMember(await getViewer(), isPlainObject(body) ? body[PAGE_MEMBER_FIELD] : undefined);
+  if (!check.ok) return refuse(check.status, [check.message]);
+  const { me } = check;
+
   const parsed = parseRunRequest(body);
   if (!parsed.ok) return refuse(400, parsed.problems);
 
   const { recipe, request: userRequest, team: teamChoice } = parsed.input;
   // IA de cada papel já decidida (a escolhida ou a sugerida): guardada e usada do começo ao fim.
   const team = resolveTeam(recipe, teamChoice);
-  const plan = buildPlan(recipe, team);
-  // Só guardamos o hash do token do dono: dá para conferir quem pode cancelar, sem guardar o token em si.
-  const ownerToken = readOwnerToken(body);
 
   let runId: string;
   try {
     runId = await createRun({
-      owner_token: sha256(ownerToken),
+      company_id: me.companyId,
+      member_id: me.id,
       recipe_id: recipe.id,
       request: userRequest.trim(),
       team,
-      plan,
+      plan: buildPlan(recipe, team),
     });
-    // Chaves do usuário só quando ele conectou alguma: guardadas criptografadas e apagadas ao fim da execução.
-    if (Object.keys(parsed.keys).length > 0) {
-      await saveSecret(runId, encryptKeys(parsed.keys));
-    }
   } catch (error) {
     console.error("[api/runs] Não consegui criar a execução:", error);
     return refuse(500, ["Algo deu errado do nosso lado. Tente de novo daqui a pouco."]);
   }
 
-  // Dispara o primeiro segmento (dispara e esquece); se a chamada se perder, o varredor retoma depois.
-  triggerContinue(runId, originFromRequest(request));
+  // Dispara o primeiro segmento (dispara e esquece); se a chamada se perder, a tela retoma depois.
+  triggerContinue(runId);
   return Response.json({ runId }, { status: 201 });
 }
 
@@ -80,19 +79,6 @@ function buildPlan(recipe: Recipe, team: Record<string, ProviderId>): PublicPlan
     kind: stage.kind,
     steps: stageSteps(stage).map((step) => ({ stepId: step.id, provider: step.provider ?? team[step.roleId] })),
   }));
-}
-
-/** Lê o token do dono do corpo do pedido, se veio em formato válido. */
-function readOwnerToken(body: unknown): string {
-  if (typeof body === "object" && body !== null && "ownerToken" in body) {
-    const value = (body as { ownerToken: unknown }).ownerToken;
-    if (typeof value === "string") return value;
-  }
-  return "";
-}
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
 }
 
 function refuse(status: number, problems: string[]): Response {

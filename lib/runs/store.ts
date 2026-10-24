@@ -1,8 +1,11 @@
-// Acesso tipado às tabelas da execução persistida. SÓ do servidor (usa o cliente de serviço).
-// Cada função faz uma coisa: criar a execução, reivindicá-la para rodar, anexar eventos/etapas,
-// salvar o estado, carregar o estado e os eventos, e cuidar das chaves guardadas.
-// O resto do servidor fala com o banco só por aqui.
+// Acesso tipado às tabelas da execução persistida (runs, run_events e ai_calls). SÓ do servidor.
+// Duas portas, como no resto do banco novo:
+//  - as funções que recebem `session` leem com a sessão de quem está logado: o banco só devolve as execuções da
+//    própria pessoa, e só as colunas que ela pode ver. É assim que as rotas que o navegador chama leem;
+//  - as outras usam a chave secreta (supabaseAdmin), porque só o servidor grava execuções e as leva adiante.
+// O resto do servidor fala com essas tabelas só por aqui.
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RunCursor, StepResult } from "@/lib/engine/types";
 import type { ProviderId } from "@/lib/providers/types";
 import type { PublicPlannedStage, PublicRunEvent } from "@/lib/runs/public-events";
@@ -10,16 +13,21 @@ import { supabaseAdmin } from "@/lib/runs/supabase-server";
 
 const RUNS = "runs";
 const RUN_EVENTS = "run_events";
-const RUN_STEPS = "run_steps";
-const RUN_SECRETS = "run_secrets";
+const AI_CALLS = "ai_calls";
 
-/** Em quanto tempo a reserva (lease) de uma execução expira, para o varredor poder retomá-la se o servidor morrer. */
-const LEASE_MS = 6 * 60 * 1000;
+/**
+ * Por quanto tempo uma execução fica reservada para quem a está rodando. Quem roda renova a reserva a cada poucos
+ * segundos (heartbeat); se o servidor cair, ela vence logo e a execução pode ser retomada.
+ */
+export const LEASE_MS = 60 * 1000;
 
-/** Como uma execução pode estar no banco. */
-export type RunStatus = "queued" | "running" | "finished" | "failed" | "cancelled";
+/** Como uma execução pode estar no banco. `paused` chega com a cobrança (parte 3b). */
+export type RunStatus = "queued" | "running" | "paused" | "finished" | "failed" | "cancelled";
 
-/** O erro guardado quando uma execução falha (campos internos; a tela não os lê). */
+/** Os status em que a execução já acabou e nada mais muda. */
+export const FINAL_STATUSES: readonly RunStatus[] = ["finished", "failed", "cancelled"];
+
+/** O erro guardado quando uma execução falha (coluna interna; a tela nunca a lê). */
 export interface RunError {
   stepId: string;
   provider: ProviderId;
@@ -27,10 +35,11 @@ export interface RunError {
   errorMessage: string;
 }
 
-/** Uma linha da tabela `runs`, como ela volta do banco. */
+/** Uma linha da tabela `runs`, como o servidor a vê (com as colunas internas). */
 export interface RunRow {
   id: string;
-  owner_token: string;
+  company_id: string;
+  member_id: string;
   recipe_id: string;
   request: string;
   team: Record<string, ProviderId>;
@@ -51,24 +60,39 @@ export interface RunRow {
 
 /** O que é preciso para criar uma execução. O id, os contadores e as datas o banco preenche. */
 export interface NewRun {
-  owner_token: string;
+  company_id: string;
+  member_id: string;
   recipe_id: string;
   request: string;
   team: Record<string, ProviderId>;
   plan: PublicPlannedStage[];
 }
 
-/** Uma linha do histórico interno de etapas (run_steps). Modelo, tokens e custo não vão para a tela. */
-export interface StepRow {
+/** O que a própria pessoa vê da execução dela (as colunas que a sessão pode ler). */
+export interface OwnRun {
+  id: string;
+  recipe_id: string;
+  status: RunStatus;
+  plan: PublicPlannedStage[];
+  cursor: RunCursor;
+  result: string | null;
+  duration_ms: number | null;
+}
+
+const OWN_RUN_COLUMNS = "id, recipe_id, status, plan, cursor, result, duration_ms";
+
+/** Uma chamada a uma IA, para a tabela interna `ai_calls`. Modelo e tokens nunca vão para a tela. */
+export interface AiCallRow {
+  company_id: string;
+  member_id: string;
+  run_id: string;
   step_id: string;
-  round: number;
   provider: ProviderId;
   model: string;
   input_tokens: number;
   output_tokens: number;
-  truncated: boolean;
+  status: "ok" | "error";
   duration_ms: number;
-  status: string;
 }
 
 /** Os campos do estado de uma execução que o motor atualiza a cada segmento. */
@@ -95,11 +119,7 @@ export async function createRun(run: NewRun): Promise<string> {
   const { data, error } = await supabaseAdmin()
     .from(RUNS)
     .insert({
-      owner_token: run.owner_token,
-      recipe_id: run.recipe_id,
-      request: run.request,
-      team: run.team,
-      plan: run.plan,
+      ...run,
       status: "queued" satisfies RunStatus,
       cursor: { stageIndex: 0, round: 1 } satisfies RunCursor,
       outputs: {},
@@ -113,7 +133,7 @@ export async function createRun(run: NewRun): Promise<string> {
 
 /**
  * Reivindica a execução para rodar AGORA, de forma atômica: só sai de 'queued'/'running' se ninguém mais
- * estiver rodando (sem reserva ou com a reserva vencida). Marca 'running', estende a reserva por 6 minutos
+ * estiver rodando (sem reserva ou com a reserva vencida). Marca 'running', reserva por LEASE_MS
  * e soma 1 em `attempt`. A troca condicional em `attempt` garante que, de dois servidores concorrentes,
  * só um reivindica. Devolve a linha reivindicada, ou null se não dava para reivindicar.
  */
@@ -145,19 +165,37 @@ export async function claimRun(id: string): Promise<RunRow | null> {
   return (data as RunRow | null) ?? null;
 }
 
-/** Anexa, em ordem, os eventos públicos de um segmento ao fluxo da execução. */
-export async function appendEvents(runId: string, events: PublicRunEvent[]): Promise<void> {
+/**
+ * Renova a reserva de quem está rodando e devolve o status atual da execução (para perceber um cancelamento no meio
+ * da fase). Devolve null se a execução foi reivindicada por outro (o `attempt` mudou): aí quem chamou deve parar.
+ */
+export async function renewLease(id: string, attempt: number): Promise<RunStatus | null> {
+  const { data, error } = await supabaseAdmin()
+    .from(RUNS)
+    .update({ lease_until: new Date(Date.now() + LEASE_MS).toISOString() })
+    .eq("id", id)
+    .eq("attempt", attempt)
+    .select("status")
+    .maybeSingle();
+  if (error) throw error;
+  return (data as { status: RunStatus } | null)?.status ?? null;
+}
+
+/** Anexa, em ordem, eventos públicos à narração da execução. */
+export async function appendEvents(
+  run: Pick<RunRow, "id" | "company_id">,
+  events: PublicRunEvent[],
+): Promise<void> {
   if (events.length === 0) return;
-  const rows = events.map((event) => ({ run_id: runId, event }));
+  const rows = events.map((event) => ({ run_id: run.id, company_id: run.company_id, event }));
   const { error } = await supabaseAdmin().from(RUN_EVENTS).insert(rows);
   if (error) throw error;
 }
 
-/** Anexa linhas ao histórico interno de etapas (modelo exato, tokens, tempo). */
-export async function appendSteps(runId: string, rows: StepRow[]): Promise<void> {
+/** Registra chamadas às IAs na tabela interna (modelo exato, tokens, tempo). */
+export async function recordAiCalls(rows: AiCallRow[]): Promise<void> {
   if (rows.length === 0) return;
-  const withRun = rows.map((row) => ({ ...row, run_id: runId }));
-  const { error } = await supabaseAdmin().from(RUN_STEPS).insert(withRun);
+  const { error } = await supabaseAdmin().from(AI_CALLS).insert(rows);
   if (error) throw error;
 }
 
@@ -174,46 +212,6 @@ export async function loadRun(id: string): Promise<RunRow | null> {
   return (data as RunRow | null) ?? null;
 }
 
-/** Carrega os eventos com posição (seq) maior que `afterSeq`, em ordem. Base do replay e da pesca (polling). */
-export async function loadEventsAfter(id: string, afterSeq: number): Promise<StoredEvent[]> {
-  const { data, error } = await supabaseAdmin()
-    .from(RUN_EVENTS)
-    .select("id, event")
-    .eq("run_id", id)
-    .gt("id", afterSeq)
-    .order("id", { ascending: true });
-  if (error) throw error;
-  return ((data as { id: number; event: PublicRunEvent }[] | null) ?? []).map((row) => ({
-    seq: row.id,
-    event: row.event,
-  }));
-}
-
-/** Lê o blob criptografado com as chaves de API do usuário, ou null se não há (ninguém conectou chave). */
-export async function getSecret(runId: string): Promise<string | null> {
-  const { data, error } = await supabaseAdmin()
-    .from(RUN_SECRETS)
-    .select("encrypted_keys")
-    .eq("run_id", runId)
-    .maybeSingle();
-  if (error) throw error;
-  return (data as { encrypted_keys: string } | null)?.encrypted_keys ?? null;
-}
-
-/** Guarda o blob criptografado com as chaves do usuário (uma linha por execução). */
-export async function saveSecret(runId: string, encryptedKeys: string): Promise<void> {
-  const { error } = await supabaseAdmin()
-    .from(RUN_SECRETS)
-    .insert({ run_id: runId, encrypted_keys: encryptedKeys });
-  if (error) throw error;
-}
-
-/** Apaga as chaves guardadas. Chamado quando a execução termina: não guardamos a chave além do necessário. */
-export async function deleteSecret(runId: string): Promise<void> {
-  const { error } = await supabaseAdmin().from(RUN_SECRETS).delete().eq("run_id", runId);
-  if (error) throw error;
-}
-
 /** Muda o status de uma execução, opcionalmente com outros campos (resultado, tempo, erro, reserva...). */
 export async function setStatus(
   id: string,
@@ -222,4 +220,52 @@ export async function setStatus(
 ): Promise<void> {
   const { error } = await supabaseAdmin().from(RUNS).update({ status, ...extra }).eq("id", id);
   if (error) throw error;
+}
+
+/**
+ * Marca a execução como cancelada, só se ela ainda não tinha acabado. Devolve true se cancelou agora.
+ * Quem estiver rodando percebe na próxima renovação da reserva e para a IA no meio.
+ */
+export async function cancelRun(id: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin()
+    .from(RUNS)
+    .update({ status: "cancelled" satisfies RunStatus, finished_at: new Date().toISOString() })
+    .eq("id", id)
+    .in("status", ["queued", "running", "paused"])
+    .select("id");
+  if (error) throw error;
+  return ((data as unknown[] | null) ?? []).length > 0;
+}
+
+/** A execução da própria pessoa, lida com a sessão dela. Execução de outra pessoa (ou que não existe) volta null. */
+export async function loadOwnRun(session: SupabaseClient, id: string): Promise<OwnRun | null> {
+  const { data, error } = await session.from(RUNS).select(OWN_RUN_COLUMNS).eq("id", id).maybeSingle();
+  if (error) throw error;
+  return (data as OwnRun | null) ?? null;
+}
+
+/** Quantos eventos vão, no máximo, em cada busca. O banco devolve no máximo 1.000 linhas por consulta. */
+export const EVENTS_PAGE_SIZE = 500;
+
+/**
+ * Os eventos com posição (seq) maior que `afterSeq`, em ordem, lidos com a sessão de quem está logado, no máximo
+ * EVENTS_PAGE_SIZE de cada vez. Base do replay (do início, com 0) e das buscas de novidades da tela.
+ */
+export async function loadOwnEventsAfter(
+  session: SupabaseClient,
+  id: string,
+  afterSeq: number,
+): Promise<StoredEvent[]> {
+  const { data, error } = await session
+    .from(RUN_EVENTS)
+    .select("id, event")
+    .eq("run_id", id)
+    .gt("id", afterSeq)
+    .order("id", { ascending: true })
+    .limit(EVENTS_PAGE_SIZE);
+  if (error) throw error;
+  return ((data as { id: number; event: PublicRunEvent }[] | null) ?? []).map((row) => ({
+    seq: row.id,
+    event: row.event,
+  }));
 }

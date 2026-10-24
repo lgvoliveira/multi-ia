@@ -1,144 +1,109 @@
-// Acompanha uma execução ao vivo, do navegador. Primeiro faz um "replay" de tudo que já aconteceu
-// (os eventos guardados, em ordem), depois escuta as novidades em tempo real (Realtime do Supabase):
-// cada novo evento e cada mudança de status. Se o canal em tempo real falhar, cai para a pesca (polling)
-// a cada 3 s pelos eventos novos. Usa só a chave pública (anon): nada de segredo no navegador.
+// Acompanha uma execução ao vivo, do navegador. Busca as novidades no nosso servidor a cada segundo
+// (GET /api/runs/<id>/events), que lê o banco com o login de quem está vendo: só a própria pessoa acompanha a sua
+// execução (F27). A primeira busca é o "replay" de tudo o que já aconteceu; as seguintes trazem só o que é novo.
 //
-// A posição (seq) de cada evento evita repetição: um evento só chega ao app se for mais novo que o último visto.
-// Assim o replay, o tempo real e a pesca podem se sobrepor sem bagunçar a ordem nem duplicar.
+// A posição (seq) de cada evento evita repetição: um evento só chega à tela se for mais novo que o último visto.
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { PublicRunEvent } from "./public-events";
 
 /** Status possíveis de uma execução, como o servidor os reporta. */
-export type LiveRunStatus = "queued" | "running" | "finished" | "failed" | "cancelled";
+export type LiveRunStatus = "queued" | "running" | "paused" | "finished" | "failed" | "cancelled";
+
+/** Por que a tela parou de acompanhar sem a execução ter acabado. */
+export type LostReason =
+  /** Ninguém está conectado neste navegador (a conta saiu, talvez em outra aba). */
+  | "signed-out"
+  /** O login mudou para outra pessoa, ou a execução não existe mais. */
+  | "not-found";
 
 export interface SubscribeHandlers {
   /** Um evento novo da narração, já em ordem e sem repetição. */
   onEvent: (event: PublicRunEvent) => void;
   /** O status mudou (ex.: passou a "finished" ou "failed"). */
-  onStatus: (status: LiveRunStatus) => void;
+  onStatus?: (status: LiveRunStatus) => void;
+  /** Não dá mais para acompanhar (ver LostReason). */
+  onLost?: (reason: LostReason) => void;
+}
+
+export interface SubscribeOptions {
+  /** Intervalo entre as buscas. */
+  intervalMs?: number;
+  /** Quem faz o pedido pela internet. Os testes trocam por um dublê. */
+  fetch?: typeof fetch;
 }
 
 const TERMINAL: ReadonlySet<LiveRunStatus> = new Set(["finished", "failed", "cancelled"]);
-const POLL_INTERVAL_MS = 3000;
+const POLL_INTERVAL_MS = 1000;
 
-let cachedClient: SupabaseClient | null = null;
-
-/** Cria (uma vez) o cliente do navegador com a chave pública. */
-function browserClient(): SupabaseClient {
-  if (cachedClient) return cachedClient;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !publishableKey) {
-    throw new Error("Faltam NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
-  }
-  cachedClient = createClient(url, publishableKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  return cachedClient;
-}
-
-async function fetchEventsAfter(runId: string, afterSeq: number): Promise<{ seq: number; event: PublicRunEvent }[]> {
-  const response = await fetch(`/api/runs/${runId}/events?after=${afterSeq}`, { cache: "no-store" });
-  if (!response.ok) throw new Error(`Falha ao buscar eventos (${response.status}).`);
-  const body: unknown = await response.json();
-  if (typeof body !== "object" || body === null || !("events" in body)) return [];
-  const { events } = body as { events: { seq: number; event: PublicRunEvent }[] };
-  return Array.isArray(events) ? events : [];
-}
-
-async function fetchStatus(runId: string): Promise<LiveRunStatus | undefined> {
-  const response = await fetch(`/api/runs/${runId}`, { cache: "no-store" });
-  if (!response.ok) return undefined;
-  const body: unknown = await response.json();
-  if (typeof body === "object" && body !== null && "status" in body) {
-    return (body as { status: LiveRunStatus }).status;
-  }
-  return undefined;
+interface EventsResponse {
+  status: LiveRunStatus;
+  events: { seq: number; event: PublicRunEvent }[];
+  more: boolean;
 }
 
 /**
- * Começa a acompanhar a execução. Devolve uma função que cancela o acompanhamento (desliga o canal e a pesca).
+ * Começa a acompanhar a execução. Devolve uma função que para o acompanhamento.
  * Chamar a função devolvida é seguro a qualquer momento e mais de uma vez.
  */
-export function subscribeRun(runId: string, handlers: SubscribeHandlers): () => void {
+export function subscribeRun(runId: string, handlers: SubscribeHandlers, options: SubscribeOptions = {}): () => void {
+  const send = options.fetch ?? fetch;
+  const intervalMs = options.intervalMs ?? POLL_INTERVAL_MS;
   let lastSeq = 0;
+  let lastStatus: LiveRunStatus | null = null;
   let stopped = false;
-  let pollTimer: ReturnType<typeof setInterval> | null = null;
-  const client = browserClient();
-  const channel = client.channel(`run:${runId}`);
-
-  // Repassa um evento só se ele for mais novo que o último visto (evita repetição entre replay/tempo real/pesca).
-  const emit = (seq: number, event: PublicRunEvent) => {
-    if (stopped || seq <= lastSeq) return;
-    lastSeq = seq;
-    handlers.onEvent(event);
-  };
-
-  const reportStatus = (status: LiveRunStatus | undefined) => {
-    if (stopped || !status) return;
-    handlers.onStatus(status);
-    if (TERMINAL.has(status)) stop();
-  };
-
-  // Replay: busca tudo que já aconteceu, em ordem, a partir do início.
-  const backfill = async () => {
-    try {
-      const events = await fetchEventsAfter(runId, lastSeq);
-      for (const { seq, event } of events) emit(seq, event);
-    } catch {
-      // Sem replay agora: a pesca ou o tempo real cobrem depois.
-    }
-  };
-
-  const startPolling = () => {
-    if (pollTimer || stopped) return;
-    pollTimer = setInterval(async () => {
-      await backfill();
-      reportStatus(await fetchStatus(runId));
-    }, POLL_INTERVAL_MS);
-  };
+  let timer: ReturnType<typeof setTimeout> | null = null;
 
   function stop() {
-    if (stopped) return;
     stopped = true;
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = null;
-    void client.removeChannel(channel);
+    if (timer) clearTimeout(timer);
+    timer = null;
   }
 
-  channel
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "run_events", filter: `run_id=eq.${runId}` },
-      (payload) => {
-        const row = payload.new as { id: number; event: PublicRunEvent };
-        emit(row.id, row.event);
-      },
-    )
-    .on(
-      "postgres_changes",
-      { event: "UPDATE", schema: "public", table: "runs", filter: `id=eq.${runId}` },
-      (payload) => {
-        reportStatus((payload.new as { status: LiveRunStatus }).status);
-      },
-    )
-    .subscribe((status) => {
-      // Assim que o canal conecta, refaz o replay para fechar a brecha entre o replay inicial e a escuta.
-      if (status === "SUBSCRIBED") {
-        void (async () => {
-          await backfill();
-          reportStatus(await fetchStatus(runId));
-        })();
+  async function poll(): Promise<void> {
+    timer = null;
+    if (stopped) return;
+    let body: EventsResponse | null = null;
+    try {
+      const response = await send(`/api/runs/${runId}/events?after=${lastSeq}`, { cache: "no-store" });
+      if (response.status === 401 || response.status === 404) {
+        if (!stopped) handlers.onLost?.(response.status === 401 ? "signed-out" : "not-found");
+        stop();
+        return;
       }
-      // O canal caiu: passa a pescar os eventos novos a cada 3 s.
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-        startPolling();
+      if (response.ok) body = parseEventsResponse(await response.json());
+    } catch {
+      // Sem internet agora: tenta de novo na próxima busca.
+    }
+    if (stopped) return;
+
+    if (body) {
+      for (const { seq, event } of body.events) {
+        if (seq <= lastSeq) continue;
+        lastSeq = seq;
+        handlers.onEvent(event);
+        if (stopped) return;
       }
-    });
+      if (body.status !== lastStatus) {
+        lastStatus = body.status;
+        handlers.onStatus?.(body.status);
+      }
+      // Acabou e já veio a narração inteira (o servidor grava tudo antes de marcar o fim): não há mais o que buscar.
+      if (TERMINAL.has(body.status) && !body.more) {
+        stop();
+        return;
+      }
+    }
+    // Com mais eventos esperando (replay comprido), busca de novo na hora.
+    if (!stopped) timer = setTimeout(() => void poll(), body?.more ? 0 : intervalMs);
+  }
 
-  // Replay inicial antes de qualquer novidade do tempo real.
-  void backfill();
-
+  void poll();
   return stop;
+}
+
+function parseEventsResponse(value: unknown): EventsResponse | null {
+  if (typeof value !== "object" || value === null) return null;
+  const { status, events, more } = value as Record<string, unknown>;
+  if (typeof status !== "string" || !Array.isArray(events)) return null;
+  return { status: status as LiveRunStatus, events: events as EventsResponse["events"], more: more === true };
 }

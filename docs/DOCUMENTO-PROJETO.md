@@ -155,8 +155,8 @@ CANAIS                         MOTOR                                IAs VIA API
 
 **Chaves das IAs:** a plataforma usa as próprias chaves ("chaves-mãe"), só no servidor; a empresa nunca vê nem conecta
 chave. **O "Traga sua chave" fica fora do produto para empresas** (decisão do Luis, 24/10): "sem chave de API" é um
-dos diferenciais, e guardar chaves é a parte mais sensível de um banco. A página "Minhas chaves" ainda existe no código
-e sai quando o código passar para o banco novo. Se a ideia voltar, entra numa mudança própria.
+dos diferenciais, e guardar chaves é a parte mais sensível de um banco. A página "Minhas chaves" saiu do código
+em 24/10 (PR 3a). Se a ideia voltar, entra numa mudança própria.
 
 **Banco de dados:** desenho, regras de acesso e carteira em `docs/BANCO-DE-DADOS.md`; as tabelas vivem no repositório,
 como migrações (`supabase/migrations/`).

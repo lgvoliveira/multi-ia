@@ -44,7 +44,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F24 | Gasto e teto falham com pedidos ao mesmo tempo | Código | Média | Decidida |
 | F25 | O próprio dono define o crédito da empresa | Negócio / Segurança | Alta | Decidida |
 | F26 | O custo das tentativas que falharam não fica registrado | Código | Média | Decidida |
-| F27 | Qualquer pessoa pode ler as execuções direto no banco | Segurança | Alta | Decidida |
+| F27 | Qualquer pessoa pode ler as execuções direto no banco | Segurança | Alta | Resolvida |
 | F28 | Apagar um arquivo direto pelo banco deixa o conteúdo guardado | Segurança / LGPD | Baixa | Aberta |
 | F29 | O saldo da empresa pode ficar negativo | Negócio | Baixa | Aceita |
 | F30 | E-mails do login só chegam para a equipe do Supabase | Código | Média | Aberta |
@@ -52,7 +52,11 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F32 | O e-mail do funcionário não é conferido | Segurança / Produto | Baixa | Aberta |
 | F33 | O dono consegue entrar na conta de um funcionário pelo link de senha nova | Segurança / LGPD | Média | Aceita |
 | F34 | Painel do dono usado com o login de outra aba, sem aviso | Produto / Código | Baixa | Resolvida |
-| F35 | O texto das IAs só aparece quando a fase inteira termina | Produto / Código | Média | Decidida |
+| F35 | O texto das IAs só aparece quando a fase inteira termina | Produto / Código | Média | Resolvida |
+| F36 | Execução parada no meio ficava parada para sempre | Código | Média | Resolvida |
+| F37 | Cancelar não parava a IA no meio da fase | Código | Média | Resolvida |
+| F38 | "Concluído em" mostrava só o tempo da última fase | Produto / Código | Baixa | Resolvida |
+| F39 | A chamada interna ia para o endereço que vinha no pedido | Segurança | Média | Resolvida |
 
 ## Negócio
 
@@ -135,6 +139,19 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   pessoa pode achar que travou.
 - **Decisão (Luis, 24/10/2026):** corrigir na parte 3a do PR 3: o servidor grava a narração aos poucos, enquanto a fase
   roda, e a tela busca as novidades com o login de quem pediu.
+- **Resolvida (24/10/2026, PR 3a, issue #33):** a narração espera numa fila e vai para o banco a cada segundo, enquanto a
+  fase roda (`lib/runs/event-buffer.ts`); os pedaços de texto de cada etapa viram um evento só, para não gravar uma linha
+  por palavra (uma execução inteira com a IA simulada deu 53 eventos). A tela busca as novidades a cada segundo. No teste
+  de ponta a ponta, o texto do Chefe apareceu na tela com o cartão ainda em "Trabalhando…".
+
+### F38 — "Concluído em" mostrava só o tempo da última fase
+- **Gravidade:** Baixa · **Status:** Resolvida · **Anotada:** 24/10/2026 (achada pelo Claude no PR 3a)
+- **O problema:** desde que a execução passou a rodar em partes (PR #19), o motor mede o tempo de cada parte, e o "fim"
+  levava só o tempo da última fase (a consolidação), não o que a pessoa esperou desde o pedido.
+- **Resolvida (24/10/2026, PR 3a):** o servidor troca esse tempo pelo tempo desde o pedido. A primeira versão da correção
+  misturava o relógio do banco com o do computador, e um deles estava 5 segundos adiantado ("34 s" para 29 s de espera);
+  agora as duas datas vêm do relógio do banco e só o tempo da última fase vem do relógio do servidor. No teste: "27 s"
+  para 27 s de espera.
 
 ## Código e segurança
 
@@ -178,6 +195,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O que fazer:** cadastro de empresa e todas as rotas olhando a empresa de quem está logado (junto com F10 e F11).
 - **Andamento (24/10/2026, PR 2a):** o cadastro de empresa existe, e o login e o painel do dono já olham a empresa de
   quem está logado. O chat (`/api/ock`) ainda usa a empresa "demo" do banco antigo; troca no PR 3.
+- **Andamento (24/10/2026, PR 3a):** as receitas gravam cada execução com a empresa e a pessoa tiradas do login. Falta o
+  chat (parte 3c).
 
 ### F14 — As tabelas do banco não estão no repositório
 - **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 22/10/2026
@@ -205,6 +224,11 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   `/api/runs` continuam sem conferir o login até o PR 3, que as troca para o banco novo. Enquanto isso, com o banco
   novo, elas falham antes de chamar qualquer IA (as tabelas antigas não existem), menos `/api/ock/transcribe`, que só
   funciona com a chave do GPT da plataforma, que não está configurada.
+- **Andamento (24/10/2026, PR 3a):** as rotas `/api/runs` exigem login: começar só para quem é da empresa e está ativo
+  (e o mesmo que abriu a página, F34); ver, acompanhar e cancelar só a própria execução, lida com a sessão da pessoa. A
+  rota interna `continue` só aceita o próprio servidor. As receitas rodam só com a IA simulada até a cobrança (parte
+  3b). Saíram `/api/keys/validate` e `/api/ock/models` (com "Minhas chaves"). Faltam as rotas do chat, `/api/ock/*`
+  (parte 3c).
 
 ### F17 — Preços das IAs e câmbio fixos no código
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 22/10/2026
@@ -262,9 +286,12 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O que fazer:** registrar toda chamada de IA, inclusive as que falharam, numa tabela interna (proposta do banco novo).
 - **Andamento (24/10/2026, PR #24):** a tabela interna `ai_calls` já existe no banco novo. Falta o código gravar nela
   cada chamada, inclusive as que falharam (PR 3).
+- **Andamento (24/10/2026, PR 3a):** cada etapa concluída de uma receita vira uma linha em `ai_calls` (modelo, tokens,
+  tempo). Faltam o custo em dólar e as tentativas que falharam: o motor ainda não conta os tokens de uma tentativa que
+  caiu. Entram com a cobrança (parte 3b).
 
 ### F27 — Qualquer pessoa pode ler as execuções direto no banco
-- **Gravidade:** Alta · **Status:** Decidida · **Anotada:** 24/10/2026
+- **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 24/10/2026
 - **O problema:** a tela das receitas acompanha a execução lendo as tabelas `runs` e `run_events` direto do Supabase, com
   a chave pública e sem login (`lib/runs/live-client.ts`). Essa chave vai junto com o site, então qualquer pessoa pode
   usá-la. Para o navegador ler sem login, o banco precisa deixar qualquer um ler essas tabelas, e aí dá para listar as
@@ -276,6 +303,10 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Andamento (24/10/2026, PR #24):** no banco novo, a chave pública sem login não lê tabela nenhuma, e cada pessoa logada
   só lê as próprias execuções (testes conferem). Falta trocar a tela das receitas para ler com a sessão de quem está
   logado (PR 3) e avisar o parceiro.
+- **Resolvida (24/10/2026, PR 3a):** a tela não fala mais direto com o banco: busca as novidades no nosso servidor, que
+  lê com a sessão de quem está logado. No teste de ponta a ponta, o colega da mesma empresa, o dono da empresa e o dono
+  de outra empresa receberam "não encontrada" para a execução da Ana, e sem login a resposta foi 401. Fica de fora só
+  avisar o parceiro, caso o banco antigo dele esteja no ar com dados de verdade (sem código; está no próximo passo).
 
 ### F28 — Apagar um arquivo direto pelo banco deixa o conteúdo guardado
 - **Gravidade:** Baixa · **Status:** Aberta · **Anotada:** 24/10/2026
@@ -370,6 +401,39 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   ainda é o de quem abriu a página. No PR 3, isso vale para o chat e as receitas do funcionário: sem a conferência, uma
   execução começada numa aba de funcionário seria cobrada de quem entrou depois em outra aba. Avisar a aba antes do
   clique (ao voltar para ela) ficou de fora: dá mais trabalho e o aviso no clique já evita o engano.
+- **Nas receitas (24/10/2026, PR 3a):** começar e cancelar conferem do mesmo jeito (`checkPageMember`, em
+  `lib/auth/page-member.ts`), e a aba que perde o acesso à execução avisa em vez de ficar parada. Testado com a Ana numa
+  aba e o Bruno entrando noutra do mesmo navegador. Falta o chat (parte 3c).
+
+### F36 — Execução parada no meio ficava parada para sempre
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 24/10/2026 (achada pelo Claude no PR 3a)
+- **O problema:** a execução anda uma fase por vez, cada fase numa chamada que o servidor faz a si mesmo. O código do
+  PR #19 dizia que, se uma dessas chamadas se perdesse (ou o servidor caísse no meio), um "varredor" retomaria a
+  execução, mas o varredor não existia: ela ficava em "rodando" para sempre e a pessoa via a tela parada. No computador,
+  basta salvar um arquivo no meio de uma execução, porque o `npm run dev` reinicia.
+- **Resolvida (24/10/2026, PR 3a):** quem roda uma fase renova a reserva da execução a cada 2 segundos, e a reserva vale
+  60 segundos (antes, 6 minutos). Cada busca de novidades da tela confere se a execução parou (reserva vencida, ou na
+  fila há mais de 10 segundos) e, se parou, a retoma (`lib/runs/resume.ts`). Testado com uma execução deixada na fila de
+  propósito: ao abrir a tela, ela foi retomada e terminou.
+
+### F37 — Cancelar não parava a IA no meio da fase
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 24/10/2026 (achada pelo Claude no PR 3a)
+- **O problema:** no código do PR #19, "Cancelar" marcava a execução como cancelada, mas a fase que estava rodando ia
+  até o fim (só a próxima não começava). Com IAs de verdade, a plataforma pagaria a fase inteira do Programador depois
+  de a pessoa ter cancelado.
+- **Resolvida (24/10/2026, PR 3a):** a cada renovação da reserva (2 segundos), quem roda confere se a execução foi
+  cancelada e, se foi, manda a IA parar na hora. No teste, depois de cancelar, nenhuma fase nova começou e a execução
+  não chegou ao fim.
+
+### F39 — A chamada interna ia para o endereço que vinha no pedido
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 24/10/2026 (achada pelo Claude na revisão do PR 3a)
+- **O problema:** para levar a execução adiante, o servidor chama a si mesmo levando um segredo. No código do PR #19, o
+  endereço dessa chamada era montado com os cabeçalhos do pedido que chegou (Host, X-Forwarded-Host), e esses quem pede
+  pode inventar. Um pedido forjado faria o nosso servidor mandar o segredo para outro site; com ele, dava para chamar a
+  rota interna e empurrar execuções. No computador, o `npm run dev` aceita pedidos da rede local.
+- **Resolvida (24/10/2026, PR 3a):** o endereço vem só da configuração (`VERCEL_URL`, o endereço configurado do site ou o
+  próprio computador), nunca do pedido (`lib/runs/trigger.ts`, com teste). Na publicação, conferir se a proteção de
+  acesso da Vercel deixa o site chamar a si mesmo por esse endereço.
 
 ## Processo
 
@@ -395,3 +459,5 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O que fazer:** primeira tarefa da etapa 5.
 - **Andamento (24/10/2026):** o site roda no computador do Luis, ligado ao projeto de testes do Supabase, e ele testou o
   login de verdade (PR #29) com tudo dando certo. Falta o chat e as receitas, que voltam no PR 3, já no banco novo.
+- **Andamento (24/10/2026, PR 3a):** a receita "Criar um site" voltou, no banco novo (com a IA simulada). Falta o chat
+  (parte 3c).
