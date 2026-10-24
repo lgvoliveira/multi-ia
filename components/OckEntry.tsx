@@ -1,5 +1,5 @@
-// A porta de entrada do OCK: você diz quem é. O dono vai para o painel de gestão; o funcionário
-// entra com o login que o dono criou para ele. (Sem login de dono ainda — isto é para testar.)
+// A porta de entrada do OCK, para quem ainda não entrou: o dono cria a conta da empresa; quem já tem conta
+// (dono ou funcionário) entra. O funcionário não se cadastra sozinho: o acesso vem por convite do dono.
 
 import Link from "next/link";
 import styles from "./OckEntry.module.css";
@@ -9,10 +9,10 @@ export function OckEntry() {
     <main className={styles.main}>
       <section className={styles.intro}>
         <p className={styles.kicker}>OCK</p>
-        <h1 className={styles.title}>Quem é você?</h1>
+        <h1 className={styles.title}>O time de IAs da sua empresa</h1>
         <p className={styles.lead}>
-          O time de IAs trabalha para a sua empresa. Entre como <strong>dono</strong> para gerir os
-          funcionários e ver os gastos, ou como <strong>funcionário</strong> para pedir tarefas.
+          Os funcionários usam Claude, GPT e Gemini no trabalho do dia a dia. O dono acompanha o que cada um entregou e
+          quanto gastou, e define um teto de gasto para cada um.
         </p>
       </section>
 
@@ -20,18 +20,21 @@ export function OckEntry() {
         <section className={styles.card}>
           <h2 className={styles.cardTitle}>Sou o dono</h2>
           <p className={styles.cardText}>
-            Gerencie funcionários, crie o login de cada um, defina tetos de gasto e acompanhe o custo.
+            Crie a conta da empresa. Depois você convida os funcionários e define o teto de gasto de cada um.
           </p>
-          <Link href="/dono" className={styles.ownerButton}>
-            Entrar como dono
+          <Link href="/cadastro" className={styles.ownerButton}>
+            Criar a conta da empresa
           </Link>
         </section>
 
         <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Sou funcionário</h2>
-          <p className={styles.cardText}>Entre com o email e a senha que a sua empresa criou para você.</p>
+          <h2 className={styles.cardTitle}>Já tenho conta</h2>
+          <p className={styles.cardText}>
+            Dono ou funcionário, entre com o seu e-mail e a sua senha. O funcionário recebe o acesso por um convite do
+            dono.
+          </p>
           <Link href="/entrar" className={styles.ownerButton}>
-            Entrar com meu login
+            Entrar
           </Link>
         </section>
       </div>
