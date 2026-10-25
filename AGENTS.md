@@ -74,8 +74,10 @@ Estrutura de pastas (criada na etapa 4, pode ser ajustada com aprovação):
 ```
 app/                 telas e rotas do Next.js. app/api/runs/ são as rotas das receitas: começar, ver, buscar as
                      novidades, cancelar e continuar depois de uma pausa ([id]/resume), com o login de quem pede, e a
-                     rota interna [id]/continue, que roda uma fase de cada vez no servidor e cobra cada etapa; app/dono/actions.ts e app/convite/ são o convite do
-                     funcionário (lado do dono e lado de quem recebe o link)
+                     rota interna [id]/continue, que roda uma fase de cada vez no servidor e cobra cada etapa;
+                     app/api/ock/ são as rotas do chat (mandar mensagem, anexar, baixar, conversas, entregas e
+                     gastos), todas com o login de quem pede; app/trabalho/ é o espaço de trabalho; app/dono/actions.ts
+                     e app/convite/ são o convite do funcionário (lado do dono e lado de quem recebe o link)
 components/          pedaços de tela reutilizáveis (cada um com seu .module.css). SitePreview.tsx e
                      generated-site.ts são a prévia isolada do site feito pelas IAs (seção 6)
 lib/engine/          motor: executa as etapas de um time e narra cada passo em eventos (types.ts).
@@ -93,14 +95,18 @@ lib/auth/            o login (Supabase Auth): quem está vendo a página (viewer
                      link (invites.ts; o código do link em invite-token.ts). Tudo SÓ do servidor, menos
                      member.ts, forms.ts e page-member.ts (confere que o login não mudou desde que a página
                      abriu, F34), que são dados e conferências puras
-lib/ock/             o workspace para empresas: empresa e funcionários (company.ts, ainda no banco antigo, e
-                     team.ts e team-forms.ts, a parte "Equipe" do painel do dono), o Chefe que recomenda a IA
-                     (chief.ts), preços (pricing.ts) e os arquivos gerados
+lib/ock/             o workspace para empresas: a parte "Equipe" do painel do dono (team.ts e team-forms.ts), o
+                     Chefe que recomenda a IA (chief.ts), preços (pricing.ts), os arquivos gerados (document.ts,
+                     chart.ts, project.ts) e o chat da tarefa rápida: quem executa uma mensagem (run-task.ts), o que
+                     cada tipo de resposta pede à IA e quanto pode custar (quick-task.ts), a chamada às IAs com novas
+                     tentativas (ai-call.ts), conversas e mensagens (task-store.ts), arquivos na pasta fechada
+                     (files.ts e attachments.ts) e o gasto do mês (spending.ts), tudo SÓ do servidor; chat.ts (limites
+                     e o formato do que a tela recebe) e chat-client.ts (os pedidos do navegador) vão para a tela
 lib/runs/            a execução vista de fora: o que dos eventos pode chegar ao usuário
                      (public-events.ts), a conferência do pedido que chega pela internet (parse-request.ts),
                      o banco das execuções (store.ts), a narração gravada aos poucos (event-buffer.ts), a
                      retomada de execução parada (resume.ts), a chamada interna (trigger.ts e
-                     internal-secret.ts), a carteira vista por uma execução (wallet.ts) e o que cobrar de cada
+                     internal-secret.ts), a carteira vista por uma execução e por uma mensagem do chat (wallet.ts) e o que cobrar de cada
                      etapa (billing.ts), tudo SÓ do servidor; no navegador, começar, cancelar e continuar
                      (client.ts) e buscar as novidades (live-client.ts). A estimativa (estimate.ts) roda nos dois
                      lados: o servidor calcula o máximo de cada etapa com cada IA, e a tela só soma
@@ -131,6 +137,9 @@ docs/                documento do projeto, diário de progresso, registro de fal
 2. Cobra cada etapa concluída pelo **consumo real**. No fim, devolve a diferença entre o reservado e o gasto.
 3. Se o custo for passar da estimativa, **pausa e pergunta** antes de continuar. A plataforma não absorve diferenças.
 4. Cancelou no meio: paga só as etapas concluídas; a que estava rodando não é cobrada (decisão do Luis, 25/10/2026).
+   **Na tarefa rápida (chat)** não há estimativa antes de cada mensagem (decisão do Luis, 25/10/2026, issue #39):
+   antes de qualquer IA o servidor confere saldo e teto, reserva o máximo da resposta depois que o Chefe decide, cobra o
+   consumo real numa linha só ("Tarefa rápida · Documento") e a tela mostra "Custou R$ X" em cada resposta.
 5. Estimativas honestas, calculadas a partir do histórico real de cada receita. A estimativa mostrada precisa ser confiável — gastar muito além dela é um bug.
 6. Internamente, registrar o custo real em **dólar** de cada execução.
 

@@ -1,200 +1,174 @@
-// Os arquivos do funcionário: o conteúdo vai para o Storage (bucket ock-files) e os metadados para ock_files.
-// A IA "lê" um arquivo quando o servidor extrai o texto dele (.txt/.csv/.md/.json e PDF) e coloca na entrada.
-// Só o servidor usa (cliente de serviço).
+// Os arquivos de cada pessoa: os que ela anexa (upload) e os que as IAs fazem (delivery). O conteúdo fica na pasta
+// fechada "files" do Storage, no caminho <empresa>/<pessoa>/..., e os dados na tabela files. SÓ do servidor.
+// Ler a tabela é com a sessão de quem está logado: o banco só devolve o que a pessoa pode ver (os próprios arquivos e,
+// para o dono, também as entregas da empresa). Gravar e mexer na pasta é com a chave-mestra. O arquivo só sai por um
+// link de poucos minutos, que sempre baixa e nunca abre como página (AGENTS.md, seção 6).
 
 import { randomUUID } from "node:crypto";
-import { extractText, getDocumentProxy } from "unpdf";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/runs/supabase-server";
-import type { Company, Member } from "./company";
+import type { ChatDelivery, ChatFile } from "./chat";
 
-const BUCKET = "ock-files";
+const BUCKET = "files";
+const FILES = "files";
+/** Por quanto tempo vale o link de baixar. */
+const DOWNLOAD_LINK_SECONDS = 300;
+const COLUMNS = "id, member_id, kind, name, storage_path, mime_type, size_bytes, task_id, created_at";
 
-export interface StoredFile {
+export type FileKind = "upload" | "delivery";
+
+export interface FileRow {
   id: string;
+  member_id: string;
+  kind: FileKind;
   name: string;
-  mime: string | null;
-  sizeBytes: number | null;
-  createdAt: string;
+  storage_path: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  task_id: string | null;
+  created_at: string;
 }
 
-/** Sobe um arquivo para a pasta do funcionário e guarda os metadados.
- *  kind="upload" = arquivo que o funcionário anexou; kind="delivery" = arquivo que a IA PRODUZIU (entrega). */
-export async function uploadFile(
-  company: Company,
-  member: Member,
-  file: { name: string; mime: string | null; bytes: Uint8Array },
-  kind: "upload" | "delivery" = "upload",
-): Promise<StoredFile> {
+export interface NewFile {
+  companyId: string;
+  memberId: string;
+  kind: FileKind;
+  name: string;
+  /** O tipo do conteúdo, para o nosso uso (ex.: mostrar um gráfico). Na pasta, todo arquivo fica "só para baixar". */
+  mime: string;
+  bytes: Uint8Array;
+  taskId?: string | null;
+}
+
+/** Guarda um arquivo na pasta da pessoa e registra na tabela. Devolve o id e o nome. */
+export async function storeFile(file: NewFile): Promise<ChatFile> {
   const db = supabaseAdmin();
-  const path = `${company.id}/${member.id}/${randomUUID()}-${safeName(file.name)}`;
-  const { error: upErr } = await db.storage.from(BUCKET).upload(path, file.bytes, {
-    contentType: file.mime ?? "application/octet-stream",
-    upsert: false,
-  });
-  if (upErr) throw upErr;
+  const path = `${file.companyId}/${file.memberId}/${randomUUID()}-${storageName(file.name)}`;
+  const { error: uploadError } = await db.storage
+    .from(BUCKET)
+    .upload(path, file.bytes, { contentType: "application/octet-stream", upsert: false });
+  if (uploadError) throw uploadError;
 
   const { data, error } = await db
-    .from("ock_files")
+    .from(FILES)
     .insert({
-      company_id: company.id,
-      member_id: member.id,
-      name: file.name,
-      path,
-      mime: file.mime,
+      company_id: file.companyId,
+      member_id: file.memberId,
+      kind: file.kind,
+      name: displayName(file.name),
+      storage_path: path,
+      mime_type: file.mime.slice(0, 255),
       size_bytes: file.bytes.byteLength,
-      kind,
+      task_id: file.taskId ?? null,
     })
-    .select("id, name, mime, size_bytes, created_at")
+    .select("id, name")
     .single();
+  if (error) {
+    // Sem o registro, ninguém acharia o conteúdo: ele sai da pasta.
+    await db.storage.from(BUCKET).remove([path]);
+    throw error;
+  }
+  return data as ChatFile;
+}
+
+/** Os anexos da própria pessoa com estes ids (os que não forem dela, ou não existirem, não voltam). */
+export async function loadOwnUploads(
+  session: SupabaseClient,
+  memberId: string,
+  ids: readonly string[],
+): Promise<FileRow[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await session
+    .from(FILES)
+    .select(COLUMNS)
+    .in("id", ids)
+    .eq("member_id", memberId)
+    .eq("kind", "upload");
   if (error) throw error;
-  const r = data as { id: string; name: string; mime: string | null; size_bytes: number | null; created_at: string };
-  return { id: r.id, name: r.name, mime: r.mime, sizeBytes: r.size_bytes, createdAt: r.created_at };
+  return (data as FileRow[] | null) ?? [];
 }
 
-/** Uma entrega (arquivo produzido pela IA) com link de download pronto. */
-export interface Delivery {
-  id: string;
-  name: string;
-  mime: string | null;
-  sizeBytes: number | null;
-  createdAt: string;
-  url: string | null;
+/** Liga os anexos à mensagem em que foram mandados, para a conversa mostrar quais eram. */
+export async function linkUploadsToTask(ids: readonly string[], taskId: string): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await supabaseAdmin().from(FILES).update({ task_id: taskId }).in("id", ids).is("task_id", null);
+  if (error) throw error;
 }
 
-/** Lista as ENTREGAS de um funcionário (arquivos que a IA produziu) com link de download (1 hora). */
-export async function listDeliveries(memberId: string): Promise<Delivery[]> {
-  const db = supabaseAdmin();
-  const { data, error } = await db
-    .from("ock_files")
-    .select("id, name, path, mime, size_bytes, created_at")
+/** Os arquivos (anexos e entregas) da própria pessoa ligados a estas mensagens, em ordem. */
+export async function loadTaskFiles(
+  session: SupabaseClient,
+  memberId: string,
+  taskIds: readonly string[],
+): Promise<FileRow[]> {
+  if (taskIds.length === 0) return [];
+  const { data, error } = await session
+    .from(FILES)
+    .select(COLUMNS)
+    .in("task_id", taskIds)
+    .eq("member_id", memberId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as FileRow[] | null) ?? [];
+}
+
+/** As entregas da própria pessoa (o que as IAs fizeram para ela), das mais novas para as mais antigas. */
+export async function listOwnDeliveries(
+  session: SupabaseClient,
+  memberId: string,
+  limit = 200,
+): Promise<ChatDelivery[]> {
+  const { data, error } = await session
+    .from(FILES)
+    .select("id, name, created_at")
     .eq("member_id", memberId)
     .eq("kind", "delivery")
-    .order("id", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(limit);
   if (error) throw error;
-  type Row = { id: string; name: string; path: string; mime: string | null; size_bytes: number | null; created_at: string };
-  const rows = (data as Row[] | null) ?? [];
-  const out: Delivery[] = [];
-  for (const r of rows) {
-    const { data: signed } = await db.storage.from(BUCKET).createSignedUrl(r.path, 3600);
-    out.push({
-      id: r.id,
-      name: r.name,
-      mime: r.mime,
-      sizeBytes: r.size_bytes,
-      createdAt: r.created_at,
-      url: signed?.signedUrl ?? null,
-    });
-  }
-  return out;
-}
-
-/** Os arquivos de um funcionário (a "pasta" dele). */
-export async function listMemberFiles(memberId: string): Promise<StoredFile[]> {
-  const { data, error } = await supabaseAdmin()
-    .from("ock_files")
-    .select("id, name, mime, size_bytes, created_at")
-    .eq("member_id", memberId)
-    .order("id", { ascending: false });
-  if (error) throw error;
-  type Row = { id: string; name: string; mime: string | null; size_bytes: number | null; created_at: string };
-  return ((data as Row[] | null) ?? []).map((r) => ({
-    id: r.id,
-    name: r.name,
-    mime: r.mime,
-    sizeBytes: r.size_bytes,
-    createdAt: r.created_at,
+  return ((data as { id: string; name: string; created_at: string }[] | null) ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    createdAt: row.created_at,
   }));
 }
 
-interface FileRow {
-  name: string;
-  path: string;
-  mime: string | null;
-  member_id: string;
-}
-
-async function loadFileRow(fileId: string): Promise<FileRow | null> {
-  const { data, error } = await supabaseAdmin()
-    .from("ock_files")
-    .select("name, path, mime, member_id")
-    .eq("id", fileId)
-    .maybeSingle();
+/** Um arquivo que a pessoa pode ver (os dela e, para o dono, as entregas da empresa), ou null. */
+export async function loadVisibleFile(session: SupabaseClient, id: string): Promise<FileRow | null> {
+  const { data, error } = await session.from(FILES).select(COLUMNS).eq("id", id).maybeSingle();
   if (error) throw error;
   return (data as FileRow | null) ?? null;
 }
 
-/** Baixa o arquivo do Storage como bytes. */
-async function downloadBytes(path: string): Promise<Uint8Array> {
+/** O conteúdo de um arquivo da pasta. Só depois de conferir, pela sessão, que a pessoa pode vê-lo. */
+export async function readStoredFile(path: string): Promise<Uint8Array> {
   const { data, error } = await supabaseAdmin().storage.from(BUCKET).download(path);
   if (error) throw error;
   return new Uint8Array(await data.arrayBuffer());
 }
 
-/**
- * Extrai o TEXTO de um arquivo para a IA ler. Lê .txt/.csv/.md/.json direto e PDF com o unpdf.
- * Tipos que não dão para ler como texto (imagem, docx...) voltam null — tratados fora.
- */
-export async function readFileText(
-  fileId: string,
-  memberId: string,
-): Promise<{ name: string; text: string } | null> {
-  const row = await loadFileRow(fileId);
-  if (!row || row.member_id !== memberId) return null; // só os próprios arquivos
-  const bytes = await downloadBytes(row.path);
-  const ext = row.name.split(".").pop()?.toLowerCase() ?? "";
-
-  if (ext === "pdf" || row.mime === "application/pdf") {
-    try {
-      const pdf = await getDocumentProxy(bytes);
-      const result = await extractText(pdf, { mergePages: true });
-      const text = Array.isArray(result.text) ? result.text.join("\n") : result.text;
-      return { name: row.name, text };
-    } catch {
-      return { name: row.name, text: "[não consegui ler o conteúdo deste PDF]" };
-    }
-  }
-  if (["txt", "csv", "md", "json", "tsv", "log"].includes(ext) || (row.mime ?? "").startsWith("text/")) {
-    return { name: row.name, text: new TextDecoder().decode(bytes) };
-  }
-  return null;
-}
-
-const IMAGE_MIME: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  webp: "image/webp",
-  gif: "image/gif",
-};
-
-/** Se o arquivo for imagem, devolve o tipo e o conteúdo em base64 para a IA "enxergar". Senão, null. */
-export async function readFileImage(
-  fileId: string,
-  memberId: string,
-): Promise<{ mime: string; base64: string } | null> {
-  const row = await loadFileRow(fileId);
-  if (!row || row.member_id !== memberId) return null;
-  const ext = row.name.split(".").pop()?.toLowerCase() ?? "";
-  const mime = (row.mime ?? "").startsWith("image/") ? row.mime! : IMAGE_MIME[ext];
-  if (!mime) return null;
-  const bytes = await downloadBytes(row.path);
-  return { mime, base64: Buffer.from(bytes).toString("base64") };
-}
-
-/** Link temporário para baixar o arquivo (10 minutos). */
-export async function downloadUrl(fileId: string, memberId: string): Promise<string | null> {
-  const row = await loadFileRow(fileId);
-  if (!row || row.member_id !== memberId) return null;
-  const { data, error } = await supabaseAdmin().storage.from(BUCKET).createSignedUrl(row.path, 600);
+/** Um link de poucos minutos que baixa o arquivo com o nome dele. Só depois de conferir, pela sessão, quem pede. */
+export async function downloadLink(file: Pick<FileRow, "storage_path" | "name">): Promise<string> {
+  const { data, error } = await supabaseAdmin()
+    .storage.from(BUCKET)
+    .createSignedUrl(file.storage_path, DOWNLOAD_LINK_SECONDS, { download: file.name });
   if (error) throw error;
-  return data?.signedUrl ?? null;
+  return data.signedUrl;
 }
 
-/** Limpa o nome do arquivo para usar no caminho do Storage. */
-function safeName(name: string): string {
-  return name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-zA-Z0-9._-]/g, "_")
-    .slice(0, 80);
+/** O nome mostrado na tela e usado ao baixar: sem caminho de pasta, com até 255 caracteres. */
+export function displayName(name: string): string {
+  const base = name.split(/[\\/]/).pop()?.trim() ?? "";
+  return (base || "arquivo").slice(0, 255);
+}
+
+/** O nome no caminho da pasta: só letras sem acento, números e . _ - */
+function storageName(name: string): string {
+  return (
+    displayName(name)
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .slice(0, 80) || "arquivo"
+  );
 }

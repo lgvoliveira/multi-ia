@@ -1,4 +1,4 @@
-// Acesso tipado às tabelas da execução persistida (runs, run_events e ai_calls). SÓ do servidor.
+// Acesso tipado às tabelas da execução persistida (runs, run_events e ai_calls, que o chat também usa). SÓ do servidor.
 // Duas portas, como no resto do banco novo:
 //  - as funções que recebem `session` leem com a sessão de quem está logado: o banco só devolve as execuções da
 //    própria pessoa, e só as colunas que ela pode ver. É assim que as rotas que o navegador chama leem;
@@ -100,7 +100,10 @@ const OWN_RUN_COLUMNS = "id, recipe_id, request, status, plan, cursor, result, d
 export interface AiCallRow {
   company_id: string;
   member_id: string;
-  run_id: string;
+  /** De qual execução de receita, ou de qual tarefa do chat, veio a chamada. */
+  run_id: string | null;
+  task_id?: string | null;
+  /** A etapa da receita, ou "chief" e "answer" no chat (o Chefe decidindo e a IA respondendo). */
   step_id: string;
   /** Número da tentativa com esta IA nesta etapa (1 é a primeira). */
   attempt: number;

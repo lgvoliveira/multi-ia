@@ -8,7 +8,7 @@
 
 O banco é refeito **do zero**, num projeto novo do Supabase (Gmail do projeto, região São Paulo), sem usar as tabelas
 que o parceiro criou no Supabase dele (`ock_*`, `runs`, `run_events`, `run_steps`, `run_secrets`). O login, a equipe e as
-receitas já usam o banco novo (PRs 2a, 2b e 3a da etapa 5); o chat ainda usa o antigo e passa na parte 3c do PR 3.
+receitas e o chat usam o banco novo (PRs 2a, 2b, 3a, 3b e 3c da etapa 5); nenhuma parte do código usa mais o antigo.
 
 ## As três ideias do desenho
 
@@ -94,7 +94,7 @@ A agência tem R$ 200,00 de saldo. A Ana pede a receita "Criar um site", com est
 
 Como a pré-autorização do cartão num hotel: bloqueiam um valor na entrada, mas na fatura só aparece o que foi gasto.
 Se o custo for passar da estimativa, a execução pausa antes da próxima etapa e pergunta. A tarefa rápida usa a mesma
-reserva, com uma estimativa pequena.
+reserva, com o máximo de uma resposta (abaixo).
 
 **Quando o custo real passa da estimativa:** o consumo da IA já aconteceu, então a cobrança entra assim mesmo (a
 plataforma não absorve diferenças) e o banco avisa o servidor que a reserva estourou. Se a empresa estava sem folga, o
@@ -111,6 +111,17 @@ a reserva antiga e reserva o que falta (com as mesmas conferências de saldo e t
 de gasto, com no mínimo 1 centavo: assim, o número de linhas de gasto da execução diz quantas etapas já foram cobradas,
 e uma fase gravada mas não cobrada (o servidor caiu entre os dois) é cobrada na chamada seguinte, sem cobrar nada duas
 vezes.
+
+**Como o chat usa a carteira (PR 3c, 25/10/2026):** cada mensagem tem duas reservas, as duas com o id da mensagem em
+`wallet_holds.task_id` e prazo de 15 minutos (`p_ttl`), em vez de 1 hora: uma resposta leva no máximo 5 minutos.
+1. Antes de qualquer IA, o máximo que o Chefe pode gastar para decidir (uns 2 centavos). Recusou: nenhuma IA trabalha e
+   nada é guardado. Essa reserva fecha assim que o Chefe decide.
+2. O que o Chefe gastou mais o máximo da IA que vai responder (de uns R$ 0,05 numa pergunta simples a uns R$ 9 num projeto
+   no Claude potente). Recusou: nada é cobrado, e o custo do Chefe (frações de centavo) fica só em `ai_calls`.
+3. Com a resposta pronta e gravada, **uma linha de gasto só** por mensagem ("Tarefa rápida · Documento", com a IA que
+   respondeu e `task_id`), pelo consumo real do Chefe e da resposta, com no mínimo 1 centavo. Resposta que falhou não
+   vira linha. A reserva fecha e a sobra volta.
+No chat não há pausa: como a reserva é o máximo, o custo real só passaria dela se a medição estivesse errada (F40, F29).
 
 ### As funções do dinheiro
 
@@ -191,6 +202,17 @@ próxima vez que a tela pede novidades. A narração vai para `run_events` aos p
 execução e a narração pelo nosso servidor, com a sessão de quem está logado: o banco só devolve as execuções da
 própria pessoa. Cancelar procura a execução pela sessão (a de outra pessoa nem aparece) e grava pela chave-mestra.
 Cada etapa concluída vira uma linha em `ai_calls` (modelo e tokens; o custo entra com a cobrança, na parte 3b).
+
+**Como uma mensagem do chat anda (PR 3c):** tudo numa chamada só (`POST /api/ock`), com a resposta voltando no fim. A
+conversa nova é criada pela sessão da pessoa (o banco põe a empresa e a pessoa sozinho); a mensagem (`tasks`) e os
+arquivos (`files`) são gravados pelo servidor. Os anexos sobem antes (`POST /api/ock/files`), como `upload`, e ficam
+ligados à mensagem (`files.task_id`) quando ela é enviada; as entregas que a IA faz entram como `delivery`, também com
+a mensagem. Na pasta fechada, todo arquivo é gravado como "só para baixar" (`application/octet-stream`); o tipo de
+verdade fica em `files.mime_type`. Baixar passa pelo nosso servidor, que acha o arquivo com a sessão de quem pede (o
+dono acha também as entregas dos funcionários, não os anexos) e manda para um link de 5 minutos que sempre baixa. Cada
+chamada às IAs (o Chefe, `step_id` "chief", e a resposta, "answer", com cada tentativa) vira uma linha em `ai_calls`
+com `task_id`. Uma mensagem que ficou "respondendo" (o servidor caiu no meio) aparece como falha depois de 6 minutos;
+ela nunca foi cobrada, porque a resposta é gravada antes da cobrança.
 
 ## Migrações
 

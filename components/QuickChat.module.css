@@ -1,0 +1,424 @@
+/* O chat: as conversas ao lado e a conversa principal. Em tela estreita, as conversas vão para cima. */
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  align-items: flex-start;
+}
+
+.sidebar {
+  flex: 1 1 var(--chat-sidebar-width);
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.newChat,
+.attach {
+  height: var(--control-height);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.newChat:hover:not(:disabled),
+.attach:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.newChat:disabled,
+.attach:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.sidebarEmpty {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.conversationList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: var(--chat-messages-height);
+  overflow-y: auto;
+}
+
+.conversation {
+  width: 100%;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-body);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.conversation:hover:not(:disabled) {
+  background: var(--color-surface-subtle);
+}
+
+.conversation[aria-current="true"] {
+  background: var(--color-surface-subtle);
+  border-color: var(--color-border);
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+}
+
+.conversation:disabled {
+  cursor: default;
+}
+
+.main {
+  flex: 999 1 var(--chat-main-min-width);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.messages {
+  height: var(--chat-messages-height);
+  overflow-y: auto;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.turns {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  max-width: var(--chat-column-max-width);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.status {
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.empty {
+  max-width: var(--text-max-width);
+  margin: var(--space-10) auto;
+  text-align: center;
+}
+
+.emptyTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+}
+
+.emptyText {
+  font-size: var(--text-base);
+  line-height: var(--line-height-body);
+  color: var(--color-text-body);
+}
+
+/* A mensagem da pessoa, à direita. */
+.user {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: var(--radius-card);
+  border-bottom-right-radius: var(--space-1);
+}
+
+.userFiles {
+  font-size: var(--text-xs);
+  margin-bottom: var(--space-1);
+}
+
+.userText {
+  font-size: var(--text-md);
+  line-height: var(--line-height-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A resposta, à esquerda. */
+.answer {
+  align-self: flex-start;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  border-bottom-left-radius: var(--space-1);
+}
+
+.byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.who {
+  font-size: var(--text-sm);
+  color: var(--color-text-soft);
+}
+
+/* A bolinha da IA, colada no começo da frase (a frase quebra a linha sozinha, a bolinha não fica sozinha). */
+.who > :first-child {
+  margin-right: var(--space-2);
+}
+
+.cost {
+  margin-left: auto;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-status-done-bg);
+  color: var(--color-status-done-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+
+.reason {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.notice {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-size: var(--text-sm);
+}
+
+.answerText {
+  font-size: var(--text-md);
+  line-height: var(--line-height-body);
+  color: var(--color-text-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  max-width: var(--chart-preview-max-width);
+  height: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+
+.downloads {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.download {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.download:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.thinking {
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-status-working-bg);
+  color: var(--color-status-working-text);
+  font-size: var(--text-sm);
+}
+
+.failed {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+  font-size: var(--text-sm);
+}
+
+.problem {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+  font-size: var(--text-sm);
+}
+
+/* A caixa de escrever. */
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-card);
+}
+
+.input {
+  width: 100%;
+  max-height: var(--chat-input-max-height);
+  resize: vertical;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  line-height: var(--line-height-body);
+  padding: var(--space-2) var(--space-1);
+}
+
+.input:focus-visible {
+  outline-offset: 0;
+}
+
+.attachedList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  color: var(--color-text-body);
+  font-size: var(--text-sm);
+}
+
+.chipName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipRemove {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+}
+
+.composerBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.counter {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.counter[data-full="true"] {
+  color: var(--color-error-text);
+  font-weight: var(--weight-semibold);
+}
+
+.send {
+  height: var(--control-height);
+  padding: 0 var(--space-6);
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.send:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

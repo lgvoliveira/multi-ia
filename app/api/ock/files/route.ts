@@ -1,53 +1,57 @@
-// POST /api/ock/files  (multipart: file, memberId) → sobe um arquivo para a pasta do funcionário.
-// GET  /api/ock/files?member=<id>                 → lista os arquivos do funcionário.
+// POST /api/ock/files (formulário com o arquivo e o id de quem abriu a página): anexa um arquivo para mandar numa
+// mensagem do chat. Vai para a pasta fechada da pessoa; a IA só o lê quando a mensagem é enviada. Só para quem é da
+// empresa, está ativo e é quem abriu a página (F34). Tipo que a IA não lê é recusado na hora (F44).
 
-import { getMember, loadCompany } from "@/lib/ock/company";
-import { listMemberFiles, uploadFile } from "@/lib/ock/files";
+import { PAGE_MEMBER_FIELD } from "@/lib/auth/page-member";
+import { attachmentMime } from "@/lib/ock/attachments";
+import { isReadableAttachment, MAX_ATTACHMENT_BYTES, UNREADABLE_ATTACHMENT } from "@/lib/ock/chat";
+import { chatProblem, pageCaller, SERVER_PROBLEM } from "@/lib/ock/chat-request";
+import { displayName, storeFile } from "@/lib/ock/files";
 
 export const maxDuration = 60;
 
-const MAX_FILE = 10 * 1024 * 1024; // 10 MB
-
-export async function GET(request: Request): Promise<Response> {
-  const memberId = new URL(request.url).searchParams.get("member") ?? "";
-  if (!memberId) return Response.json({ problem: "Funcionário inválido." }, { status: 400 });
-  try {
-    const files = await listMemberFiles(memberId);
-    return Response.json({ files }, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    console.error("[api/ock/files] Falha ao listar:", error);
-    return Response.json({ problem: "Algo deu errado do nosso lado." }, { status: 500 });
-  }
-}
+/** Folga para o resto do formulário, além do arquivo. */
+const FORM_OVERHEAD_BYTES = 64 * 1024;
 
 export async function POST(request: Request): Promise<Response> {
+  const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.startsWith("multipart/form-data")) return chatProblem(415, "Formato de envio não aceito.");
+  if (Number(request.headers.get("content-length")) > MAX_ATTACHMENT_BYTES + FORM_OVERHEAD_BYTES) {
+    return chatProblem(413, tooBig());
+  }
+
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
-    return Response.json({ problem: "Envio inválido." }, { status: 400 });
+    return chatProblem(400, "Não entendemos o arquivo enviado.");
   }
-  const memberId = typeof form.get("memberId") === "string" ? (form.get("memberId") as string) : "";
+
+  const caller = await pageCaller(form.get(PAGE_MEMBER_FIELD));
+  if (!caller.ok) return caller.response;
+
   const file = form.get("file");
-  if (!memberId) return Response.json({ problem: "Funcionário inválido." }, { status: 400 });
-  if (!(file instanceof File)) return Response.json({ problem: "Nenhum arquivo enviado." }, { status: 400 });
-  if (file.size > MAX_FILE) return Response.json({ problem: "Arquivo grande demais (máx. 10 MB)." }, { status: 413 });
+  if (!(file instanceof File) || file.size === 0) return chatProblem(400, "Escolha um arquivo para anexar.");
+  if (file.size > MAX_ATTACHMENT_BYTES) return chatProblem(413, tooBig());
+  const name = displayName(file.name);
+  if (!isReadableAttachment(name)) return chatProblem(415, UNREADABLE_ATTACHMENT);
 
   try {
-    const member = await getMember(memberId);
-    if (!member) return Response.json({ problem: "Funcionário não encontrado." }, { status: 404 });
-    const company = await loadCompany("demo");
-    if (!company) return Response.json({ problem: "Empresa não encontrada." }, { status: 404 });
-
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const stored = await uploadFile(company, member, {
-      name: file.name || "arquivo",
-      mime: file.type || null,
-      bytes,
+    const stored = await storeFile({
+      companyId: caller.me.companyId,
+      memberId: caller.me.id,
+      kind: "upload",
+      name,
+      mime: attachmentMime(name),
+      bytes: new Uint8Array(await file.arrayBuffer()),
     });
-    return Response.json({ file: stored });
+    return Response.json({ file: stored }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    console.error("[api/ock/files] Falha ao subir:", error);
-    return Response.json({ problem: "Não deu para subir o arquivo agora." }, { status: 500 });
+    console.error("[api/ock/files] Falha ao guardar o anexo:", error);
+    return chatProblem(500, SERVER_PROBLEM);
   }
+}
+
+function tooBig(): string {
+  return `O arquivo passou de ${MAX_ATTACHMENT_BYTES / (1024 * 1024)} MB. Anexe um menor.`;
 }

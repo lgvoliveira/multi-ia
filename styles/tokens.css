@@ -129,5 +129,13 @@
   --result-main-min-width: 560px;
   --result-aside-min-width: 300px;
   --preview-height: clamp(420px, 70vh, 720px);
+  /* Espaço de trabalho (chat): a lista de conversas ao lado da conversa (abaixo destas larguras, ela vai para cima) */
+  --chat-sidebar-width: 240px;
+  --chat-main-min-width: 360px;
+  --chat-column-max-width: 760px; /* largura das mensagens dentro da conversa */
+  --chat-messages-height: clamp(320px, 55vh, 680px); /* altura da conversa (depois disso, ela rola) */
+  --chat-input-max-height: 200px;
+  --chart-preview-max-width: 560px; /* gráfico desenhado dentro da conversa */
+  --progress-height: 8px; /* barra do gasto do mês */
   --page-gutter: var(--space-6);
 }

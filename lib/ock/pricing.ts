@@ -42,13 +42,6 @@ export const USD_TO_BRL = 5.5;
  */
 const USAGE_MARGIN = 0;
 
-/** Nome amigável de cada IA, para a tela. */
-export const PROVIDER_LABEL: Record<ProviderId, string> = {
-  claude: "Claude",
-  gpt: "GPT",
-  gemini: "Gemini",
-};
-
 /** Quanto a empresa da IA cobra da OCK, em DÓLAR, pelos tokens consumidos. Só interno (tabela ai_calls). */
 export function costInUsd(
   provider: ProviderId,
@@ -70,7 +63,12 @@ export function costInCents(
   inputTokens: number,
   outputTokens: number,
 ): number {
-  const cents = costInUsd(provider, tier, inputTokens, outputTokens) * USD_TO_BRL * (1 + USAGE_MARGIN) * 100;
+  return usdToCents(costInUsd(provider, tier, inputTokens, outputTokens));
+}
+
+/** Um custo em dólar em CENTAVOS de real: no câmbio do dia, mais a margem, arredondado para cima. */
+export function usdToCents(usd: number): number {
+  const cents = usd * USD_TO_BRL * (1 + USAGE_MARGIN) * 100;
   // Arredonda antes de subir: 12,000000001 (resto da conta com vírgula do computador) é 12, e não 13.
   return Math.ceil(Number(cents.toFixed(6)));
 }
@@ -86,22 +84,6 @@ export function premiumCostInCents(inputTokens: number, outputTokens: number): n
 /** Mostra centavos de real como texto: 1234 → "R$ 12,34". */
 export function formatBRL(cents: number): string {
   return `R$ ${(cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-// Para o funcionário, mostramos o uso em TOKENS (não em reais). Como o preço do token varia por IA,
-// a conversão de um teto em reais para "tokens equivalentes" é uma ESTIMATIVA (média das IAs do projeto).
-const REAL_PER_MILLION_TOKENS = 23;
-
-/** Quantos tokens, aproximadamente, cabem num valor em centavos de real. */
-export function tokensForCents(cents: number): number {
-  return Math.round((cents / 100 / REAL_PER_MILLION_TOKENS) * 1_000_000);
-}
-
-/** Mostra uma quantidade de tokens de forma legível: 4300000 → "4,3 mi"; 12000 → "12 mil". */
-export function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi`;
-  if (n >= 1_000) return `${Math.round(n / 1_000).toLocaleString("pt-BR")} mil`;
-  return n.toLocaleString("pt-BR");
 }
 
 /**

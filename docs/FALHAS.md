@@ -30,20 +30,20 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F10 | Login de mentira: o código na URL é o "estar logado" | Segurança | Alta | Resolvida |
 | F11 | Painel do dono sem login e senhas temporárias expostas | Segurança | Alta | Resolvida |
 | F12 | Senha temporária guardada sem criptografia | Segurança | Média | Resolvida |
-| F13 | Só existe uma empresa, fixa no código ("demo") | Código | Alta | Decidida |
+| F13 | Só existe uma empresa, fixa no código ("demo") | Código | Alta | Resolvida |
 | F14 | As tabelas do banco (Supabase) não estão no repositório | Código | Alta | Resolvida |
 | F15 | Pacote `xlsx` com falhas de segurança conhecidas | Segurança | Média | Aberta |
-| F16 | Rotas que gastam IA de verdade abertas para qualquer um | Segurança | Alta | Aberta |
+| F16 | Rotas que gastam IA de verdade abertas para qualquer um | Segurança | Alta | Resolvida |
 | F17 | Preços das IAs e câmbio fixos no código | Código | Média | Aberta |
 | F18 | Prévia de site: o Chrome "aquece" uma conexão antes de bloquear | Segurança | Baixa | Aceita |
 | F19 | Testado só no Chrome | Código | Baixa | Aberta |
 | F20 | Mudança grande de produto entrou num PR só, sem registro nos documentos | Processo | Média | Decidida |
 | F21 | O parceiro usa a conta do GitHub do Luis | Processo / Segurança | Média | Aberta |
 | F22 | O OCK nunca rodou no computador do Luis | Processo | Média | Aberta |
-| F23 | Apagar um funcionário devolve o gasto dele ao crédito da empresa | Código | Alta | Decidida |
-| F24 | Gasto e teto falham com pedidos ao mesmo tempo | Código | Média | Decidida |
-| F25 | O próprio dono define o crédito da empresa | Negócio / Segurança | Alta | Decidida |
-| F26 | O custo das tentativas que falharam não fica registrado | Código | Média | Decidida |
+| F23 | Apagar um funcionário devolve o gasto dele ao crédito da empresa | Código | Alta | Resolvida |
+| F24 | Gasto e teto falham com pedidos ao mesmo tempo | Código | Média | Resolvida |
+| F25 | O próprio dono define o crédito da empresa | Negócio / Segurança | Alta | Resolvida |
+| F26 | O custo das tentativas que falharam não fica registrado | Código | Média | Resolvida |
 | F27 | Qualquer pessoa pode ler as execuções direto no banco | Segurança | Alta | Resolvida |
 | F28 | Apagar um arquivo direto pelo banco deixa o conteúdo guardado | Segurança / LGPD | Baixa | Aberta |
 | F29 | O saldo da empresa pode ficar negativo | Negócio | Baixa | Aceita |
@@ -61,6 +61,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F41 | "+ Adicionar agente" mostra o agente, mas ele nunca trabalha | Produto / Código | Baixa | Resolvida |
 | F42 | Sem a chave de uma IA, o site usa a IA simulada sem avisar | Código | Média | Aberta |
 | F43 | Quedas raras do servidor na hora de cobrar | Código | Baixa | Aceita |
+| F44 | Anexos do chat: o texto vai inteiro para a IA, e o que ela não lê é aceito sem aviso | Código / Produto | Média | Resolvida |
+| F45 | Sem a pesquisa ou o código de verdade, a IA é instruída a esconder isso | Produto | Média | Resolvida |
 
 ## Negócio
 
@@ -101,6 +103,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   (ver `BANCO-DE-DADOS.md`). Partes (2) e (3) continuam abertas.
 - **Andamento (24/10/2026, PR #24):** as regras de acesso do banco novo já garantem a parte (1): o dono não consegue
   ler execuções, conversas nem tarefas dos funcionários, e um teste confere isso em todo PR.
+- **Andamento (25/10/2026, PR 3c):** com o chat de volta, o teste de ponta a ponta conferiu a parte (1): a dona da
+  empresa recebeu "não encontrada" para a conversa da funcionária e para o anexo que ela mandou; só as entregas (os
+  arquivos que as IAs fizeram) ela pode baixar, como decidido.
 
 ### F06 — Vender para empresa é mais lento e trabalhoso
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 22/10/2026
@@ -123,6 +128,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   resolve. Se ele errar numa tarefa importante, o funcionário recebe algo fraco e culpa a plataforma.
 - **Decisão (Luis, 22/10):** a plataforma recomenda (IA, nível e esforço), mas o funcionário escolhe livremente
   ("quero o melhor", "quero o Claude nesta tarefa"). Falta construir.
+- **Andamento (25/10/2026, PR 3c):** no chat, cada mensagem guarda o que o Chefe recomendou e o que foi usado
+  (`tasks.recommended_*` e `chosen_*`); por enquanto, os dois são iguais. A escolha livre é da etapa 6.
 
 ### F08 — As receitas não existem dentro do workspace do funcionário
 - **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 22/10/2026
@@ -132,6 +139,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   de cada receita contando no teto do funcionário.
 - **Andamento (25/10/2026, PR 3b):** o gasto da receita "Criar um site" já sai da carteira da empresa e conta no teto
   do funcionário. Falta trazê-la para dentro do workspace (hoje ela abre por um link em `/trabalho`).
+- **Andamento (25/10/2026, PR 3c):** o espaço de trabalho (`/trabalho`) voltou com o chat (a tarefa rápida) e um atalho
+  para a receita "Criar um site". Trazer as receitas para dentro dele é da etapa 6.
 
 ### F09 — Resultado que um leigo não sabe usar
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 09/10/2026 (no PROGRESSO), trazida para cá em 22/10/2026
@@ -140,7 +149,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   nosso por segurança).
 
 ### F35 — O texto das IAs só aparece quando a fase inteira termina
-- **Gravidade:** Média · **Status:** Decidida · **Anotada:** 24/10/2026 (ao planejar o PR 3)
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 24/10/2026 (ao planejar o PR 3)
 - **O problema:** na T6, a tela mostrava o texto das IAs enquanto elas escreviam. O PR #19 passou a guardar a execução
   no banco, em partes (uma fase de cada vez), mas o servidor só grava a narração quando a fase **inteira** termina
   (`app/api/runs/[id]/continue/route.ts` junta os eventos e grava tudo no fim). A tela fica parada até lá. Com a IA
@@ -169,6 +178,20 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   agente "de mentira" sem custo.
 - **Resolvida (25/10/2026, PR 3b):** o botão saiu (decisão do Luis). Montar o próprio time é a receita própria, da
   etapa 6.
+
+### F45 — Sem a pesquisa ou o código de verdade, a IA é instruída a esconder isso
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar a parte 3c)
+- **O problema:** quando o Chefe escolhe "pesquisa" (informação atual da internet) ou "código" (rodar uma conta) e o
+  Gemini não está disponível, o chat do parceiro (`app/api/ock/route.ts`) manda o pedido para o Claude com instruções
+  como "NUNCA diga que não tem acesso à internet" e "Faça a conta VOCÊ MESMO… NUNCA diga que não tem ambiente de
+  execução". A pessoa recebe uma conta feita "de cabeça" ou uma informação possivelmente velha como se tivesse sido
+  calculada ou pesquisada. Numa empresa, isso vira decisão errada, e a culpa cai na plataforma (como em F03).
+- **O que fazer:** proposta na issue #39 (parte 3c): enquanto a pesquisa e o código de verdade não estiverem ligados, a
+  resposta diz que a IA não pesquisou na internet nem rodou o código. Com as IAs de verdade, o mesmo aviso vale sempre
+  que a ferramenta falhar.
+- **Resolvida (25/10/2026, PR 3c):** saíram as instruções que mandavam esconder. Enquanto a pesquisa e o código de
+  verdade não chegam, a IA é instruída a dizer que não pesquisou nem rodou o código, e a resposta vem com um aviso fixo,
+  escrito por nós ("A pesquisa na internet ainda não está ligada..."), que não depende de a IA obedecer.
 
 ## Código e segurança
 
@@ -207,13 +230,16 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   Auth. Duas falhas novas apareceram no caminho: F32 e F33.
 
 ### F13 — Só existe uma empresa, fixa no código
-- **Gravidade:** Alta · **Status:** Decidida · **Anotada:** 22/10/2026
+- **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 22/10/2026
 - **O problema:** as rotas usam sempre a empresa "demo". Não há como cadastrar uma segunda empresa.
 - **O que fazer:** cadastro de empresa e todas as rotas olhando a empresa de quem está logado (junto com F10 e F11).
 - **Andamento (24/10/2026, PR 2a):** o cadastro de empresa existe, e o login e o painel do dono já olham a empresa de
   quem está logado. O chat (`/api/ock`) ainda usa a empresa "demo" do banco antigo; troca no PR 3.
 - **Andamento (24/10/2026, PR 3a):** as receitas gravam cada execução com a empresa e a pessoa tiradas do login. Falta o
   chat (parte 3c).
+- **Resolvida (25/10/2026, PR 3c, issue #39):** o chat também tira a empresa e a pessoa do login: saíram o `memberId`
+  das rotas e a empresa fixa "demo", junto com `lib/ock/company.ts` (as tabelas antigas). Nenhuma parte do código usa
+  mais o banco antigo. No teste de ponta a ponta, um `memberId` de outra pessoa no corpo do pedido foi ignorado.
 
 ### F14 — As tabelas do banco não estão no repositório
 - **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 22/10/2026
@@ -231,9 +257,12 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O problema:** o PR #19 instalou o `xlsx` 0.18.5, a última versão publicada no npm, que tem falhas de segurança
   conhecidas. As versões corrigidas só são distribuídas pelo site do próprio projeto (SheetJS).
 - **O que fazer:** trocar por uma versão corrigida ou por outra biblioteca de Excel, antes de produção.
+- **Andamento (25/10/2026, PR 3c):** o chat voltou a usar o `xlsx` para transformar em Excel o CSV que a IA escreve. Como
+  esse texto pode vir de uma IA influenciada por um texto colado (injeção de prompt), a troca continua necessária antes
+  de produção.
 
 ### F16 — Rotas que gastam IA de verdade abertas para qualquer um
-- **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 09/10/2026 (no PROGRESSO), ampliada em 22/10/2026
+- **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 09/10/2026 (no PROGRESSO), ampliada em 22/10/2026
 - **O problema:** `/api/runs` (receitas) não tem login, e `/api/ock` (chat) só pede o código do funcionário. Com IAs
   reais, qualquer um gastaria os créditos da plataforma.
 - **O que fazer:** nada no ar com chaves reais antes de F10, F11 e F13.
@@ -248,6 +277,11 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   (parte 3c).
 - **Andamento (25/10/2026, PR 3b):** nenhuma receita começa sem reservar na carteira da empresa o máximo que pode gastar,
   e cada etapa é cobrada. As receitas continuam com a IA simulada: as de verdade entram num PR próprio, com F40 e F42.
+- **Resolvida (25/10/2026, PR 3c, issue #39):** todas as rotas do chat (`/api/ock/*`) exigem login; mandar mensagem e
+  anexar também conferem que o login é o de quem abriu a página (F34). Nenhuma IA trabalha sem antes reservar na carteira
+  da empresa, e a rota da voz (`/api/ock/transcribe`, que usava a chave do GPT sem login nem cobrança) saiu até o PR das
+  IAs de verdade. No teste de ponta a ponta, sem login as rotas responderam 401. Receitas e chat seguem com a IA
+  simulada; ligar as de verdade é o próximo PR (F40, F42).
 
 ### F17 — Preços das IAs e câmbio fixos no código
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 22/10/2026
@@ -270,7 +304,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O que fazer:** testar no Firefox e no Safari na rodada de testes com empresas.
 
 ### F23 — Apagar um funcionário devolve o gasto dele ao crédito da empresa
-- **Gravidade:** Alta · **Status:** Decidida · **Anotada:** 24/10/2026
+- **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 24/10/2026
 - **O problema:** o gasto da empresa é a soma do gasto guardado em cada funcionário (`lib/ock/company.ts`). Ao apagar
   um funcionário, o código apaga também as tarefas, conversas e arquivos dele, e o gasto some da conta: o crédito volta
   para a empresa e o histórico do que foi gasto se perde. Apagar e recriar um funcionário "zera" o gasto, e a plataforma
@@ -279,9 +313,11 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   da empresa é desativado, não apagado; e apagar o conteúdo (LGPD) não apaga o gasto.
 - **Andamento (24/10/2026, PR #24):** o banco novo já resolve: ninguém consegue apagar uma pessoa (só desativar), e o
   extrato não aceita edição nem exclusão. Falta trocar o código para o banco novo (PR 3 da etapa 5).
+- **Resolvida (25/10/2026, PR 3c):** saiu o último código do banco antigo (`lib/ock/company.ts`, o gasto guardado em cada
+  funcionário). O gasto agora só existe no extrato, que não aceita edição nem exclusão, e ninguém apaga uma pessoa.
 
 ### F24 — Gasto e teto falham com pedidos ao mesmo tempo
-- **Gravidade:** Média · **Status:** Decidida · **Anotada:** 24/10/2026
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 24/10/2026
 - **O problema:** o custo de uma tarefa é somado ao gasto lido no começo do pedido (`recordTask`), e a recarga lê o total
   e depois grava o novo (`addCompanyCredit`). Com dois pedidos ao mesmo tempo, um custo some. A conferência do teto
   também acontece antes de a IA rodar, sem reservar nada: vários pedidos juntos passam todos e estouram o teto.
@@ -292,9 +328,12 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   só e não simulam pedidos simultâneos; a garantia vem da trava.
 - **Andamento (25/10/2026, PR 3b):** as receitas já usam as funções da carteira: reservam antes de começar (e de novo,
   ao continuar depois de uma pausa) e cobram cada etapa por elas. Falta o chat (parte 3c).
+- **Resolvida (25/10/2026, PR 3c):** o chat também só mexe no dinheiro pelas funções da carteira: reserva antes de
+  qualquer IA (o banco confere saldo, teto e se a pessoa está ativa numa operação só) e cobra cada mensagem por
+  `wallet_charge`. Não sobrou código que some gasto por conta própria.
 
 ### F25 — O próprio dono define o crédito da empresa
-- **Gravidade:** Alta · **Status:** Decidida · **Anotada:** 24/10/2026
+- **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 24/10/2026
 - **O problema:** o painel do dono tem "recarregar" e "definir o crédito" (inclusive ilimitado), sem pagamento nenhum.
   Mesmo com o login de verdade (F11), o dono poderia se dar crédito à vontade, e quem paga as IAs é a plataforma.
 - **O que fazer:** só a plataforma lança recargas (no MVP, à mão, depois de receber o Pix); o dono vê o saldo e o
@@ -302,9 +341,12 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Andamento (24/10/2026, PR #24):** no banco novo, recarga e ajuste só pelo editor de SQL do painel do Supabase; nem as
   telas nem o nosso servidor conseguem lançar crédito (um teste confere). Falta tirar o "recarregar" do painel do dono
   (PR 3).
+- **Resolvida (25/10/2026, conferido no PR 3c):** o painel antigo, com "recarregar" e "definir o crédito", saiu no PR 2a,
+  e o de hoje só tem a equipe. Nenhuma tela nem rota do servidor lança crédito: só o editor de SQL do Supabase. O saldo
+  volta para o painel do dono na parte 3d, só para ver.
 
 ### F26 — O custo das tentativas que falharam não fica registrado
-- **Gravidade:** Média · **Status:** Decidida · **Anotada:** 09/10/2026 (no PROGRESSO), trazida para cá em 24/10/2026
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 09/10/2026 (no PROGRESSO), trazida para cá em 24/10/2026
 - **O problema:** uma tentativa que cai no meio já consumiu tokens, que a plataforma paga mas não cobra (regra "etapa que
   falhou não é cobrada"). Esse custo não fica guardado em lugar nenhum, então a conta da margem (F04) sai otimista.
 - **O que fazer:** registrar toda chamada de IA, inclusive as que falharam, numa tabela interna (proposta do banco novo).
@@ -317,6 +359,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   dólar e se foi cobrada: as que deram certo, as tentativas que falharam, a etapa interrompida pelo cancelamento e a
   etapa irmã que parou porque outra da fase falhou (essa última nem fechava a conexão com a IA; corrigido junto). Com a
   IA de verdade, o consumo de uma chamada que caiu ainda é a conta pelo tamanho do texto (F40). Falta o chat (parte 3c).
+- **Resolvida (25/10/2026, PR 3c):** no chat, toda chamada às IAs também vira linha em `ai_calls`, com `task_id`: o
+  Chefe ("chief"), cada tentativa da resposta ("answer"), as que falharam e as de uma mensagem recusada por falta de
+  saldo ou de teto (o Chefe já tinha trabalhado). Fica de fora só a medição pelo consumo de verdade, que é a F40.
 
 ### F27 — Qualquer pessoa pode ler as execuções direto no banco
 - **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 24/10/2026
@@ -343,6 +388,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   própria sessão direto no banco apaga só o registro: o conteúdo fica na pasta. Ninguém consegue mais abri-lo (o link
   só sai a partir do registro), mas ele não foi apagado de verdade, como a LGPD pede.
 - **O que fazer:** no PR 3, uma limpeza que apaga da pasta todo conteúdo sem registro (por exemplo, uma vez por dia).
+- **Andamento (25/10/2026, PR 3c):** o chat ainda não tem "apagar" (nem conversa nem arquivo); a limpeza entra junto com o
+  apagar, no histórico.
 
 ### F29 — O saldo da empresa pode ficar negativo
 - **Gravidade:** Baixa · **Status:** Aceita · **Anotada:** 24/10/2026
@@ -496,6 +543,20 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O que fazer depois:** uma chave única na cobrança (migração: cada etapa só vira uma linha de gasto) e uma limpeza que
   fecha as reservas esquecidas.
 
+### F44 — Anexos do chat: o texto vai inteiro para a IA, e o que ela não lê é aceito sem aviso
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar a parte 3c)
+- **O problema:** no chat do parceiro (`app/api/ock/route.ts` e `lib/ock/files.ts`), dá para anexar até 5 arquivos de
+  10 MB, e o texto de cada PDF ou arquivo de texto vai **inteiro** para a IA, sem limite. Um PDF grande vira centenas de
+  milhares de tokens: com as IAs de verdade, uma mensagem poderia custar dezenas de reais, ou a IA recusaria por tamanho.
+  E um arquivo que a IA não lê (Word, Excel, áudio…) é aceito, mas não chega a ela, e ninguém avisa: a pessoa acha que a
+  IA leu.
+- **O que fazer:** proposta na issue #39 (parte 3c): o texto dos anexos entra até 30.000 caracteres por mensagem (umas
+  15 páginas), com aviso quando cortar, e um tipo que a IA não lê é recusado na hora, com aviso.
+- **Resolvida (25/10/2026, PR 3c):** o texto dos anexos entra até 30.000 caracteres por mensagem; o que passar fica de
+  fora, com um aviso na resposta ("a IA leu só o começo"). Anexar um tipo que a IA não lê (Word, Excel...) é recusado na
+  hora, na tela e no servidor, que olha a extensão do nome (o tipo informado pelo navegador pode vir inventado). Ler Word
+  e Excel fica para depois.
+
 ## Processo
 
 ### F20 — Mudança grande de produto entrou num PR só, sem registro nos documentos
@@ -522,3 +583,6 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   login de verdade (PR #29) com tudo dando certo. Falta o chat e as receitas, que voltam no PR 3, já no banco novo.
 - **Andamento (24/10/2026, PR 3a):** a receita "Criar um site" voltou, no banco novo (com a IA simulada). Falta o chat
   (parte 3c).
+
+- **Andamento (25/10/2026, PR 3c):** o chat voltou, no banco novo (com a IA simulada). Resolvida quando o Luis testar o
+  chat com o guia (`docs/GUIA-TESTE-CHAT.md`).

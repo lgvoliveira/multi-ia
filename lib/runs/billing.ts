@@ -10,7 +10,7 @@ import type { AiCallRow, RunRow } from "./store";
 import { chargeStep, countRunCharges } from "./wallet";
 
 /** No registro interno, o modelo de uma chamada que falhou sem o conector dizer qual era. */
-const UNKNOWN_MODEL = "desconhecido";
+export const UNKNOWN_MODEL = "desconhecido";
 
 /**
  * Quanto cobrar por uma etapa concluída, em centavos: o consumo real, com no mínimo 1 centavo. O mínimo garante que
