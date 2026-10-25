@@ -1,7 +1,8 @@
-// A carteira da empresa vista por uma execução: reservar a estimativa, cobrar cada etapa concluída e fechar a reserva.
+// A carteira da empresa vista por uma execução de receita (reservar a estimativa, cobrar cada etapa concluída e fechar
+// a reserva) e por uma mensagem do chat (reservar o máximo da resposta, cobrar o consumo real e fechar).
 // SÓ do servidor. O dinheiro só se mexe pelas funções da carteira no banco (wallet_reserve, wallet_charge e
 // wallet_close_hold, ver supabase/migrations/..._wallet.sql), que travam a carteira enquanto conferem e lançam (F24).
-// Cada reserva guarda o id da execução (run_id): é assim que a execução acha a reserva dela, sem coluna nova.
+// Cada reserva guarda o id da execução (run_id) ou da mensagem (task_id): é assim que cada uma acha a sua reserva.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatBRL } from "@/lib/ock/pricing";
@@ -51,6 +52,34 @@ export function walletRefusalMessage(reason: WalletRefusalReason, isOwner: boole
   }
 }
 
+/**
+ * O que o chat diz quando a reserva de uma mensagem é recusada. `amountCents` é o máximo que a resposta pode custar;
+ * vazio na primeira conferência, antes de o Chefe decidir, quando ainda não se sabe esse máximo.
+ */
+export function taskRefusalMessage(reason: WalletRefusalReason, isOwner: boolean, amountCents: number | null): string {
+  const amount = amountCents === null ? null : formatBRL(amountCents);
+  switch (reason) {
+    case "insufficient_balance":
+      return (
+        (amount
+          ? `A empresa não tem saldo para reservar ${amount}, o máximo que esta resposta pode custar. `
+          : "A empresa está sem saldo. ") +
+        (isOwner ? "Para colocar crédito, fale com a nossa equipe." : "Peça ao dono da empresa para colocar crédito.") +
+        " Nada foi cobrado."
+      );
+    case "monthly_budget_exceeded":
+      return (
+        (amount
+          ? `Reservar ${amount}, o máximo que esta resposta pode custar, passaria do seu teto do mês. `
+          : "Você chegou ao seu teto do mês. ") +
+        (isOwner ? "Para mudar o seu teto, fale com a nossa equipe." : "Peça ao dono da empresa para aumentar o seu teto.") +
+        " Nada foi cobrado."
+      );
+    case "member_inactive":
+      return walletRefusalMessage(reason, isOwner, 0);
+  }
+}
+
 /** Uma reserva aberta de uma execução. */
 export interface RunHold {
   id: string;
@@ -69,11 +98,25 @@ export function holdRemainingCents(hold: RunHold): number {
  * Recusa com WalletRefusedError (sem saldo, passaria do teto do mês, pessoa desativada).
  */
 export async function reserveForRun(memberId: string, runId: string, amountCents: number): Promise<string> {
-  const { data, error } = await supabaseAdmin().rpc("wallet_reserve", {
-    p_member_id: memberId,
-    p_amount_cents: amountCents,
-    p_run_id: runId,
-  });
+  return reserve({ p_member_id: memberId, p_amount_cents: amountCents, p_run_id: runId });
+}
+
+/**
+ * Por quanto tempo a reserva de uma mensagem do chat segura o saldo, se o servidor cair no meio. Folga sobre os 5
+ * minutos que uma resposta pode levar (maxDuration da rota do chat).
+ */
+const TASK_HOLD_TTL = "15 minutes";
+
+/**
+ * Reserva `amountCents` do saldo da empresa para uma mensagem do chat. Devolve o id da reserva.
+ * Recusa com WalletRefusedError (sem saldo, passaria do teto do mês, pessoa desativada).
+ */
+export async function reserveForTask(memberId: string, taskId: string, amountCents: number): Promise<string> {
+  return reserve({ p_member_id: memberId, p_amount_cents: amountCents, p_task_id: taskId, p_ttl: TASK_HOLD_TTL });
+}
+
+async function reserve(params: Record<string, string | number>): Promise<string> {
+  const { data, error } = await supabaseAdmin().rpc("wallet_reserve", params);
   if (error) {
     const reason = REFUSAL_REASONS.find((candidate) => error.message === candidate);
     if (reason) throw new WalletRefusedError(reason);
@@ -161,4 +204,29 @@ export async function sumOwnRunCharges(session: SupabaseClient, runId: string): 
   if (error) throw error;
   // Os gastos entram negativos no extrato.
   return ((data as { amount_cents: number }[] | null) ?? []).reduce((total, row) => total - Number(row.amount_cents), 0);
+}
+
+/**
+ * Cobra uma mensagem do chat pronta na reserva dela: uma linha de gasto só, com a IA que respondeu. Devolve quanto
+ * ainda sobra da reserva, ou null se ela já foi fechada (aí nada é cobrado).
+ */
+export async function chargeTask(holdId: string, taskId: string, charge: StepCharge): Promise<number | null> {
+  const { data, error } = await supabaseAdmin().rpc("wallet_charge", {
+    p_hold_id: holdId,
+    p_amount_cents: charge.amountCents,
+    p_description: charge.description,
+    p_provider: charge.provider,
+    p_task_id: taskId,
+  });
+  if (error) {
+    if (error.message === "hold_closed") return null;
+    throw error;
+  }
+  return Number(data);
+}
+
+/** Fecha uma reserva: o que não foi cobrado volta a ficar disponível. Fechar de novo não faz nada. */
+export async function closeHold(holdId: string): Promise<void> {
+  const { error } = await supabaseAdmin().rpc("wallet_close_hold", { p_hold_id: holdId });
+  if (error) throw error;
 }

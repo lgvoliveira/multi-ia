@@ -1,17 +1,24 @@
-// GET /api/ock/files/[id]?member=<id> → redireciona para um link temporário de download do arquivo.
+// GET /api/ock/files/[id]: baixa um arquivo. O servidor confere pela sessão de quem está logado que a pessoa pode ver
+// o arquivo (os dela e, para o dono, as entregas da empresa) e manda para um link de poucos minutos, que sempre baixa:
+// nem um arquivo feito pela IA abre como página (AGENTS.md, seção 6).
 
-import { downloadUrl } from "@/lib/ock/files";
+import { chatCaller, chatProblem, isUuid, SERVER_PROBLEM } from "@/lib/ock/chat-request";
+import { downloadLink, loadVisibleFile } from "@/lib/ock/files";
 
-export async function GET(request: Request, context: RouteContext<"/api/ock/files/[id]">): Promise<Response> {
+const NOT_FOUND = "Arquivo não encontrado.";
+
+export async function GET(_request: Request, context: RouteContext<"/api/ock/files/[id]">): Promise<Response> {
   const { id } = await context.params;
-  const memberId = new URL(request.url).searchParams.get("member") ?? "";
-  if (!memberId) return Response.json({ problem: "Funcionário inválido." }, { status: 400 });
+  const caller = await chatCaller();
+  if (!caller.ok) return caller.response;
+  if (!isUuid(id)) return chatProblem(404, NOT_FOUND);
   try {
-    const url = await downloadUrl(id, memberId);
-    if (!url) return Response.json({ problem: "Arquivo não encontrado." }, { status: 404 });
-    return Response.redirect(url, 302);
+    const file = await loadVisibleFile(caller.session, id);
+    if (!file) return chatProblem(404, NOT_FOUND);
+    const link = await downloadLink(file);
+    return new Response(null, { status: 302, headers: { Location: link, "Cache-Control": "no-store" } });
   } catch (error) {
-    console.error("[api/ock/files] Falha no download:", error);
-    return Response.json({ problem: "Algo deu errado do nosso lado." }, { status: 500 });
+    console.error(`[api/ock/files] Falha ao baixar o arquivo ${id}:`, error);
+    return chatProblem(500, SERVER_PROBLEM);
   }
 }

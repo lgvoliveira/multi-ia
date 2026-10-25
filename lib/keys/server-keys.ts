@@ -3,7 +3,8 @@
 // A empresa nunca conecta nem vê chave nenhuma. Nunca expor estes valores ao cliente nem em log.
 //
 // Variáveis de ambiente (defina no Vercel): OCK_CLAUDE_KEY, OCK_GPT_KEY, OCK_GEMINI_KEY.
-// Sem uma delas, aquela IA cai no modo simulado (dá para testar o fluxo sem gastar).
+// Ainda sem uso: as receitas e o chat rodam só com a IA simulada até o PR das IAs de verdade, que liga estas chaves
+// (e faz faltar a chave virar erro, em vez de cair na simulada, F42).
 
 import type { ProviderKeys } from "@/lib/providers/registry";
 

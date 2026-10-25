@@ -1,9 +1,9 @@
-// O Chefe do OCK: lê o pedido do funcionário, DECIDE a melhor IA e o esforço para a tarefa
-// (otimizando tempo/custo/qualidade) e executa. É o coração do diferencial: o funcionário só descreve
-// o que quer; o Chefe escolhe quem faz e como. Se a decisão por IA falhar, cai numa regra simples.
+// O Chefe do OCK: lê o pedido do funcionário e DECIDE a melhor IA, o nível e o esforço para a tarefa
+// (otimizando tempo/custo/qualidade). É o coração do diferencial: o funcionário só descreve o que quer; o Chefe
+// escolhe quem faz e como. Se a decisão por IA falhar, cai numa regra simples. Quem executa é lib/ock/run-task.ts.
 
 import { isProviderId } from "@/lib/providers/catalog";
-import type { AiProvider, Effort, ModelTier, ProviderId } from "@/lib/providers/types";
+import type { Effort, GenerateRequest, ModelTier, ProviderId } from "@/lib/providers/types";
 
 export type RouteMode = "rapido" | "projeto";
 /** O que o Chefe vai fazer: responder, imagem, código, pesquisa, arquivo, gráfico, ou um PROJETO (.zip). */
@@ -16,39 +16,6 @@ export interface Route {
   mode: RouteMode;
   action: RouteAction;
   reason: string;
-}
-
-export interface RunResult {
-  text: string;
-  inputTokens: number;
-  outputTokens: number;
-  model: string;
-}
-
-/** Roda uma IA com um pedido (e imagens, se houver) e junta a resposta inteira + o consumo de tokens. */
-export async function runProvider(
-  provider: AiProvider,
-  systemPrompt: string,
-  input: string,
-  maxOutputTokens: number,
-  effort: Effort,
-  tier: ModelTier = "padrao",
-  images: { mime: string; base64: string }[] = [],
-): Promise<RunResult> {
-  let text = "";
-  for await (const chunk of provider.generate({ systemPrompt, input, maxOutputTokens, effort, tier, images })) {
-    if (chunk.type === "text") {
-      text += chunk.text;
-      continue;
-    }
-    return {
-      text,
-      inputTokens: chunk.usage.inputTokens,
-      outputTokens: chunk.usage.outputTokens,
-      model: chunk.model,
-    };
-  }
-  throw new Error("A IA parou antes de terminar.");
 }
 
 const ROUTE_SYSTEM = `Você é o Chefe de um time de IAs numa plataforma que otimiza custo e tempo. Escolha a AÇÃO, a IA, o NÍVEL do modelo e o esforço — SEMPRE o mais barato que resolve bem.
@@ -66,31 +33,35 @@ Tipo: "rapido" (resposta direta) ou "projeto" (grande, várias partes).
 Responda APENAS com um JSON, sem explicação, nesta forma:
 {"acao":"responder|imagem|codigo|pesquisa|documento|grafico|projeto","ia":"claude|gpt|gemini","nivel":"economico|padrao|potente","esforco":"low|medium|high","tipo":"rapido|projeto","motivo":"frase curta"}`;
 
+/** A IA barata e rápida que o Chefe usa só para DECIDIR a rota (não para fazer a tarefa), e como ela é chamada. */
+export const ROUTER = {
+  provider: "gpt",
+  tier: "economico",
+  effort: "low",
+  maxOutputTokens: 300,
+} as const satisfies { provider: ProviderId; tier: ModelTier; effort: Effort; maxOutputTokens: number };
+
 /**
- * O Chefe decide a rota pedindo a uma IA barata; se não der, usa uma regra simples.
- * `context` é a conversa recente: ajuda a classificar pedidos de continuação ("deixe mais curto").
- * A regra de reserva usa só a mensagem atual, para não se confundir com o assunto do contexto.
+ * O pedido para o Chefe decidir a rota. `context` é a conversa recente: ajuda a classificar pedidos de continuação
+ * ("deixe mais curto"). Se a decisão não vier no formato combinado, quem chama usa a regra simples (heuristicRoute),
+ * que olha só a mensagem atual, para não se confundir com o assunto do contexto.
  */
-export async function decideRoute(
-  message: string,
-  router: AiProvider,
-  context = "",
-): Promise<{ route: Route; inputTokens: number; outputTokens: number }> {
-  try {
-    const routerInput = context
-      ? `Conversa recente (contexto):\n${context}\n\nMensagem a classificar: ${message}`
-      : message;
-    const result = await runProvider(router, ROUTE_SYSTEM, routerInput, 300, "low", "economico");
-    const route = parseRoute(result.text);
-    if (route) return { route, inputTokens: result.inputTokens, outputTokens: result.outputTokens };
-  } catch {
-    // Cai na regra simples abaixo.
-  }
-  return { route: heuristicRoute(message), inputTokens: 0, outputTokens: 0 };
+export function routerRequest(message: string, context = ""): GenerateRequest {
+  const input = context ? `Conversa recente (contexto):
+${context}
+
+Mensagem a classificar: ${message}` : message;
+  return {
+    systemPrompt: ROUTE_SYSTEM,
+    input,
+    maxOutputTokens: ROUTER.maxOutputTokens,
+    effort: ROUTER.effort,
+    tier: ROUTER.tier,
+  };
 }
 
 /** Lê o JSON que o Chefe devolveu. Null se não veio no formato combinado. */
-function parseRoute(text: string): Route | null {
+export function parseRoute(text: string): Route | null {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start < 0 || end <= start) return null;

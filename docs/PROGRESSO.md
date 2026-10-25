@@ -654,11 +654,22 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
 - **Falhas novas, achadas ao estudar o chat:** F44 (o texto dos anexos vai inteiro para a IA, sem limite, e um tipo que a
   IA não lê é aceito sem aviso) e F45 (sem a pesquisa ou o código de verdade, a instrução manda a IA esconder isso).
 
+**PR 3c — tarefa rápida (25/10, Claude Code; issue #39, branch `feat/tarefa-rapida`) — código pronto, falta o PR**
+- Decisões do Luis (25/10): aceitas as 4 recomendações da issue (custo depois de cada resposta; imagem, pesquisa, código e
+  voz só com as IAs de verdade; mensagem de até 4.000 caracteres; gastos em reais).
+- Feito: `/trabalho` com o chat no banco novo (`lib/ock/run-task.ts`, `quick-task.ts`, `components/QuickChat.tsx`),
+  rotas `/api/ock/*` com login, duas reservas por mensagem e uma linha de gasto, anexos com limite (F44), aviso na
+  pesquisa e no código (F45), abas Entregas e Meus gastos. Saíram `lib/ock/company.ts`, imagem/código/pesquisa/voz.
+- Conferido: lint, tipos, 382 testes e build verdes; ponta a ponta no projeto de testes 62/62 (sem crédito na empresa de
+  teste do Claude: a resposta cobrada de verdade não passou pela tela) e 16/16 chamadas do banco conferidas por roteiro.
+- Documentos atualizados (AGENTS, DOCUMENTO, BANCO, FALHAS: F13, F16, F23 a F26, F44, F45 resolvidas) e
+  `docs/GUIA-TESTE-CHAT.md` escrito (valores conferidos pelo código).
+- **Falta:** abrir o PR no GitHub (descrição: o que mudou, por quê, como testar, `Closes #39`) e o Luis seguir o guia.
+
 ## Próximo passo
 
-1. **Luis:** ler a issue #39 (https://github.com/lgvoliveira/multi-ia/issues/39) e responder às 4 decisões. Com a
-   aprovação, o Claude programa a 3c, no branch `feat/tarefa-rapida`.
-2. **Claude Code** (esforço Extra alto): a parte 3c, com o teste de ponta a ponta e o guia do teste para o Luis.
+1. **Claude Code:** abrir o PR da 3c a partir do branch `feat/tarefa-rapida` (o código e os documentos já estão nele).
+2. **Luis, no chat do Claude:** seguir o `docs/GUIA-TESTE-CHAT.md`. Se tudo der certo, fazer o merge.
 3. **Claude Code:** **PR das IAs de verdade**, nas receitas e no chat, antes de comprar créditos: ler o consumo que cada
    API devolve (F40), faltar a chave vira erro em vez de cair na simulada (F42), conferir os nomes dos modelos e os preços
    oficiais (F17), e ligar imagem, pesquisa, código e voz com preço e limite conferidos. Depois, o Claude guia a compra de

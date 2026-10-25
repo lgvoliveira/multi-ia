@@ -1,24 +1,17 @@
-// GET /api/ock/conversations?memberId=X        → lista os chats do funcionário.
-// GET /api/ock/conversations?conversationId=Y   → as mensagens de um chat (nunca apagadas).
+// GET /api/ock/conversations: as conversas de quem está logado, das mais recentes para as mais antigas. Lidas com a
+// sessão da pessoa: o banco só devolve as dela (nem o dono vê as dos funcionários).
 
-import { conversationTasks, listConversations } from "@/lib/ock/company";
+import { chatCaller, chatProblem, SERVER_PROBLEM } from "@/lib/ock/chat-request";
+import { listOwnConversations } from "@/lib/ock/task-store";
 
-export async function GET(request: Request): Promise<Response> {
-  const url = new URL(request.url);
-  const conversationId = url.searchParams.get("conversationId");
-  const memberId = url.searchParams.get("memberId");
+export async function GET(): Promise<Response> {
+  const caller = await chatCaller();
+  if (!caller.ok) return caller.response;
   try {
-    if (conversationId) {
-      const tasks = await conversationTasks(conversationId);
-      return Response.json({ tasks }, { headers: { "Cache-Control": "no-store" } });
-    }
-    if (memberId) {
-      const conversations = await listConversations(memberId);
-      return Response.json({ conversations }, { headers: { "Cache-Control": "no-store" } });
-    }
-    return Response.json({ problem: "Informe memberId ou conversationId." }, { status: 400 });
+    const conversations = await listOwnConversations(caller.session);
+    return Response.json({ conversations }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    console.error("[api/ock/conversations] Falha:", error);
-    return Response.json({ problem: "Algo deu errado do nosso lado." }, { status: 500 });
+    console.error("[api/ock/conversations] Falha ao listar as conversas:", error);
+    return chatProblem(500, SERVER_PROBLEM);
   }
 }

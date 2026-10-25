@@ -1,16 +1,18 @@
-// GET /api/ock/deliveries?memberId=X → as ENTREGAS do funcionário (arquivos que a IA produziu) com link.
-// Usado pelo funcionário (as próprias) e pelo dono (as de cada funcionário).
+// GET /api/ock/deliveries: as entregas de quem está logado (os arquivos que as IAs fizeram para a pessoa), das mais
+// novas para as mais antigas. Para baixar, cada uma passa por /api/ock/files/[id].
 
-import { listDeliveries } from "@/lib/ock/files";
+import { chatCaller, chatProblem, SERVER_PROBLEM } from "@/lib/ock/chat-request";
+import { listOwnDeliveries } from "@/lib/ock/files";
 
-export async function GET(request: Request): Promise<Response> {
-  const memberId = new URL(request.url).searchParams.get("memberId") ?? "";
-  if (!memberId) return Response.json({ problem: "Funcionário inválido." }, { status: 400 });
+export async function GET(): Promise<Response> {
+  const caller = await chatCaller();
+  if (!caller.ok) return caller.response;
   try {
-    const deliveries = await listDeliveries(memberId);
+    // Filtrar pela pessoa importa para o dono, que pela sessão enxerga as entregas da empresa toda.
+    const deliveries = await listOwnDeliveries(caller.session, caller.me.id);
     return Response.json({ deliveries }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    console.error("[api/ock/deliveries] Falha:", error);
-    return Response.json({ problem: "Algo deu errado do nosso lado." }, { status: 500 });
+    console.error("[api/ock/deliveries] Falha ao listar as entregas:", error);
+    return chatProblem(500, SERVER_PROBLEM);
   }
 }

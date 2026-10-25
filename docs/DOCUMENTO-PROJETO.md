@@ -6,6 +6,8 @@
 
 Oct 8, 2026 · @Luis Gustavo Vilela Oliveira · **Revisado em 22/10/2026: o produto passou a ser para empresas.**
 Atualizado em 24/10/2026 com as decisões do banco: teto por mês, o que o dono vê, "Traga sua chave" fora.
+Atualizado em 25/10/2026 com o chat (tarefa rápida) no banco novo: custo mostrado depois de cada resposta, imagem,
+pesquisa, código e voz só com as IAs de verdade, mensagem de até 4.000 caracteres e gastos do funcionário em reais.
 
 ## Visão e problema
 
@@ -89,7 +91,7 @@ que resolve melhor pelo menor custo. O funcionário sempre pode escolher outra c
 Cada papel é um modelo de IA com uma instrução específica (o "prompt de sistema"). Ferramentas como Claude Code e Codex
 são produtos separados e ficam para integrações futuras.
 
-### O que existe hoje no código (atualizado em 24/10)
+### O que existe hoje no código (atualizado em 25/10)
 
 - Login de verdade (etapa 5, PR 2a): o dono cria a conta da empresa e confirma o e-mail; dono e funcionário entram pela
   mesma tela, e cada um vai para a sua página.
@@ -97,13 +99,19 @@ são produtos separados e ficam para integrações futuras.
   link para mandar, com botões para copiar e para abrir o WhatsApp com a mensagem pronta. O funcionário abre, cria a
   própria senha e entra. O dono muda o teto, desativa e reativa, e gera um link novo para quem não aceitou a tempo ou
   perdeu a senha. Crédito, gastos e entregas de cada funcionário chegam no PR 3.
-- Workspace com chat, ainda nas tabelas antigas: fica com um aviso de "em obras" até o PR 3.
-- O Chefe já escolhe sozinho a IA, o nível, o esforço e a ação (responder, imagem, código, pesquisa, documento,
-  gráfico ou projeto em .zip). **Falta** o funcionário poder escolher.
-- O chat gera arquivos: PDF, Word, Excel, CSV, gráficos e projeto em .zip. Aceita voz e arquivos enviados.
-- A receita "Criar um site" existe, mas **fora** do workspace. Faltam as receitas, a receita própria e a ligação com
-  a empresa e os gastos (F08 do `FALHAS.md`).
-- O painel antigo do dono (gastos por IA, tarefas, crédito) saiu no PR 2a; volta no PR 3, ligado ao banco novo.
+- A receita "Criar um site" (etapa 5, PRs 3a e 3b), para quem está logado, cobrando da carteira da empresa: mostra
+  "até R$ X" antes de começar, reserva esse máximo, cobra cada etapa pelo consumo real e pausa se for passar.
+- O espaço de trabalho (`/trabalho`, etapa 5, PR 3c) com o chat da **tarefa rápida**: conversas, anexos (PDF, texto e
+  imagens) e arquivos gerados (PDF, Word, Excel, CSV, gráficos e projeto em .zip), mais as abas Entregas e Meus gastos
+  (gasto do mês e teto, em reais). Cada resposta mostra quem o Chefe escolheu e "Custou R$ X". O link para a receita
+  fica no alto: as receitas ainda estão **fora** do workspace (F08).
+- O Chefe escolhe sozinho a IA, o nível, o esforço e a ação (responder, documento, gráfico, projeto, pesquisa, código ou
+  imagem). **Falta** o funcionário poder escolher (etapa 6).
+- Imagem, pesquisa na internet, rodar código e voz chegam com as IAs de verdade (decisão do Luis, 25/10): até lá,
+  imagem responde "chega em breve", e pesquisa e código respondem em texto, avisando que a IA não pesquisou nem rodou
+  nada. Receitas e chat ainda rodam só com a IA simulada.
+- O painel antigo do dono (gastos por IA, tarefas, crédito) saiu no PR 2a; o saldo, os gastos e as entregas voltam na
+  parte 3d, ligados ao banco novo.
 
 ## Receitas iniciais
 
@@ -250,6 +258,10 @@ resumo e as entregas (decisão de 24/10, acima).
 2. Cobra cada etapa concluída pelo consumo real. No fim, devolve ao saldo a diferença entre o reservado e o gasto.
 3. Se o custo for passar da estimativa, a execução pausa e pergunta antes de continuar. A plataforma não absorve diferenças.
 4. Cancelou no meio: paga só as etapas concluídas; a etapa que estava rodando não é cobrada (decisão do Luis, 25/10).
+   **Na tarefa rápida (chat)** não há estimativa antes de cada mensagem (decisão do Luis, 25/10): ela só existiria
+   depois de o Chefe decidir, e pedir um OK a cada mensagem tiraria a graça da tarefa rápida. O servidor confere saldo e
+   teto antes de qualquer IA, reserva o máximo da resposta depois que o Chefe decide, cobra o consumo real numa linha só
+   e a tela mostra "Custou R$ X" em cada resposta. Resposta que falhou não é cobrada.
 5. Prioridade: estimativas boas e honestas, calculadas a partir do histórico real de cada receita. Sem porcentagem de confiança na tela por enquanto.
    O histórico só existe depois das IAs de verdade; até lá vale o máximo (item 1), que nunca fica abaixo do gasto real.
 6. Internamente, registrar o custo real em dólar de cada execução, para definir preço e margem.
@@ -265,7 +277,9 @@ resumo e as entregas (decisão de 24/10, acima).
 - Pedido de até cerca de 4.000 caracteres no MVP, com contador visível. Planos pagos podem ter mais.
 - Limite interno de tamanho da resposta de cada papel, para controlar custo.
 - Uma execução por vez no plano grátis; mais nos pagos.
-- Upload de arquivos fica para a fase 2, com limites próprios.
+- Anexos no chat (desde o PR 3c, 25/10): até 5 por mensagem, de até 10 MB cada; a IA lê PDF, texto (.txt, .csv, .md,
+  .json) e imagens, e o texto dos anexos entra até 30.000 caracteres por mensagem, com aviso quando corta (F44). Ler
+  Word e Excel anexados, e anexos nas receitas, ficam para depois.
 
 **Visual**
 
