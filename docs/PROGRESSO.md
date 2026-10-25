@@ -4,11 +4,10 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 25/10/2026 (etapa 5: parte 3b testada pelo Luis e no ar; issue da parte 3c, o chat, esperando
-a aprovação dele)
+**Última atualização:** 25/10/2026 (etapa 5: parte 3c, o chat, na `main` pelo PR #40; falta o teste do Luis pelo guia)
 **Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite) e o aviso de troca de
-login no ar; PR 3 (trocar o código do parceiro) em 4 partes: 3a (receitas com login) e 3b (receitas cobrando) no ar; a
-3c (o chat, issue #39) espera a aprovação do Luis; depois, o PR das IAs de verdade e a 3d (painel do dono)
+login no ar; PR 3 (trocar o código do parceiro) em 4 partes: 3a (receitas com login), 3b (receitas cobrando) e 3c (o
+chat, PR #40) no ar, a 3c ainda sem o teste do Luis; depois, o PR das IAs de verdade e a 3d (painel do dono)
 
 ---
 
@@ -118,7 +117,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite), PR 3a (receitas com login) e 3b (receitas cobrando) no ar; a 3c (o chat) na issue #39 | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite), PR 3a (receitas com login), 3b (receitas cobrando) e 3c (o chat) no ar; falta o teste da 3c | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -654,7 +653,7 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
 - **Falhas novas, achadas ao estudar o chat:** F44 (o texto dos anexos vai inteiro para a IA, sem limite, e um tipo que a
   IA não lê é aceito sem aviso) e F45 (sem a pesquisa ou o código de verdade, a instrução manda a IA esconder isso).
 
-**PR 3c — tarefa rápida (25/10, Claude Code; issue #39, branch `feat/tarefa-rapida`) — código pronto, falta o PR**
+**PR 3c — tarefa rápida (25/10, Claude Code; issue #39, PR #40, já na `main`)**
 - Decisões do Luis (25/10): aceitas as 4 recomendações da issue (custo depois de cada resposta; imagem, pesquisa, código e
   voz só com as IAs de verdade; mensagem de até 4.000 caracteres; gastos em reais).
 - Feito: `/trabalho` com o chat no banco novo (`lib/ock/run-task.ts`, `quick-task.ts`, `components/QuickChat.tsx`),
@@ -664,18 +663,20 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   teste do Claude: a resposta cobrada de verdade não passou pela tela) e 16/16 chamadas do banco conferidas por roteiro.
 - Documentos atualizados (AGENTS, DOCUMENTO, BANCO, FALHAS: F13, F16, F23 a F26, F44, F45 resolvidas) e
   `docs/GUIA-TESTE-CHAT.md` escrito (valores conferidos pelo código).
-- **Falta:** abrir o PR no GitHub (descrição: o que mudou, por quê, como testar, `Closes #39`) e o Luis seguir o guia.
+- **PR #40 aberto e mergeado pela conta do Luis às 19:38 de 25/10**, oito segundos depois de aberto, sem descrição e
+  antes do teste pelo guia (o Claude tinha parado no limite de uso antes de abrir o PR). As checagens do GitHub passaram
+  na `main`, e a issue #39 fechou. A descrição foi escrita depois, para o histórico. Falha de processo anotada (F46).
 
 ## Próximo passo
 
-1. **Claude Code:** abrir o PR da 3c a partir do branch `feat/tarefa-rapida` (o código e os documentos já estão nele).
-2. **Luis, no chat do Claude:** seguir o `docs/GUIA-TESTE-CHAT.md`. Se tudo der certo, fazer o merge.
-3. **Claude Code:** **PR das IAs de verdade**, nas receitas e no chat, antes de comprar créditos: ler o consumo que cada
+1. **Luis, no chat do Claude:** seguir o `docs/GUIA-TESTE-CHAT.md` na `main` (o código já está lá). Se algum passo
+   falhar, a correção vem num PR novo.
+2. **Claude Code:** **PR das IAs de verdade**, nas receitas e no chat, antes de comprar créditos: ler o consumo que cada
    API devolve (F40), faltar a chave vira erro em vez de cair na simulada (F42), conferir os nomes dos modelos e os preços
    oficiais (F17), e ligar imagem, pesquisa, código e voz com preço e limite conferidos. Depois, o Claude guia a compra de
    créditos (valor mínimo, recarga automática desligada) e o primeiro teste com IA de verdade. Em seguida, a 3d (painel
    do dono).
-4. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
+3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.
 
