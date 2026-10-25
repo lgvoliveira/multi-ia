@@ -90,9 +90,9 @@ export function RunProgress({
             {recipeName}
             {run.status === "running" && currentIndex >= 0 && ` · Fase ${currentIndex + 1} de ${stages.length}`}
           </p>
-          <h1 ref={titleRef} tabIndex={-1} className={styles.title}>
+          <h2 ref={titleRef} tabIndex={-1} className={styles.title}>
             {TITLES[run.status]}
-          </h1>
+          </h2>
         </div>
         {run.status === "running" && (
           <button type="button" className={styles.button} onClick={onCancel}>
@@ -227,7 +227,7 @@ function LiveDocumentPanel({ document }: { document: LiveDocument }) {
 
   return (
     <section className={styles.liveDoc} aria-label="O que o time já produziu">
-      <h2 className={styles.liveDocTitle}>O documento vai tomando forma</h2>
+      <h3 className={styles.liveDocTitle}>O documento vai tomando forma</h3>
       <dl className={styles.liveDocList}>
         {parts.map((part) => (
           <div key={part.key} className={styles.liveDocItem}>

@@ -146,6 +146,65 @@
   color: var(--color-text-body);
 }
 
+/* As receitas sugeridas com o chat vazio. */
+.suggestions {
+  margin-top: var(--space-6);
+}
+
+.suggestionsTitle {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+
+.suggestionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.suggestion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  max-width: var(--card-min-width);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.suggestion:hover {
+  border-color: var(--color-primary);
+}
+
+.suggestionName {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+}
+
+.suggestionText {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.suggestionTeam {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
 /* A mensagem da pessoa, à direita. */
 .user {
   align-self: flex-end;

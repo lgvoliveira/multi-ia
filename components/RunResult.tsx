@@ -30,10 +30,13 @@ export function RunResult({ request, run, site, chargedCents, onRestart }: RunRe
   const [showSteps, setShowSteps] = useState(false);
 
   // O resultado começa do alto (a tela anterior podia estar rolada até a última etapa), e o foco vai
-  // para o título: quem usa leitor de tela fica sabendo da troca.
+  // para o título: quem usa leitor de tela fica sabendo da troca. Se a receita terminou com a pessoa em outra aba do
+  // espaço de trabalho (a receita fica escondida), a página fica onde está.
   useEffect(() => {
+    const title = titleRef.current;
+    if (!title || title.getClientRects().length === 0) return;
     window.scrollTo({ top: 0 });
-    titleRef.current?.focus({ preventScroll: true });
+    title.focus({ preventScroll: true });
   }, []);
 
   // Ao abrir "Ver todas as etapas", a tela (e o foco) vão até elas, que ficam embaixo da prévia.
@@ -49,9 +52,9 @@ export function RunResult({ request, run, site, chargedCents, onRestart }: RunRe
             {run.durationMs === undefined ? "Concluído" : `Concluído em ${formatDuration(run.durationMs)}`}
             {chargedCents !== null && ` · Custou ${formatBRL(chargedCents)}`}
           </p>
-          <h1 ref={titleRef} tabIndex={-1} className={styles.title}>
+          <h2 ref={titleRef} tabIndex={-1} className={styles.title}>
             Seu site está pronto
-          </h1>
+          </h2>
         </div>
         <div className={styles.actions}>
           <button type="button" className={styles.button} onClick={onRestart}>
@@ -73,9 +76,9 @@ export function RunResult({ request, run, site, chargedCents, onRestart }: RunRe
         </section>
 
         <aside className={styles.team} aria-labelledby={`${ids}-team`}>
-          <h2 id={`${ids}-team`} className={styles.teamTitle}>
+          <h3 id={`${ids}-team`} className={styles.teamTitle}>
             Como o time chegou aqui
-          </h2>
+          </h3>
           <ol className={styles.teamSteps}>
             {run.steps.map((step) => (
               <li key={step.id} className={styles.teamStep}>
@@ -110,15 +113,15 @@ export function RunResult({ request, run, site, chargedCents, onRestart }: RunRe
         aria-labelledby={`${ids}-steps-title`}
         hidden={!showSteps}
       >
-        <h2 id={`${ids}-steps-title`} ref={stepsTitleRef} tabIndex={-1} className={styles.stepsTitle}>
+        <h3 id={`${ids}-steps-title`} ref={stepsTitleRef} tabIndex={-1} className={styles.stepsTitle}>
           Todas as etapas
-        </h2>
+        </h3>
         <p className={styles.request}>
           <span className={styles.requestLabel}>Seu pedido:</span> {request}
         </p>
         <ol className={styles.steps}>
           {run.steps.map((step) => (
-            <StepCard key={step.id} step={step} followText={false} headingLevel="h3" />
+            <StepCard key={step.id} step={step} followText={false} headingLevel="h4" />
           ))}
         </ol>
       </section>

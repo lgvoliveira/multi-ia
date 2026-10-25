@@ -4,7 +4,7 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 25/10/2026 (etapa 5: chat testado pelo Luis; issues #42, aba Receitas, e #43, parte 3d, aprovadas)
+**Última atualização:** 25/10/2026 (etapa 5: chat testado pelo Luis; PR de telas da issue #42 aberto; a 3d, issue #43, depois)
 **Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite) e o aviso de troca de
 login no ar; PR 3 (trocar o código do parceiro) em 4 partes: 3a (receitas com login), 3b (receitas cobrando) e 3c (o
 chat) no ar e testadas; agora, o PR de telas (aba Receitas, issue #42), depois a 3d (painel do dono, issue #43) e o PR
@@ -700,10 +700,37 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   mês" soma as linhas no nosso servidor e fica menor que o real depois de 1.000 gastos no mês, o limite de linhas do
   banco; o teto em si está certo; Baixa). As duas entram na 3d.
 
+**PR de telas — aba Receitas e atalhos do dono (25/10, Claude Code; issue #42, branch `feat/aba-receitas`)**
+- **O que a pessoa vê:** no `/trabalho`, as abas Chat · Receitas · Entregas · Meus gastos. A aba Receitas mostra
+  "Receitas prontas" em cartões ("Criar um site" e as outras 3 do MVP apagadas, "Em breve"); "Usar receita" abre a
+  receita ali mesmo, com "← Todas as receitas" no alto, igual a antes (time, "até R$ X", começar, ao vivo, site pronto).
+  O chat vazio mostra "Ou use uma receita pronta:" com a receita pronta. A aba e a receita aberta ficam no endereço
+  (`/trabalho?aba=receitas&receita=create-site`, mais o `?run=` da execução): recarregar volta para o mesmo lugar, e
+  trocar de aba no meio não para o acompanhamento. O endereço antigo `/recipes/create-site` leva para a aba. Para o
+  dono, atalhos "Painel do dono" e "Trabalho" no topo do site (no celular, numa linha embaixo do logo); saíram os dois
+  links soltos do canto do `/trabalho`.
+- **Por dentro:** `components/WorkspaceRecipes.tsx` (cartões e receita aberta), `components/workspace-view.ts` (a aba e
+  a receita no endereço), `components/OwnerNav.tsx` (atalhos do dono) e `lib/recipes/screen.ts` (o que a tela da
+  receita recebe, sem as instruções das IAs; antes isso ficava na página da receita). O cartão (`RecipeCard`, sem uso
+  desde que a receita saiu da página inicial) voltou. Os títulos da receita desceram um nível (a página já tem o "Olá"). Se a receita termina com a
+  pessoa em outra aba, a página não pula para o alto. O "Gasto do mês" no alto acompanha o que a receita cobra, sem
+  recarregar (antes a receita ficava noutra página, e voltar recarregava o número). Sem migração e sem biblioteca nova.
+- **Achados e corrigidos no teste:** com uma receita aberta, voltar ao Chat e recarregar abria a aba Receitas (o Chat
+  não ia para o endereço); no celular, o começo do chat vazio sumia (a lista rolava para o fim mesmo sem mensagens) e as
+  4 abas quebravam em duas linhas em 360 px.
+- **Como foi conferido:** lint, tipos, 396 testes (14 novos: aba e receita no endereço; o que a tela da receita recebe
+  não leva as instruções das IAs) e build; o código que vai para o navegador não tem as instruções. **Teste de ponta a
+  ponta** contra o projeto de testes, com um roteiro no Chrome (empresa nova "Loja das Abas", dona e funcionária): 55
+  conferências, todas certas — sugestão no chat vazio abre a receita, cartões, foco, teclado nas abas, estimativa e
+  recusa por falta de crédito dentro da aba, execução pausada e site pronto (montados no banco) acompanhados na aba,
+  trocar de aba e recarregar, endereço antigo, o gasto do mês subindo com uma cobrança da receita, atalhos do dono nas duas direções, telas em 320 e 360 px. Os únicos
+  avisos do navegador foram o `favicon.ico` que o site ainda não tem e a recusa por falta de crédito, de propósito.
+  Ficou para o teste do Luis rodar a receita inteira com crédito, dentro da aba.
+
 ## Próximo passo
 
-1. **Claude Code:** PR de telas (issue #42, branch `feat/aba-receitas`). Depois do teste e do merge do Luis, a **3d**
-   (issue #43).
+1. **Luis:** testar o PR de telas (issue #42) pelos passos da descrição do PR e fazer o merge. Depois, **Claude Code:**
+   a **3d** (issue #43).
 2. **Claude Code:** **PR das IAs de verdade**, nas receitas e no chat, antes de comprar créditos: ler o consumo que cada
    API devolve (F40), faltar a chave vira erro em vez de cair na simulada (F42), conferir os nomes dos modelos e os preços
    oficiais (F17), e ligar imagem, pesquisa, código e voz com preço e limite conferidos. Depois, o Claude guia a compra de

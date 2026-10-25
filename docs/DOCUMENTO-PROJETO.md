@@ -103,8 +103,10 @@ são produtos separados e ficam para integrações futuras.
   "até R$ X" antes de começar, reserva esse máximo, cobra cada etapa pelo consumo real e pausa se for passar.
 - O espaço de trabalho (`/trabalho`, etapa 5, PR 3c) com o chat da **tarefa rápida**: conversas, anexos (PDF, texto e
   imagens) e arquivos gerados (PDF, Word, Excel, CSV, gráficos e projeto em .zip), mais as abas Entregas e Meus gastos
-  (gasto do mês e teto, em reais). Cada resposta mostra quem o Chefe escolheu e "Custou R$ X". O link para a receita
-  fica no alto: as receitas ainda estão **fora** do workspace (F08).
+  (gasto do mês e teto, em reais). Cada resposta mostra quem o Chefe escolheu e "Custou R$ X".
+- A aba **Receitas** no espaço de trabalho (issue #42): as receitas em cartões (a pronta e as outras 3 do MVP como "Em
+  breve"); a escolhida abre ali mesmo, sem sair da página, e o chat vazio sugere as receitas prontas. Falta a receita
+  própria (etapa 6, F08). O dono tem atalhos no topo do site entre o painel e o espaço de trabalho.
 - O Chefe escolhe sozinho a IA, o nível, o esforço e a ação (responder, documento, gráfico, projeto, pesquisa, código ou
   imagem). **Falta** o funcionário poder escolher (etapa 6).
 - Imagem, pesquisa na internet, rodar código e voz chegam com as IAs de verdade (decisão do Luis, 25/10): até lá,

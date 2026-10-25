@@ -1,0 +1,58 @@
+.shelf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.lead {
+  max-width: var(--text-max-width);
+  color: var(--color-text-body);
+}
+
+/* Os cartões se arrumam sozinhos: quantos couberem por linha, com uma largura mínima (um por linha no celular). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min-width), 100%), 1fr));
+  gap: var(--space-5);
+}
+
+.recipe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.recipe:focus {
+  outline: none;
+}
+
+.back {
+  align-self: flex-start;
+  min-height: var(--control-height-sm);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.back:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}

@@ -80,9 +80,9 @@ export function TeamBuilder({
   return (
     <form className={styles.layout} onSubmit={handleSubmit} noValidate>
       <section className={styles.team} aria-labelledby={`${ids}-team`}>
-        <h2 id={`${ids}-team`} className={styles.sectionTitle}>
+        <h3 id={`${ids}-team`} className={styles.sectionTitle}>
           Seu time
-        </h2>
+        </h3>
         <ol className={styles.roles}>
           {roles.map((role, index) => (
             <RoleCard

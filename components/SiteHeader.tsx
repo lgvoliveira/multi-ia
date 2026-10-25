@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { signOut } from "@/app/entrar/actions";
 import { getViewer, type Viewer } from "@/lib/auth/viewer";
+import { OwnerNav } from "./OwnerNav";
 import styles from "./SiteHeader.module.css";
 
-// Topo do site: o logo, que volta para a entrada, e, para quem está logado, quem é e o botão "Sair".
+// Topo do site: o logo, que volta para a entrada, e, para quem está logado, quem é e o botão "Sair". O dono ganha os
+// atalhos entre o painel dele e o espaço de trabalho.
 export async function SiteHeader() {
   let viewer: Viewer;
   try {
@@ -19,6 +21,11 @@ export async function SiteHeader() {
         <Link href="/" className={styles.logo}>
           OCK
         </Link>
+        {viewer.status === "member" && viewer.member.role === "owner" && (
+          <div className={styles.nav}>
+            <OwnerNav />
+          </div>
+        )}
         {viewer.status !== "signed-out" && (
           <div className={styles.account}>
             {viewer.status === "member" && (

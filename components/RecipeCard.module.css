@@ -56,12 +56,14 @@
   justify-content: center;
   align-items: center;
   min-height: var(--control-height);
+  border: none;
   border-radius: var(--radius-control);
   background: var(--color-primary);
   color: var(--color-on-primary);
+  font-family: var(--font-body);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
-  text-decoration: none;
+  cursor: pointer;
 }
 
 .action:hover {

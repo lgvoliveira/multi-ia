@@ -76,10 +76,13 @@ app/                 telas e rotas do Next.js. app/api/runs/ são as rotas das r
                      novidades, cancelar e continuar depois de uma pausa ([id]/resume), com o login de quem pede, e a
                      rota interna [id]/continue, que roda uma fase de cada vez no servidor e cobra cada etapa;
                      app/api/ock/ são as rotas do chat (mandar mensagem, anexar, baixar, conversas, entregas e
-                     gastos), todas com o login de quem pede; app/trabalho/ é o espaço de trabalho; app/dono/actions.ts
+                     gastos), todas com o login de quem pede; app/trabalho/ é o espaço de trabalho, onde as receitas
+                     também abrem (app/recipes/ só leva o endereço antigo para lá); app/dono/actions.ts
                      e app/convite/ são o convite do funcionário (lado do dono e lado de quem recebe o link)
 components/          pedaços de tela reutilizáveis (cada um com seu .module.css). SitePreview.tsx e
-                     generated-site.ts são a prévia isolada do site feito pelas IAs (seção 6)
+                     generated-site.ts são a prévia isolada do site feito pelas IAs (seção 6). OckWorkspace.tsx é o
+                     espaço de trabalho (abas Chat, Receitas, Entregas e Meus gastos; a aba e a receita aberta ficam
+                     no endereço, workspace-view.ts)
 lib/engine/          motor: executa as etapas de um time e narra cada passo em eventos (types.ts).
                      Recebe as IAs prontas (getProvider), não as escolhe. O ESLint barra importar
                      telas, Next.js ou React aqui, em lib/providers/, lib/recipes/ e lib/runs/
@@ -87,7 +90,8 @@ lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts)
                      dados e pode ir para a tela; registry.ts entrega as IAs e é SÓ do servidor; limits.ts é o
                      teto de saída de cada IA (resposta + pensamento), usado pelos conectores e pela estimativa
 lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema, etapas);
-                     validate.ts confere toda receita nos testes
+                     validate.ts confere toda receita nos testes; screen.ts é o que a tela de uma receita recebe
+                     (nunca as instruções das IAs)
 lib/auth/            o login (Supabase Auth): quem está vendo a página (viewer.ts, com requireMember para
                      páginas protegidas), o cliente com a sessão de quem está logado (session.ts), a renovação
                      do login a cada página (refresh-session.ts, chamado pelo proxy.ts da raiz), o cadastro
