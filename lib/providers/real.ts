@@ -4,8 +4,10 @@
 //
 // Os modelos ficam todos em MODELS: é o único lugar a ajustar se uma empresa mudar o nome do modelo.
 
+import { THINKING_TOKENS, outputTokenCap } from "./limits";
 import { estimateTokens } from "./mock";
 import {
+  DEFAULT_TIER,
   ProviderError,
   type AiProvider,
   type Effort,
@@ -37,8 +39,7 @@ function modelFor(id: ProviderId, tier: ModelTier): string {
 // mas mais lento e caro). "low" desliga o pensamento: vai direto ao ponto — ideal para montar/juntar o que
 // já existe (ex.: a montagem final), que era justamente o que estava estourando o tempo da hospedagem.
 
-/** Orçamento de "pensamento" (em tokens) por esforço. Usado pelo Claude e pelo Gemini; "low" = sem pensar. */
-const THINKING_TOKENS: Record<Effort, number> = { low: 0, medium: 2000, high: 6000 };
+// O teto de cada chamada (resposta + pensamento) vem de limits.ts: é o mesmo que a estimativa de custo usa.
 
 /** Nível de raciocínio do GPT por esforço. */
 const GPT_REASONING: Record<Effort, "minimal" | "medium" | "high"> = {
@@ -62,7 +63,7 @@ export function createRealProvider(id: ProviderId, apiKey: string): AiProvider {
       const { systemPrompt, input, maxOutputTokens, signal } = request;
       const effort = request.effort ?? "medium";
       const images = request.images ?? [];
-      const model = modelFor(id, request.tier ?? "padrao");
+      const model = modelFor(id, request.tier ?? DEFAULT_TIER);
       switch (id) {
         case "claude":
           return streamClaude(apiKey, model, systemPrompt, input, maxOutputTokens, effort, images, signal);
@@ -109,7 +110,7 @@ async function* streamClaude(
     {
       model,
       // Deixa folga para o pensamento caber junto com a resposta quando o esforço é médio/alto.
-      max_tokens: think ? maxTokens + 8000 : maxTokens,
+      max_tokens: outputTokenCap("claude", maxTokens, effort),
       ...(think ? { thinking: { type: "adaptive" }, output_config: { effort } } : {}),
       system,
       messages: [{ role: "user", content }],
@@ -164,7 +165,7 @@ async function* streamOpenAI(
     {
       model,
       // O raciocínio também gasta deste limite, então damos uma folga proporcional ao esforço.
-      max_completion_tokens: maxTokens + THINKING_TOKENS[effort] + 1000,
+      max_completion_tokens: outputTokenCap("gpt", maxTokens, effort),
       // "minimal" (low) quase não pensa e vai direto ao ponto, bem mais rápido; sobe conforme o esforço.
       reasoning_effort: GPT_REASONING[effort],
       messages: [
@@ -219,7 +220,7 @@ async function* streamGemini(
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts }],
       generationConfig: {
-        maxOutputTokens: maxTokens + thinkingTokens,
+        maxOutputTokens: outputTokenCap("gemini", maxTokens, effort),
         // thinkingBudget 0 desliga o pensamento (low = rápido); maior pensa mais.
         thinkingConfig: { thinkingBudget: thinkingTokens },
       },

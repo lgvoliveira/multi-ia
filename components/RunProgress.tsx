@@ -5,8 +5,11 @@
 // refazer uma fase, e aí aparece a rodada. Um "documento vivo" junta o que o time já produziu.
 // Quando o time termina um site, entra a tela de resultado (RunResult); esta fica na tela se o time
 // parar no meio do caminho ou se o resultado for texto.
+// Embaixo do título fica o custo: quanto o time já gastou do saldo da empresa e, no fim, quanto custou. Se o custo for
+// passar do que foi reservado, o time pausa antes da próxima fase e esta tela pergunta: continuar ou parar aqui.
 
 import { useEffect, useRef } from "react";
+import { formatBRL } from "@/lib/ock/pricing";
 import { getProviderInfo } from "@/lib/providers/catalog";
 import {
   liveDocument,
@@ -26,12 +29,20 @@ interface RunProgressProps {
   run: RunState;
   /** Aviso de algo que não deu certo enquanto o time trabalha (ex.: o login do navegador mudou). */
   notice?: string | null;
+  /** Quanto o time já gastou do saldo da empresa, em centavos; null enquanto não se sabe. */
+  chargedCents: number | null;
+  /** O que foi reservado ao começar (o máximo que o time podia gastar), em centavos. */
+  estimateCents: number | null;
+  /** true enquanto o servidor tenta reservar o que falta, depois do "Continuar". */
+  resuming: boolean;
   onCancel: () => void;
+  onResume: () => void;
   onRestart: () => void;
 }
 
 const TITLES: Record<RunStatus, string> = {
   running: "Seu time está trabalhando",
+  paused: "O time está esperando você",
   finished: "Seu time terminou",
   failed: "O time parou no meio do caminho",
   cancelled: "Você cancelou",
@@ -47,7 +58,18 @@ const DOCUMENT_PARTS: { key: keyof LiveDocument; label: string }[] = [
   { key: "reviewNotes", label: "Revisão do chefe" },
 ];
 
-export function RunProgress({ recipeName, request, run, notice, onCancel, onRestart }: RunProgressProps) {
+export function RunProgress({
+  recipeName,
+  request,
+  run,
+  notice,
+  chargedCents,
+  estimateCents,
+  resuming,
+  onCancel,
+  onResume,
+  onRestart,
+}: RunProgressProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   // Leva o foco para o título quando esta tela aparece: quem usa leitor de tela fica sabendo da troca.
@@ -72,11 +94,12 @@ export function RunProgress({ recipeName, request, run, notice, onCancel, onRest
             {TITLES[run.status]}
           </h1>
         </div>
-        {run.status === "running" ? (
+        {run.status === "running" && (
           <button type="button" className={styles.button} onClick={onCancel}>
             Cancelar
           </button>
-        ) : (
+        )}
+        {run.status !== "running" && run.status !== "paused" && (
           <button type="button" className={styles.button} onClick={onRestart}>
             Começar de novo
           </button>
@@ -84,11 +107,21 @@ export function RunProgress({ recipeName, request, run, notice, onCancel, onRest
       </div>
 
       {message && <p className={`${styles.message} ${styles[message.tone]}`}>{message.text}</p>}
-      {notice && run.status === "running" && (
+      {run.status === "paused" && (
+        <PausePanel
+          chargedCents={chargedCents}
+          neededCents={run.neededCents}
+          resuming={resuming}
+          onResume={onResume}
+          onStop={onCancel}
+        />
+      )}
+      {notice && (run.status === "running" || run.status === "paused") && (
         <p className={`${styles.message} ${styles.messageError}`} role="alert">
           {notice}
         </p>
       )}
+      <CostLine status={run.status} chargedCents={chargedCents} estimateCents={estimateCents} />
 
       <p className={styles.request}>
         <span className={styles.requestLabel}>Seu pedido:</span> {request}
@@ -121,6 +154,70 @@ export function RunProgress({ recipeName, request, run, notice, onCancel, onRest
       </p>
     </div>
   );
+}
+
+interface PausePanelProps {
+  chargedCents: number | null;
+  neededCents: number | undefined;
+  resuming: boolean;
+  onResume: () => void;
+  onStop: () => void;
+}
+
+/** A pergunta da pausa: o custo ia passar do que foi reservado. Continuar reserva o que falta; parar encerra aqui. */
+function PausePanel({ chargedCents, neededCents, resuming, onResume, onStop }: PausePanelProps) {
+  return (
+    <section className={styles.pause} aria-label="O time pausou">
+      <p>
+        O custo vai passar do que foi reservado, então o time parou antes da próxima fase.
+        {chargedCents !== null && ` Até aqui, ele gastou ${formatBRL(chargedCents)}.`}
+      </p>
+      <p>
+        {neededCents === undefined
+          ? "Para terminar, é preciso reservar mais do saldo da empresa."
+          : `Para terminar, é preciso reservar até ${formatBRL(neededCents)} do saldo da empresa.`}{" "}
+        Você paga só o que o time usar. Se parar aqui, paga só as etapas concluídas.
+      </p>
+      <div className={styles.pauseActions}>
+        <button type="button" className={styles.primaryButton} onClick={onResume} disabled={resuming}>
+          {resuming ? "Continuando…" : "Continuar"}
+        </button>
+        <button type="button" className={styles.button} onClick={onStop} disabled={resuming}>
+          Parar aqui
+        </button>
+      </div>
+    </section>
+  );
+}
+
+interface CostLineProps {
+  status: RunStatus;
+  chargedCents: number | null;
+  estimateCents: number | null;
+}
+
+/** Quanto o time já gastou (enquanto trabalha) ou quanto custou (no fim). */
+function CostLine({ status, chargedCents, estimateCents }: CostLineProps) {
+  if (chargedCents === null) return null;
+  const spent = formatBRL(chargedCents);
+  let text: string;
+  switch (status) {
+    case "running":
+    case "paused":
+    case "interrupted":
+      text =
+        `Gasto até agora: ${spent}` +
+        (estimateCents === null ? "." : ` (reservado ao começar: até ${formatBRL(estimateCents)}).`);
+      break;
+    case "finished":
+      text = `Custou ${spent}. O que sobrou da reserva voltou para o saldo da empresa.`;
+      break;
+    case "failed":
+    case "cancelled":
+      text = `Custou ${spent}, só pelas etapas concluídas. O resto da reserva voltou para o saldo da empresa.`;
+      break;
+  }
+  return <p className={styles.cost}>{text}</p>;
 }
 
 /** Painel com o que o time já produziu até agora. Fica escondido enquanto nenhuma parte está pronta. */
@@ -169,6 +266,7 @@ type Tone = "messageDone" | "messageError" | "messageNeutral";
 function endMessage(run: RunState): { text: string; tone: Tone } | null {
   switch (run.status) {
     case "running":
+    case "paused":
       return null;
     case "finished":
       return { text: "Pronto! O resultado final está no último cartão.", tone: "messageDone" };
@@ -201,6 +299,9 @@ function failureText(failed: StepView | undefined): string {
 }
 
 function announcement(run: RunState, message: string | undefined): string {
+  if (run.status === "paused") {
+    return `${TITLES.paused}. O custo vai passar do que foi reservado. Escolha entre continuar e parar aqui.`;
+  }
   if (run.status !== "running") return `${TITLES[run.status]}. ${message ?? ""}`;
   const working = run.steps.filter((step) => step.status === "working");
   if (working.length === 0) return "Começando…";

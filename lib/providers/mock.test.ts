@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createMockProvider, estimateTokens, parseMockFailures, splitIntoChunks } from "./mock";
+import {
+  createMockProvider,
+  estimateTokens,
+  OVERSPEND_FACTOR,
+  parseMockFailures,
+  parseMockOverspend,
+  splitIntoChunks,
+} from "./mock";
 import { ProviderError, type GenerateChunk, type GenerateRequest } from "./types";
 
 const baseRequest: GenerateRequest = {
@@ -74,6 +81,8 @@ describe("IA simulada", () => {
       const error = await collect(provider.generate(baseRequest)).catch((e: unknown) => e);
       expect(error).toBeInstanceOf(ProviderError);
       expect((error as ProviderError).retryable).toBe(true);
+      // O modelo vai junto, para o registro interno do custo da falha.
+      expect((error as ProviderError).model).toBe("mock-gpt");
     }
 
     const chunks = await collect(provider.generate(baseRequest));
@@ -142,6 +151,29 @@ describe("interruptor de teste MOCK_AI_FAILURES", () => {
   it("valor que não dá para entender é erro, com um exemplo do jeito certo", () => {
     expect(() => parseMockFailures("chatgpt")).toThrow('MOCK_AI_FAILURES: não entendi "chatgpt"');
     expect(() => parseMockFailures("gpt:duas")).toThrow('Use, por exemplo, "gpt" ou "gpt:2".');
+  });
+});
+
+describe("interruptor de teste MOCK_AI_OVERSPEND", () => {
+  it("a IA que gasta demais diz ter escrito várias vezes o limite da etapa; o texto não muda", async () => {
+    const sampleResponse = "Resposta curta.";
+    const normal = await collect(createMockProvider({ id: "claude", chunkDelayMs: 0 }).generate({ ...baseRequest, sampleResponse }));
+    const overspent = await collect(
+      createMockProvider({ id: "claude", chunkDelayMs: 0, overspend: true }).generate({ ...baseRequest, sampleResponse }),
+    );
+
+    expect(textOf(overspent)).toBe(textOf(normal));
+    expect(overspent.at(-1)).toMatchObject({
+      type: "done",
+      usage: { outputTokens: baseRequest.maxOutputTokens * OVERSPEND_FACTOR },
+    });
+  });
+
+  it("lê os nomes das IAs separados por vírgula; vazio, ninguém gasta demais; valor estranho é erro", () => {
+    expect(parseMockOverspend("claude, GPT")).toEqual(new Set(["claude", "gpt"]));
+    expect(parseMockOverspend("")).toEqual(new Set());
+    expect(parseMockOverspend(undefined)).toEqual(new Set());
+    expect(() => parseMockOverspend("claude:2")).toThrow('MOCK_AI_OVERSPEND: não entendi "claude:2"');
   });
 });
 

@@ -2,23 +2,30 @@
 // nada aqui dentro: devolve só o id. O navegador acompanha depois buscando as novidades (lib/runs/live-client.ts),
 // e a execução roda em chamadas curtas e separadas em /api/runs/[id]/continue, sobrevivendo ao navegador sair.
 // Só para quem é da empresa e está ativo; a empresa e a pessoa vêm do login, nunca do pedido.
+// Antes de criar, reserva na carteira da empresa a estimativa (o máximo que o time pode gastar), calculada aqui de
+// novo: o número que a tela mostra nunca é usado. Sem saldo, ou passando do teto do mês da pessoa, não começa.
 // Pedido inválido não começa: volta na hora, com a lista de problemas em português.
 
+import { randomUUID } from "node:crypto";
 import { checkPageMember, PAGE_MEMBER_FIELD } from "@/lib/auth/page-member";
 import { getViewer } from "@/lib/auth/viewer";
 import { resolveTeam } from "@/lib/engine/run";
 import type { ProviderId } from "@/lib/providers/types";
 import { stageSteps, type Recipe } from "@/lib/recipes/types";
+import { estimateCents, stepCosts } from "@/lib/runs/estimate";
 import { isPlainObject, parseRunRequest, type RunRefusalBody } from "@/lib/runs/parse-request";
 import type { PublicPlannedStage } from "@/lib/runs/public-events";
 import { createRun } from "@/lib/runs/store";
 import { triggerContinue } from "@/lib/runs/trigger";
+import { closeRunHolds, reserveForRun, WalletRefusedError, walletRefusalMessage } from "@/lib/runs/wallet";
 
 // Esta chamada só cria a execução e dispara o primeiro segmento: é curta por natureza.
 export const maxDuration = 15;
 
 /** Tamanho máximo do corpo do pedido. Folga grande: um pedido de 4.000 caracteres ocupa bem menos. */
 const MAX_BODY_SIZE = 64 * 1024;
+
+const SERVER_PROBLEM = "Algo deu errado do nosso lado. Tente de novo daqui a pouco.";
 
 export async function POST(request: Request): Promise<Response> {
   // Só aceita JSON. Isso também impede que outro site dispare execuções pelo navegador de alguém.
@@ -51,20 +58,38 @@ export async function POST(request: Request): Promise<Response> {
   const { recipe, request: userRequest, team: teamChoice } = parsed.input;
   // IA de cada papel já decidida (a escolhida ou a sugerida): guardada e usada do começo ao fim.
   const team = resolveTeam(recipe, teamChoice);
+  const estimate = estimateCents(stepCosts(recipe), team);
 
-  let runId: string;
+  // A reserva vem antes da execução, já com o id dela: sem dinheiro reservado, nenhuma IA trabalha.
+  const runId = randomUUID();
   try {
-    runId = await createRun({
+    await reserveForRun(me.id, runId, estimate);
+  } catch (error) {
+    if (error instanceof WalletRefusedError) {
+      return refuse(402, [walletRefusalMessage(error.reason, me.role === "owner", estimate)]);
+    }
+    console.error("[api/runs] Não consegui reservar o crédito da execução:", error);
+    return refuse(500, [SERVER_PROBLEM]);
+  }
+
+  try {
+    await createRun({
+      id: runId,
       company_id: me.companyId,
       member_id: me.id,
       recipe_id: recipe.id,
       request: userRequest.trim(),
       team,
       plan: buildPlan(recipe, team),
+      estimate_cents: estimate,
     });
   } catch (error) {
     console.error("[api/runs] Não consegui criar a execução:", error);
-    return refuse(500, ["Algo deu errado do nosso lado. Tente de novo daqui a pouco."]);
+    // A execução não existe: a reserva volta ao saldo (se nem isso der, ela vence sozinha em uma hora).
+    await closeRunHolds(runId).catch((closeError: unknown) => {
+      console.error(`[api/runs] Não consegui fechar a reserva de ${runId}:`, closeError);
+    });
+    return refuse(500, [SERVER_PROBLEM]);
   }
 
   // Dispara o primeiro segmento (dispara e esquece); se a chamada se perder, a tela retoma depois.

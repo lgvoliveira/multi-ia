@@ -12,7 +12,7 @@ import {
 } from "@/lib/recipes/create-site.samples";
 import { stageSteps } from "@/lib/recipes/types";
 import { mergeStepStreams, parseVerdict, resolveTeam, runRecipe } from "./run";
-import type { RunEvent } from "./types";
+import type { AiCallReport, RunEvent } from "./types";
 
 const recipe = createSiteRecipe;
 const REQUEST = "Quero um site para minha confeitaria, com cardápio e botão de WhatsApp.";
@@ -611,6 +611,95 @@ describe("mesclar as etapas em paralelo", () => {
 
     await expect(drain(merge)).rejects.toThrow("boom");
     expect(siblingCancelled).toBe(true);
+  });
+});
+
+describe("registro de cada chamada às IAs (onAiCall, base do custo real)", () => {
+  it("avisa cada chamada que deu certo, com o modelo, o nível e o mesmo consumo da etapa", async () => {
+    const { getProvider } = createTestProviders();
+    const reports: AiCallReport[] = [];
+
+    const events = await collect(
+      runRecipe({ recipe, request: REQUEST }, { getProvider, onAiCall: (call) => reports.push(call) }),
+    );
+
+    const finished = ofType(events, "step-finished");
+    expect(reports).toHaveLength(finished.length);
+    for (const step of finished) {
+      const report = reports.find((call) => call.stepId === step.stepId);
+      expect(report).toMatchObject({
+        provider: step.provider,
+        model: step.model,
+        tier: "padrao",
+        usage: step.usage,
+        ok: true,
+        attempt: 1,
+      });
+      expect(report?.errorMessage).toBeUndefined();
+    }
+  });
+
+  it("avisa também as tentativas que falharam, com o que a IA chegou a escrever", async () => {
+    // O GPT (Front-end) cai depois de escrever 2 pedaços na 1ª tentativa e acerta na 2ª.
+    const { getProvider, wait } = createTestProviders({ gpt: failing("gpt", 1, 2) });
+    const reports: AiCallReport[] = [];
+
+    await collect(runRecipe({ recipe, request: REQUEST }, { getProvider, wait, onAiCall: (call) => reports.push(call) }));
+
+    const front = reports.filter((call) => call.stepId === "front");
+    expect(front.map((call) => [call.attempt, call.ok])).toEqual([
+      [1, false],
+      [2, true],
+    ]);
+    expect(front[0]).toMatchObject({ model: "mock-gpt", errorMessage: MOCK_FAILURE("gpt") });
+    expect(front[0].usage.inputTokens).toBeGreaterThan(0);
+    expect(front[0].usage.outputTokens).toBeGreaterThan(0);
+  });
+
+  it("avisa a chamada interrompida pelo cancelamento", async () => {
+    const { getProvider } = createTestProviders();
+    const controller = new AbortController();
+    const reports: AiCallReport[] = [];
+
+    for await (const event of runRecipe(
+      { recipe, request: REQUEST },
+      { getProvider, signal: controller.signal, onAiCall: (call) => reports.push(call) },
+    )) {
+      if (event.type === "step-text" && event.stepId === "brief") controller.abort();
+    }
+
+    expect(reports).toEqual([
+      expect.objectContaining({ stepId: "brief", ok: false, errorMessage: "Cancelada no meio.", attempt: 1 }),
+    ]);
+    expect(reports[0].usage.outputTokens).toBeGreaterThan(0);
+  });
+
+  it("numa fase em paralelo, avisa a etapa irmã que parou no meio porque outra falhou", async () => {
+    // O Pesquisador quebra na hora (defeito, sem novas tentativas); o Front-end ainda está escrevendo, devagar.
+    const broken: AiProvider = {
+      id: "gemini",
+      async *generate() {
+        throw new Error("defeito no conector");
+      },
+    };
+    const { calls, getProvider } = createTestProviders({
+      gemini: broken,
+      gpt: createMockProvider({ id: "gpt", chunkDelayMs: 5 }),
+    });
+    const reports: AiCallReport[] = [];
+
+    await collect(runRecipe({ recipe, request: REQUEST }, { getProvider, onAiCall: (call) => reports.push(call) }));
+
+    // Cada chamada às IAs foi avisada uma vez, terminasse como terminasse.
+    expect(reports).toHaveLength(calls.length);
+    expect(reports.find((call) => call.stepId === "research")).toMatchObject({
+      ok: false,
+      errorMessage: "defeito no conector",
+    });
+    expect(reports.find((call) => call.stepId === "front")).toMatchObject({
+      ok: false,
+      errorMessage: "Parou no meio: outra etapa da fase falhou.",
+    });
   });
 });
 

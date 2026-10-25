@@ -1,10 +1,12 @@
 // GET /api/runs/[id]: o resumo da execução que a tela precisa para montar e retomar o acompanhamento.
 // Lido com a sessão de quem está logado: só a própria pessoa vê a execução dela (execução de outra pessoa é
-// "não encontrada"), e só o que ela pode ver: status, plano das fases, resultado final e tempo.
+// "não encontrada"), e só o que ela pode ver: o pedido, status, plano das fases, resultado final, tempo, a estimativa
+// reservada ao começar e quanto já foi cobrado (as linhas de gasto dela no extrato).
 
 import { signedInSession } from "@/lib/auth/session";
 import { isRunId } from "@/lib/runs/parse-request";
 import { loadOwnRun } from "@/lib/runs/store";
+import { sumOwnRunCharges } from "@/lib/runs/wallet";
 
 export async function GET(_request: Request, context: RouteContext<"/api/runs/[id]">): Promise<Response> {
   const { id } = await context.params;
@@ -15,8 +17,17 @@ export async function GET(_request: Request, context: RouteContext<"/api/runs/[i
   try {
     const run = await loadOwnRun(session, id);
     if (!run) return problem(404, "Execução não encontrada.");
+    const chargedCents = await sumOwnRunCharges(session, id);
     return Response.json(
-      { status: run.status, plan: run.plan, result: run.result, durationMs: run.duration_ms },
+      {
+        request: run.request,
+        status: run.status,
+        plan: run.plan,
+        result: run.result,
+        durationMs: run.duration_ms,
+        estimateCents: run.estimate_cents,
+        chargedCents,
+      },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

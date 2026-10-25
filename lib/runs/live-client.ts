@@ -21,6 +21,8 @@ export interface SubscribeHandlers {
   onEvent: (event: PublicRunEvent) => void;
   /** O status mudou (ex.: passou a "finished" ou "failed"). */
   onStatus?: (status: LiveRunStatus) => void;
+  /** Quanto já foi cobrado da execução, em centavos, sempre que muda (e na primeira busca). */
+  onCharged?: (chargedCents: number) => void;
   /** Não dá mais para acompanhar (ver LostReason). */
   onLost?: (reason: LostReason) => void;
 }
@@ -39,6 +41,8 @@ interface EventsResponse {
   status: LiveRunStatus;
   events: { seq: number; event: PublicRunEvent }[];
   more: boolean;
+  /** Ausente se o servidor não mandou (resposta fora do combinado). */
+  chargedCents?: number;
 }
 
 /**
@@ -50,6 +54,7 @@ export function subscribeRun(runId: string, handlers: SubscribeHandlers, options
   const intervalMs = options.intervalMs ?? POLL_INTERVAL_MS;
   let lastSeq = 0;
   let lastStatus: LiveRunStatus | null = null;
+  let lastCharged: number | null = null;
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -83,6 +88,11 @@ export function subscribeRun(runId: string, handlers: SubscribeHandlers, options
         handlers.onEvent(event);
         if (stopped) return;
       }
+      if (body.chargedCents !== undefined && body.chargedCents !== lastCharged) {
+        lastCharged = body.chargedCents;
+        handlers.onCharged?.(body.chargedCents);
+        if (stopped) return;
+      }
       if (body.status !== lastStatus) {
         lastStatus = body.status;
         handlers.onStatus?.(body.status);
@@ -103,7 +113,12 @@ export function subscribeRun(runId: string, handlers: SubscribeHandlers, options
 
 function parseEventsResponse(value: unknown): EventsResponse | null {
   if (typeof value !== "object" || value === null) return null;
-  const { status, events, more } = value as Record<string, unknown>;
+  const { status, events, more, chargedCents } = value as Record<string, unknown>;
   if (typeof status !== "string" || !Array.isArray(events)) return null;
-  return { status: status as LiveRunStatus, events: events as EventsResponse["events"], more: more === true };
+  return {
+    status: status as LiveRunStatus,
+    events: events as EventsResponse["events"],
+    more: more === true,
+    ...(typeof chargedCents === "number" && Number.isFinite(chargedCents) ? { chargedCents } : {}),
+  };
 }

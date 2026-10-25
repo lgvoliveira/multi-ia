@@ -5,6 +5,7 @@ import { RecipeFlow } from "@/components/RecipeFlow";
 import { requireMember } from "@/lib/auth/viewer";
 import { getRecipe, RECIPES } from "@/lib/recipes/catalog";
 import { stageSteps } from "@/lib/recipes/types";
+import { stepCosts } from "@/lib/runs/estimate";
 import styles from "./page.module.css";
 
 // Página de uma receita pronta (ex.: /recipes/create-site). Endereço de receita que não existe
@@ -67,6 +68,8 @@ export default async function RecipePage(props: PageProps<"/recipes/[recipeId]">
         recipeName={recipe.name}
         roles={roles}
         stages={stages}
+        // Só os números do custo máximo de cada etapa com cada IA: a tela soma para o time escolhido.
+        stepCosts={stepCosts(recipe)}
         requestPlaceholder={recipe.requestPlaceholder}
       />
     </main>

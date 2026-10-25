@@ -58,10 +58,10 @@ export interface RunStage {
 }
 
 /**
- * running: o time está trabalhando. Os outros são o fim: terminou, uma IA falhou,
- * a pessoa cancelou ou a conexão caiu no meio do caminho.
+ * running: o time está trabalhando. paused: o custo ia passar do que foi reservado, e o time espera a pessoa dizer se
+ * continua. Os outros são o fim: terminou, uma IA falhou, a pessoa cancelou ou a conexão caiu no meio do caminho.
  */
-export type RunStatus = "running" | "finished" | "failed" | "cancelled" | "interrupted";
+export type RunStatus = "running" | "paused" | "finished" | "failed" | "cancelled" | "interrupted";
 
 export interface RunState {
   status: RunStatus;
@@ -73,6 +73,8 @@ export interface RunState {
   result?: string;
   /** Quanto tempo o time levou, quando termina. */
   durationMs?: number;
+  /** Numa pausa: quanto é preciso reservar, em centavos, para o time terminar. */
+  neededCents?: number;
 }
 
 export type RunAction =
@@ -94,7 +96,7 @@ export function createRunState(stages: PlannedStageView[]): RunState {
 
 export function runReducer(state: RunState, action: RunAction): RunState {
   // Depois do fim, nada muda (ex.: um pedaço de texto que chega atrasado depois do "Cancelar").
-  if (state.status !== "running") return state;
+  if (state.status !== "running" && state.status !== "paused") return state;
 
   switch (action.type) {
     case "cancel":
@@ -160,6 +162,10 @@ function applyEvent(state: RunState, event: PublicRunEvent): RunState {
       );
     case "run-cancelled":
       return endRun(state, "cancelled");
+    case "run-paused":
+      return { ...state, status: "paused", neededCents: event.neededCents };
+    case "run-resumed":
+      return { ...state, status: "running", neededCents: undefined };
   }
 }
 

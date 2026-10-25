@@ -30,8 +30,17 @@ const PRICE_USD: Record<ProviderId, Record<ModelTier, { input: number; output: n
 /** O nível mais caro de todos (Claude Opus). Base da "economia": e se tudo rodasse no mais potente? */
 const PREMIUM: { provider: ProviderId; tier: ModelTier } = { provider: "claude", tier: "potente" };
 
-/** Câmbio usado para mostrar o custo em reais. Simplificado; depois vira cotação ao vivo. */
-const USD_TO_BRL = 5.5;
+/**
+ * Câmbio usado para cobrar em reais. Fixo por enquanto (F17); depois vira cotação ao vivo.
+ * Cada chamada de IA guarda o câmbio usado (tabela interna ai_calls), para a conta fechar depois.
+ */
+export const USD_TO_BRL = 5.5;
+
+/**
+ * Margem da OCK sobre o custo das IAs, em cada uso (0,2 = 20%). Zero por enquanto: o formato do preço segue em aberto
+ * (F04, decisão do Luis de 25/10/2026). É o único lugar a mudar quando ela for decidida.
+ */
+const USAGE_MARGIN = 0;
 
 /** Nome amigável de cada IA, para a tela. */
 export const PROVIDER_LABEL: Record<ProviderId, string> = {
@@ -40,17 +49,30 @@ export const PROVIDER_LABEL: Record<ProviderId, string> = {
   gemini: "Gemini",
 };
 
-/** Custo de uma tarefa em CENTAVOS de real, a partir da IA, do nível e dos tokens consumidos. */
-export function costInCents(
+/** Quanto a empresa da IA cobra da OCK, em DÓLAR, pelos tokens consumidos. Só interno (tabela ai_calls). */
+export function costInUsd(
   provider: ProviderId,
   tier: ModelTier,
   inputTokens: number,
   outputTokens: number,
 ): number {
   const price = PRICE_USD[provider][tier];
-  const usd =
-    (inputTokens / 1_000_000) * price.input + (outputTokens / 1_000_000) * price.output;
-  return Math.ceil(usd * USD_TO_BRL * 100);
+  return (inputTokens / 1_000_000) * price.input + (outputTokens / 1_000_000) * price.output;
+}
+
+/**
+ * Custo de uma tarefa em CENTAVOS de real, a partir da IA, do nível e dos tokens consumidos: o custo em dólar, no
+ * câmbio do dia, mais a margem, arredondado para cima (fração de centavo vira 1 centavo).
+ */
+export function costInCents(
+  provider: ProviderId,
+  tier: ModelTier,
+  inputTokens: number,
+  outputTokens: number,
+): number {
+  const cents = costInUsd(provider, tier, inputTokens, outputTokens) * USD_TO_BRL * (1 + USAGE_MARGIN) * 100;
+  // Arredonda antes de subir: 12,000000001 (resto da conta com vírgula do computador) é 12, e não 13.
+  return Math.ceil(Number(cents.toFixed(6)));
 }
 
 /**

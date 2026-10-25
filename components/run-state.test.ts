@@ -263,6 +263,28 @@ describe("estado da tela do time trabalhando", () => {
 
     expect(late).toBe(cancelled);
   });
+
+  it("pausa quando o custo vai passar do reservado, guardando quanto falta reservar; continuando, volta a trabalhar", () => {
+    const paused = play(...BRIEF_DONE, event({ type: "run-paused", neededCents: 452 }));
+    expect(paused.status).toBe("paused");
+    expect(paused.neededCents).toBe(452);
+    // O que já foi feito continua; o resto espera.
+    expect(stepById(paused, "brief").status).toBe("done");
+    expect(stepById(paused, "front").status).toBe("waiting");
+
+    const resumed = runReducer(paused, event({ type: "run-resumed" }));
+    expect(resumed.status).toBe("running");
+    expect(resumed.neededCents).toBeUndefined();
+    const working = runReducer(resumed, event({ type: "step-started", stepId: "front", provider: "gpt" }));
+    expect(stepById(working, "front").status).toBe("working");
+  });
+
+  it("parar na pausa encerra como cancelada; as etapas que esperavam não começam", () => {
+    const stopped = play(...BRIEF_DONE, event({ type: "run-paused", neededCents: 452 }), { type: "cancel" });
+    expect(stopped.status).toBe("cancelled");
+    expect(stepById(stopped, "brief").status).toBe("done");
+    expect(stepById(stopped, "front").status).toBe("skipped");
+  });
 });
 
 describe("agrupamento por fase e documento vivo", () => {

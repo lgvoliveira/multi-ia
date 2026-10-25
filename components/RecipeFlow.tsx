@@ -7,14 +7,17 @@
 // A tela acompanha pelo id: guarda ?run=<id> no endereço (dá para recarregar e continuar vendo),
 // busca o plano e o status, e busca as novidades a cada segundo (com replay do que já passou). Sair da página
 // e voltar NÃO interrompe o time: ele roda no servidor de qualquer jeito.
-// Começar e cancelar levam o id de quem abriu a página (memberId): se o login do navegador mudou em outra aba,
-// o servidor não faz nada e a tela mostra o aviso que ele mandou (F34).
+// Começar, cancelar e continuar levam o id de quem abriu a página (memberId): se o login do navegador mudou em outra
+// aba, o servidor não faz nada e a tela mostra o aviso que ele mandou (F34).
+// O custo acompanha a execução: a estimativa reservada ao começar e quanto o time já gastou (o servidor manda junto
+// com as novidades). Se o custo for passar do reservado, o time pausa e a tela pergunta se continua.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProviderId } from "@/lib/providers/types";
 import type { StageKind, Step } from "@/lib/recipes/types";
 import { forgetActiveRun, recallActiveRun, rememberActiveRun } from "@/lib/runs/active-run";
-import { cancelRun, readProblems, startRun, SERVER_PROBLEM } from "@/lib/runs/client";
+import { cancelRun, readProblems, resumeRun, startRun, SERVER_PROBLEM } from "@/lib/runs/client";
+import type { StepCost } from "@/lib/runs/estimate";
 import { subscribeRun, type LostReason } from "@/lib/runs/live-client";
 import type { PublicPlannedStage } from "@/lib/runs/public-events";
 import {
@@ -42,13 +45,24 @@ export interface FlowStage {
   steps: FlowStep[];
 }
 
-/** O resumo que GET /api/runs/[id] devolve: status, plano e, se terminou, o resultado. */
+/** O resumo que GET /api/runs/[id] devolve: o pedido, status, plano, o custo e, se terminou, o resultado. */
 interface RunInfo {
+  request?: string;
   status?: string;
   plan?: PublicPlannedStage[];
   result?: string | null;
   durationMs?: number | null;
+  estimateCents?: number | null;
+  chargedCents?: number;
 }
+
+/** O custo da execução acompanhada: o reservado ao começar e o já gasto, em centavos (null enquanto não se sabe). */
+interface RunCost {
+  estimateCents: number | null;
+  chargedCents: number | null;
+}
+
+const UNKNOWN_COST: RunCost = { estimateCents: null, chargedCents: null };
 
 interface RecipeFlowProps {
   /** Quem abriu a página (o id no banco), para o servidor conferir que o login não mudou. */
@@ -57,6 +71,8 @@ interface RecipeFlowProps {
   recipeName: string;
   roles: TeamRole[];
   stages: FlowStage[];
+  /** O custo máximo de cada etapa com cada IA, calculado no servidor, para a estimativa da tela de montar o time. */
+  stepCosts: StepCost[];
   requestPlaceholder: string;
 }
 
@@ -70,7 +86,15 @@ const LOST_NOTICES: Record<LostReason, string> = {
     "mesmo login). Clique em Sair, no topo, e entre de novo com a sua conta. O time continua trabalhando.",
 };
 
-export function RecipeFlow({ memberId, recipeId, recipeName, roles, stages, requestPlaceholder }: RecipeFlowProps) {
+export function RecipeFlow({
+  memberId,
+  recipeId,
+  recipeName,
+  roles,
+  stages,
+  stepCosts,
+  requestPlaceholder,
+}: RecipeFlowProps) {
   const [team, setTeam] = useState<Team>(() =>
     Object.fromEntries(roles.map((role) => [role.id, role.suggestedProvider])),
   );
@@ -80,6 +104,8 @@ export function RecipeFlow({ memberId, recipeId, recipeName, roles, stages, requ
   const [run, setRun] = useState<RunState | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [cost, setCost] = useState<RunCost>(UNKNOWN_COST);
+  const [resuming, setResuming] = useState(false);
   // Desliga a busca de novidades da execução atual. Trocado a cada nova execução acompanhada.
   const unsubscribeRef = useRef<(() => void) | null>(null);
   // Marca qual execução a tela acompanha agora: callbacks de uma execução antiga são ignorados.
@@ -122,6 +148,9 @@ export function RecipeFlow({ memberId, recipeId, recipeName, roles, stages, requ
       rememberActiveRun(recipeId, id);
       writeRunParam(id);
       setRunId(id);
+      // Voltando a uma execução (recarregou, ou voltou a uma pausa mais tarde), o pedido vem do servidor.
+      if (typeof info?.request === "string") setRequest(info.request);
+      setCost({ estimateCents: info?.estimateCents ?? null, chargedCents: info?.chargedCents ?? null });
 
       // Execução JÁ terminada: monta o estado final direto do resumo, sem reviver os eventos.
       // Uma execução longa com IAs reais gera MILHARES de eventos (texto token a token); reviver tudo
@@ -141,6 +170,9 @@ export function RecipeFlow({ memberId, recipeId, recipeName, roles, stages, requ
       };
       unsubscribeRef.current = subscribeRun(id, {
         onEvent: (event) => apply({ type: "event", event }),
+        onCharged: (chargedCents) => {
+          if (trackingRef.current === token) setCost((current) => ({ ...current, chargedCents }));
+        },
         onLost: (reason) => {
           if (trackingRef.current === token) setNotice(LOST_NOTICES[reason]);
         },
@@ -196,6 +228,20 @@ export function RecipeFlow({ memberId, recipeId, recipeName, roles, stages, requ
     trackingRef.current = null;
     unsubscribeRef.current?.();
     unsubscribeRef.current = null;
+    // A busca de novidades parou: pergunta uma última vez quanto custou (só as etapas concluídas).
+    const chargedCents = await fetchChargedCents(id);
+    if (chargedCents !== null) setCost((current) => ({ ...current, chargedCents }));
+  }
+
+  // "Continuar" numa pausa: o servidor reserva o que falta. Deu certo, a narração traz o time de volta ao trabalho;
+  // recusou (sem saldo, teto do mês), a tela mostra o que fazer e a execução continua pausada.
+  async function handleResume() {
+    const id = runId;
+    if (!id) return;
+    setResuming(true);
+    const resume = await resumeRun(id, memberId);
+    setResuming(false);
+    setNotice(resume.ok ? null : resume.problems.join(" "));
   }
 
   function handleRestart() {
@@ -205,6 +251,7 @@ export function RecipeFlow({ memberId, recipeId, recipeName, roles, stages, requ
     setRun(null);
     setRunId(null);
     setNotice(null);
+    setCost(UNKNOWN_COST);
     forgetActiveRun(recipeId);
     clearRunParam();
   }
@@ -212,7 +259,15 @@ export function RecipeFlow({ memberId, recipeId, recipeName, roles, stages, requ
   if (run) {
     const site = finishedSite(run);
     if (site !== null) {
-      return <RunResult request={request} run={run} site={site} onRestart={handleRestart} />;
+      return (
+        <RunResult
+          request={request}
+          run={run}
+          site={site}
+          chargedCents={cost.chargedCents}
+          onRestart={handleRestart}
+        />
+      );
     }
     return (
       <RunProgress
@@ -220,7 +275,11 @@ export function RecipeFlow({ memberId, recipeId, recipeName, roles, stages, requ
         request={request}
         run={run}
         notice={notice}
+        chargedCents={cost.chargedCents}
+        estimateCents={cost.estimateCents}
+        resuming={resuming}
         onCancel={handleCancel}
+        onResume={handleResume}
         onRestart={handleRestart}
       />
     );
@@ -237,6 +296,7 @@ export function RecipeFlow({ memberId, recipeId, recipeName, roles, stages, requ
 
       <TeamBuilder
         roles={roles}
+        stepCosts={stepCosts}
         requestPlaceholder={requestPlaceholder}
         initialTeam={team}
         initialRequest={request}
@@ -260,6 +320,18 @@ function buildRunState(stages: FlowStage[], plan: PublicPlannedStage[]): RunStat
     steps: stage.steps.map((step) => ({ ...step, provider: providerOf.get(step.id) ?? "claude" })),
   }));
   return createRunState(planned);
+}
+
+/** Quanto a execução custou até agora, pelo resumo do servidor. Sem resposta, null (a tela fica com o que já sabia). */
+async function fetchChargedCents(id: string): Promise<number | null> {
+  try {
+    const response = await fetch(`/api/runs/${id}`, { cache: "no-store" });
+    if (!response.ok) return null;
+    const info = (await response.json()) as RunInfo;
+    return typeof info.chargedCents === "number" ? info.chargedCents : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Guarda ?run=<id> no endereço, sem recarregar a página: dá para recarregar e continuar acompanhando. */

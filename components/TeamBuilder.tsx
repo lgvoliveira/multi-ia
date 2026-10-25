@@ -1,39 +1,30 @@
 "use client";
 
-// Tela "Montar o time": escolher a IA de cada papel e escrever o pedido.
+// Tela "Montar o time": escolher a IA de cada papel e escrever o pedido, vendo o custo estimado.
 // Roda no navegador porque reage na hora a cada troca de IA e a cada letra digitada.
+// O custo estimado é o MÁXIMO que o time pode gastar (lib/runs/estimate.ts): a tela só soma os números que o servidor
+// mandou. Ao começar, o servidor calcula de novo e reserva esse valor; no fim, cobra só o que o time usou.
 
-import { useId, useRef, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { MAX_REQUEST_CHARS } from "@/lib/engine/validate";
+import { formatBRL } from "@/lib/ock/pricing";
 import { PROVIDERS, isProviderId } from "@/lib/providers/catalog";
 import type { ProviderId } from "@/lib/providers/types";
 import type { Role } from "@/lib/recipes/types";
+import { estimateCents, type StepCost } from "@/lib/runs/estimate";
 import { AiDot } from "./AiDot";
 import styles from "./TeamBuilder.module.css";
 
 /** O que a tela precisa de cada papel. As instruções das IAs ficam no servidor. */
 export type TeamRole = Pick<Role, "id" | "name" | "description" | "suggestedProvider">;
 
-/** Tipos de agente que a pessoa pode acrescentar ao time, com a IA recomendada de cada um. */
-const ADDABLE_AGENTS: readonly (TeamRole & { typeId: string })[] = [
-  { typeId: "chief", id: "chief", name: "Chefe", description: "Entende o pedido, planeja, revisa e divide o trabalho", suggestedProvider: "claude" },
-  { typeId: "researcher", id: "researcher", name: "Pesquisador", description: "Pesquisa ideias e conteúdos de referência", suggestedProvider: "gemini" },
-  { typeId: "programmer", id: "programmer", name: "Programador", description: "Escreve o código do projeto", suggestedProvider: "gpt" },
-];
-
-/** Um agente que a pessoa acrescentou a mais do time base da receita. */
-interface ExtraAgent {
-  id: string;
-  name: string;
-  description: string;
-  provider: ProviderId;
-}
-
 /** IA escolhida para cada papel (id do papel → IA). */
 export type Team = Record<string, ProviderId>;
 
 interface TeamBuilderProps {
   roles: TeamRole[];
+  /** O custo máximo de cada etapa com cada IA, calculado no servidor. */
+  stepCosts: StepCost[];
   requestPlaceholder: string;
   /** Time e pedido com que a tela abre (ex.: ao voltar de uma execução para mudar algo). */
   initialTeam: Team;
@@ -53,6 +44,7 @@ const EMPTY_REQUEST = "Escreva o que você quer que o time faça.";
 
 export function TeamBuilder({
   roles,
+  stepCosts,
   requestPlaceholder,
   initialTeam,
   initialRequest,
@@ -63,15 +55,12 @@ export function TeamBuilder({
   const [team, setTeam] = useState<Team>(initialTeam);
   const [request, setRequest] = useState(initialRequest);
   const [status, setStatus] = useState<FormStatus>("editing");
-  // Agentes acrescentados pela pessoa, além do time base da receita.
-  const [extraAgents, setExtraAgents] = useState<ExtraAgent[]>([]);
-  const [choosingAgent, setChoosingAgent] = useState(false);
-  const nextAgentId = useRef(1);
   const ids = useId();
   const requestId = `${ids}-request`;
   const hintId = `${ids}-hint`;
   const counterId = `${ids}-counter`;
   const errorId = `${ids}-error`;
+  const estimateId = `${ids}-estimate`;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -82,24 +71,6 @@ export function TeamBuilder({
     }
     setStatus("submitted");
     onStart(team, request);
-  }
-
-  function addAgent(type: (typeof ADDABLE_AGENTS)[number]) {
-    setExtraAgents((current) => [
-      ...current,
-      {
-        id: `extra-${nextAgentId.current++}`,
-        name: type.name,
-        description: type.description,
-        provider: type.suggestedProvider,
-      },
-    ]);
-    setChoosingAgent(false);
-    setStatus("editing");
-  }
-
-  function removeAgent(id: string) {
-    setExtraAgents((current) => current.filter((agent) => agent.id !== id));
   }
 
   const atLimit = request.length >= MAX_REQUEST_CHARS;
@@ -125,59 +96,7 @@ export function TeamBuilder({
               }}
             />
           ))}
-          {extraAgents.map((agent, index) => (
-            <RoleCard
-              key={agent.id}
-              role={{
-                id: agent.id,
-                name: agent.name,
-                description: agent.description,
-                suggestedProvider: agent.provider,
-              }}
-              position={roles.length + index + 1}
-              provider={agent.provider}
-              onChange={(provider) => {
-                setExtraAgents((current) =>
-                  current.map((item) => (item.id === agent.id ? { ...item, provider } : item)),
-                );
-                setStatus("editing");
-              }}
-              onRemove={() => removeAgent(agent.id)}
-            />
-          ))}
         </ol>
-
-        <div className={styles.addAgent}>
-          {choosingAgent ? (
-            <div className={styles.chooser} role="group" aria-label="Escolha o tipo de agente">
-              {ADDABLE_AGENTS.map((type) => (
-                <button
-                  key={type.typeId}
-                  type="button"
-                  className={styles.chooserOption}
-                  onClick={() => addAgent(type)}
-                >
-                  <AiDot provider={type.suggestedProvider} size="large" />
-                  {type.name}
-                </button>
-              ))}
-              <button
-                type="button"
-                className={styles.chooserCancel}
-                onClick={() => setChoosingAgent(false)}
-              >
-                Cancelar
-              </button>
-            </div>
-          ) : (
-            <button type="button" className={styles.addButton} onClick={() => setChoosingAgent(true)}>
-              + Adicionar agente
-            </button>
-          )}
-          <p className={styles.addWarning}>
-            Mais agentes deixam o desenvolvimento mais rápido, mas gastam mais tokens.
-          </p>
-        </div>
       </section>
 
       <section className={styles.request}>
@@ -214,9 +133,19 @@ export function TeamBuilder({
           </div>
         )}
 
-        <button type="submit" className={styles.submit} disabled={starting}>
+        <button type="submit" className={styles.submit} disabled={starting} aria-describedby={estimateId}>
           {starting ? "Começando…" : "Começar"}
         </button>
+
+        {/* Muda a cada troca de IA; quem usa leitor de tela ouve o valor novo. */}
+        <div id={estimateId} className={styles.estimate} aria-live="polite">
+          <p className={styles.estimateValue}>
+            Custo estimado: <strong>até {formatBRL(estimateCents(stepCosts, team))}</strong>
+          </p>
+          <p className={styles.estimateNote}>
+            Você paga só o que o time usar; o que sobrar volta para o saldo da empresa.
+          </p>
+        </div>
       </section>
     </form>
   );
@@ -227,11 +156,9 @@ interface RoleCardProps {
   position: number;
   provider: ProviderId;
   onChange: (provider: ProviderId) => void;
-  /** Só os agentes acrescentados pela pessoa podem ser removidos. */
-  onRemove?: () => void;
 }
 
-function RoleCard({ role, position, provider, onChange, onRemove }: RoleCardProps) {
+function RoleCard({ role, position, provider, onChange }: RoleCardProps) {
   const ids = useId();
   const nameId = `${ids}-name`;
   const labelId = `${ids}-label`;
@@ -272,16 +199,6 @@ function RoleCard({ role, position, provider, onChange, onRemove }: RoleCardProp
           </select>
         </div>
       </div>
-      {onRemove && (
-        <button
-          type="button"
-          className={styles.removeAgent}
-          onClick={onRemove}
-          aria-label={`Remover agente ${role.name}`}
-        >
-          Remover
-        </button>
-      )}
     </li>
   );
 }

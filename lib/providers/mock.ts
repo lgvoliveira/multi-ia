@@ -10,7 +10,7 @@ import {
 } from "./types";
 
 /** Aproximação usada pelas empresas de IA: 1 token ≈ 4 caracteres. */
-const CHARS_PER_TOKEN = 4;
+export const CHARS_PER_TOKEN = 4;
 const WORDS_PER_CHUNK = 3;
 const DEFAULT_CHUNK_DELAY_MS = 40;
 
@@ -22,10 +22,25 @@ export interface MockProviderOptions {
   failFirstCalls?: number;
   /** Nas chamadas que falham, quantos pedaços a IA escreve antes de cair. 0 = falha antes de escrever. */
   failAfterChunks?: number;
+  /**
+   * Teste da pausa por gasto: a IA informa um consumo de saída OVERSPEND_FACTOR vezes maior que o limite da etapa,
+   * como uma IA que gastou além do previsto. O texto escrito não muda.
+   */
+  overspend?: boolean;
 }
 
+/** No teste de gasto a mais, quantas vezes o limite de resposta da etapa a IA simulada diz ter gastado. */
+export const OVERSPEND_FACTOR = 10;
+
 export function createMockProvider(options: MockProviderOptions): AiProvider {
-  const { id, chunkDelayMs = DEFAULT_CHUNK_DELAY_MS, failFirstCalls = 0, failAfterChunks = 0 } = options;
+  const {
+    id,
+    chunkDelayMs = DEFAULT_CHUNK_DELAY_MS,
+    failFirstCalls = 0,
+    failAfterChunks = 0,
+    overspend = false,
+  } = options;
+  const model = `mock-${id}`;
   let calls = 0;
 
   return {
@@ -45,20 +60,20 @@ export function createMockProvider(options: MockProviderOptions): AiProvider {
       const { text, truncated } = limitToTokens(fullText, request.maxOutputTokens);
 
       for (const [index, piece] of splitIntoChunks(text).entries()) {
-        if (failing && index >= failAfterChunks) throw intentionalFailure(id);
+        if (failing && index >= failAfterChunks) throw intentionalFailure(id, model);
         await delay(chunkDelayMs);
         request.signal?.throwIfAborted();
         yield { type: "text", text: piece };
       }
-      if (failing) throw intentionalFailure(id);
+      if (failing) throw intentionalFailure(id, model);
 
       yield {
         type: "done",
         usage: {
           inputTokens: estimateTokens(request.systemPrompt + request.input),
-          outputTokens: estimateTokens(text),
+          outputTokens: overspend ? request.maxOutputTokens * OVERSPEND_FACTOR : estimateTokens(text),
         },
-        model: `mock-${id}`,
+        model,
         truncated,
       };
     },
@@ -83,6 +98,22 @@ export function parseMockFailures(value = ""): Partial<Record<ProviderId, number
   return failures;
 }
 
+/**
+ * Lê o interruptor de teste MOCK_AI_OVERSPEND (veja .env.example): quais IAs simuladas gastam além do previsto.
+ * "claude" ou vários separados por vírgula ("claude,gpt"). Valor que não dá para entender é erro, como no de falhas.
+ */
+export function parseMockOverspend(value = ""): Set<ProviderId> {
+  const providers = new Set<ProviderId>();
+  for (const entry of value.split(",").map((part) => part.trim().toLowerCase())) {
+    if (!entry) continue;
+    if (!isProviderId(entry)) {
+      throw new Error(`MOCK_AI_OVERSPEND: não entendi "${entry}". Use, por exemplo, "claude" ou "claude,gpt".`);
+    }
+    providers.add(entry);
+  }
+  return providers;
+}
+
 /** Quebra o texto em pedaços de algumas palavras. Juntando os pedaços, volta o texto original. */
 export function splitIntoChunks(text: string, wordsPerChunk = WORDS_PER_CHUNK): string[] {
   // Cada palavra leva junto o espaço ou a quebra de linha que vem depois dela.
@@ -104,8 +135,8 @@ function limitToTokens(text: string, maxTokens: number): { text: string; truncat
   return { text: text.slice(0, maxChars), truncated: true };
 }
 
-function intentionalFailure(id: ProviderId): ProviderError {
-  return new ProviderError(`A IA simulada (${id}) falhou de propósito, para teste.`, { retryable: true });
+function intentionalFailure(id: ProviderId, model: string): ProviderError {
+  return new ProviderError(`A IA simulada (${id}) falhou de propósito, para teste.`, { retryable: true, model });
 }
 
 function genericResponse(request: GenerateRequest): string {

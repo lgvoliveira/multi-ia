@@ -77,95 +77,6 @@
   color: var(--color-text-muted);
 }
 
-/* Botão "Adicionar agente", o seletor de tipo e o aviso de velocidade × tokens. */
-.addAgent {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.addButton {
-  align-self: flex-start;
-  min-height: var(--control-height);
-  padding: 0 var(--space-5);
-  border: 1px dashed var(--color-border-dashed);
-  border-radius: var(--radius-control);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  cursor: pointer;
-}
-
-.addButton:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.chooser {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.chooserOption {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--control-height);
-  padding: 0 var(--space-4);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-control);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  cursor: pointer;
-}
-
-.chooserOption:hover {
-  border-color: var(--color-primary);
-}
-
-.chooserCancel {
-  min-height: var(--control-height);
-  padding: 0 var(--space-4);
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  font: inherit;
-  font-size: var(--text-md);
-  cursor: pointer;
-}
-
-.addWarning {
-  font-size: var(--text-sm);
-  color: var(--color-warning-text);
-  background: var(--color-warning-bg);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-control);
-}
-
-/* Botão de remover um agente acrescentado pela pessoa. */
-.removeAgent {
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-control);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-
-.removeAgent:hover {
-  border-color: var(--color-error-text);
-  color: var(--color-error-text);
-}
-
 /* Largura fixa, para as listas dos papéis ficarem alinhadas; só encolhe em tela muito estreita. */
 .picker {
   flex: 0 1 var(--picker-width);
@@ -283,4 +194,27 @@
 .submit:disabled {
   background: var(--color-primary-hover);
   cursor: progress;
+}
+
+/* Custo estimado, embaixo do Começar: o valor em destaque e a explicação em letra menor. */
+.estimate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.estimateValue {
+  font-size: var(--text-md);
+  color: var(--color-text-body);
+}
+
+.estimateValue strong {
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+}
+
+.estimateNote {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }

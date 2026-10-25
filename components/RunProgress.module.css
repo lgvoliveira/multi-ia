@@ -54,6 +54,54 @@
   background: var(--color-surface-subtle);
 }
 
+.primaryButton {
+  min-height: var(--control-height);
+  padding: 0 var(--space-5);
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font: inherit;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.primaryButton:hover {
+  background: var(--color-primary-hover);
+}
+
+/* Travados enquanto o servidor tenta reservar o que falta. */
+.button:disabled,
+.primaryButton:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+/* A pergunta da pausa: o custo ia passar do que foi reservado. Em amarelo, como os outros avisos de atenção. */
+.pause {
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-card);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-size: var(--text-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pauseActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* Quanto o time já gastou, ou quanto custou no fim. */
+.cost {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 .message {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-control);

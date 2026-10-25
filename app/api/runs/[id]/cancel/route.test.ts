@@ -4,7 +4,8 @@ import type { Viewer } from "@/lib/auth/viewer";
 import type { OwnRun } from "@/lib/runs/store";
 import { POST } from "./route";
 
-// Quem está logado e o banco são dublês: conferimos quem pode cancelar e o que a rota grava.
+// Quem está logado, o banco e a carteira são dublês: conferimos quem pode cancelar, o que a rota grava e quando ela
+// fecha a reserva.
 
 const RUN_ID = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const ANA: CurrentMember = {
@@ -19,10 +20,12 @@ const ANA: CurrentMember = {
 const state = vi.hoisted(() => ({
   viewer: { status: "signed-out" } as Viewer,
   run: null as OwnRun | null,
-  cancelled: true,
+  /** O que cancelRun devolve: null se a execução já tinha acabado; senão, a reserva de quem a roda. */
+  cancelled: { leaseUntil: null } as { leaseUntil: string | null } | null,
 }));
 const appendEvents = vi.hoisted(() => vi.fn(async () => {}));
 const cancelRun = vi.hoisted(() => vi.fn(async () => state.cancelled));
+const closeRunHolds = vi.hoisted(() => vi.fn(async () => {}));
 
 vi.mock("@/lib/auth/viewer", () => ({ getViewer: async () => state.viewer }));
 vi.mock("@/lib/auth/session", () => ({ createSessionClient: async () => ({}) }));
@@ -32,19 +35,22 @@ vi.mock("@/lib/runs/store", () => ({
   cancelRun,
   appendEvents,
 }));
+vi.mock("@/lib/runs/wallet", () => ({ closeRunHolds }));
 
 beforeEach(() => {
   state.viewer = { status: "member", member: ANA };
   state.run = {
     id: RUN_ID,
     recipe_id: "create-site",
+    request: "Um site para a confeitaria.",
     status: "running",
     plan: [],
     cursor: { stageIndex: 1, round: 1 },
     result: null,
     duration_ms: null,
+    estimate_cents: 531,
   };
-  state.cancelled = true;
+  state.cancelled = { leaseUntil: null };
 });
 
 afterEach(() => {
@@ -74,6 +80,25 @@ describe("rota POST /api/runs/[id]/cancel", () => {
     ]);
   });
 
+  it("entre duas fases ou numa pausa (ninguém rodando), fecha a reserva na hora: o que sobrou volta ao saldo", async () => {
+    state.run = { ...state.run!, status: "paused" };
+    state.cancelled = { leaseUntil: null };
+    await post();
+    expect(closeRunHolds).toHaveBeenCalledWith(RUN_ID);
+
+    // A reserva de quem rodava já venceu (o servidor caiu): também fecha aqui.
+    closeRunHolds.mockClear();
+    state.cancelled = { leaseUntil: new Date(Date.now() - 60_000).toISOString() };
+    await post();
+    expect(closeRunHolds).toHaveBeenCalledWith(RUN_ID);
+  });
+
+  it("com uma fase rodando agora, quem roda fecha a reserva no fim dela; a rota não mexe", async () => {
+    state.cancelled = { leaseUntil: new Date(Date.now() + 55_000).toISOString() };
+    await post();
+    expect(closeRunHolds).not.toHaveBeenCalled();
+  });
+
   it("execução de outra pessoa (o banco não devolve pela sessão): não encontrada, nada muda", async () => {
     state.run = null;
     expect((await post()).status).toBe(404);
@@ -88,9 +113,10 @@ describe("rota POST /api/runs/[id]/cancel", () => {
   });
 
   it("se ela acabou bem na hora, não narra um cancelamento que não houve", async () => {
-    state.cancelled = false;
+    state.cancelled = null;
     await post();
     expect(appendEvents).not.toHaveBeenCalled();
+    expect(closeRunHolds).not.toHaveBeenCalled();
   });
 
   it("com o login trocado em outra aba (409) ou sem login (401), não cancela e explica", async () => {

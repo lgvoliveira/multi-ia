@@ -1,9 +1,10 @@
 "use client";
 
-// Tela "Seu site está pronto": a prévia do site (ou o código), o botão de baixar o arquivo
-// e o resumo de como o time chegou ao resultado, com acesso a todas as etapas.
+// Tela "Seu site está pronto": a prévia do site (ou o código), o botão de baixar o arquivo,
+// quanto custou e o resumo de como o time chegou ao resultado, com acesso a todas as etapas.
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { formatBRL } from "@/lib/ock/pricing";
 import { getProviderInfo } from "@/lib/providers/catalog";
 import { AiDot } from "./AiDot";
 import { siteFileName } from "./generated-site";
@@ -17,10 +18,12 @@ interface RunResultProps {
   run: RunState;
   /** O site pronto: o resultado final da execução. */
   site: string;
+  /** Quanto o time gastou do saldo da empresa, em centavos; null enquanto não se sabe. */
+  chargedCents: number | null;
   onRestart: () => void;
 }
 
-export function RunResult({ request, run, site, onRestart }: RunResultProps) {
+export function RunResult({ request, run, site, chargedCents, onRestart }: RunResultProps) {
   const ids = useId();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const stepsTitleRef = useRef<HTMLHeadingElement>(null);
@@ -44,6 +47,7 @@ export function RunResult({ request, run, site, onRestart }: RunResultProps) {
         <div className={styles.heading}>
           <p className={styles.kicker}>
             {run.durationMs === undefined ? "Concluído" : `Concluído em ${formatDuration(run.durationMs)}`}
+            {chargedCents !== null && ` · Custou ${formatBRL(chargedCents)}`}
           </p>
           <h1 ref={titleRef} tabIndex={-1} className={styles.title}>
             Seu site está pronto
