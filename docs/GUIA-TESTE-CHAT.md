@@ -1,6 +1,6 @@
 # Guia: testar o chat (PR 3c)
 
-> Escrito em 25/10/2026 (etapa 5, parte 3c do PR 3) para o Luis fazer à mão, com a ajuda do chat do Claude
+> Escrito em 25/10/2026 (etapa 5, parte 3c do PR 3, já na `main` pelo PR #40) para o Luis fazer à mão, com a ajuda do chat do Claude
 > (claude.ai). **Para o chat do Claude:** guie o Luis uma parte de cada vez, em português simples, e espere ele
 > confirmar antes de seguir. Se uma tela não bater com o guia, ajude pelo print. **Nunca peça para ele colar no chat
 > senhas, chaves, o e-mail dele ou o link de um convite.** Todo SQL deste guia roda no projeto **de testes** do Supabase
@@ -42,7 +42,7 @@ Ferramentas:
 1. Se o site estiver rodando num terminal, pare com **Ctrl + C**.
 2. Abra um **terminal novo** do VS Code (menu **Terminal → New Terminal**; o do Claude Code fica ocupado) e rode:
    ```
-   git checkout feat/tarefa-rapida
+   git checkout main
    git pull
    npm run dev
    ```
@@ -218,16 +218,12 @@ crédito da empresa.
 
 ## Parte K: depois do teste
 
-- **Se tudo funcionou:** faça o merge do PR no GitHub. Depois, no terminal:
-  ```
-  git checkout main
-  git pull
-  ```
-  Este PR não muda o banco, então nada muda no projeto de verdade do Supabase.
+- O código deste guia **já está na `main`** (PR #40, mergeado antes do teste): não há merge a fazer. Se algum passo
+  não der o resultado esperado, a correção vem num PR novo.
+- Este PR não mudou o banco, então nada mudou no projeto de verdade do Supabase.
 - As conversas, os arquivos e as linhas de gasto de teste podem ficar no projeto de testes.
 
 **O que contar ao voltar ao Claude Code:**
 - quais passos deram o resultado esperado e quais não (com print e o texto do terminal);
 - os valores que apareceram em "Custou", no "Gasto do mês" e nas consultas da Parte C;
-- se fez o merge;
 - qualquer tela diferente do guia, ou texto confuso (para corrigir).

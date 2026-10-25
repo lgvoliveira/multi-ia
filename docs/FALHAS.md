@@ -63,6 +63,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F43 | Quedas raras do servidor na hora de cobrar | Código | Baixa | Aceita |
 | F44 | Anexos do chat: o texto vai inteiro para a IA, e o que ela não lê é aceito sem aviso | Código / Produto | Média | Resolvida |
 | F45 | Sem a pesquisa ou o código de verdade, a IA é instruída a esconder isso | Produto | Média | Resolvida |
+| F46 | O PR #40 entrou na `main` sem descrição e antes do teste pelo guia | Processo | Baixa | Aberta |
 
 ## Negócio
 
@@ -586,3 +587,15 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 
 - **Andamento (25/10/2026, PR 3c):** o chat voltou, no banco novo (com a IA simulada). Resolvida quando o Luis testar o
   chat com o guia (`docs/GUIA-TESTE-CHAT.md`).
+
+### F46 — O PR #40 entrou na `main` sem descrição e antes do teste pelo guia
+- **Gravidade:** Baixa · **Status:** Aberta · **Anotada:** 25/10/2026 (percebida pelo Claude)
+- **O problema:** o PR da parte 3c foi aberto e mergeado pela conta do Luis (`lgvoliveira`) em oito segundos, sem
+  descrição (o que mudou, por quê, como testar; AGENTS.md, seção 8) e antes do teste pelo `GUIA-TESTE-CHAT.md`. Até
+  aqui, cada parte foi testada pelo Luis antes do merge. Parte da causa foi do Claude: ele parou no limite de uso antes
+  de abrir o PR, com o branch já no GitHub. Se o teste achar um defeito, ele já está na `main` (e, com a ligação do
+  GitHub, no Supabase de verdade quando houver migração; desta vez não havia).
+- **O que já ajuda:** as checagens passaram na `main`, este PR não mudou o banco e as IAs ainda são simuladas.
+- **O que fazer:** testar agora na `main` e corrigir num PR novo o que falhar. Daqui para a frente, o Claude abre o PR
+  com a descrição antes de parar, e o merge espera o teste pelo guia. Se foi o parceiro, com a conta do Luis, é mais um
+  motivo para a F21.
