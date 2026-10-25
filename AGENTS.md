@@ -73,8 +73,8 @@ Estrutura de pastas (criada na etapa 4, pode ser ajustada com aprovação):
 
 ```
 app/                 telas e rotas do Next.js. app/api/runs/ são as rotas das receitas: começar, ver, buscar as
-                     novidades e cancelar (com o login de quem pede) e a rota interna [id]/continue, que roda uma
-                     fase de cada vez no servidor; app/dono/actions.ts e app/convite/ são o convite do
+                     novidades, cancelar e continuar depois de uma pausa ([id]/resume), com o login de quem pede, e a
+                     rota interna [id]/continue, que roda uma fase de cada vez no servidor e cobra cada etapa; app/dono/actions.ts e app/convite/ são o convite do
                      funcionário (lado do dono e lado de quem recebe o link)
 components/          pedaços de tela reutilizáveis (cada um com seu .module.css). SitePreview.tsx e
                      generated-site.ts são a prévia isolada do site feito pelas IAs (seção 6)
@@ -82,7 +82,8 @@ lib/engine/          motor: executa as etapas de um time e narra cada passo em e
                      Recebe as IAs prontas (getProvider), não as escolhe. O ESLint barra importar
                      telas, Next.js ou React aqui, em lib/providers/, lib/recipes/ e lib/runs/
 lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts). catalog.ts é só
-                     dados e pode ir para a tela; registry.ts entrega as IAs e é SÓ do servidor
+                     dados e pode ir para a tela; registry.ts entrega as IAs e é SÓ do servidor; limits.ts é o
+                     teto de saída de cada IA (resposta + pensamento), usado pelos conectores e pela estimativa
 lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema, etapas);
                      validate.ts confere toda receita nos testes
 lib/auth/            o login (Supabase Auth): quem está vendo a página (viewer.ts, com requireMember para
@@ -98,9 +99,11 @@ lib/ock/             o workspace para empresas: empresa e funcionários (company
 lib/runs/            a execução vista de fora: o que dos eventos pode chegar ao usuário
                      (public-events.ts), a conferência do pedido que chega pela internet (parse-request.ts),
                      o banco das execuções (store.ts), a narração gravada aos poucos (event-buffer.ts), a
-                     retomada de execução parada (resume.ts) e a chamada interna (trigger.ts e
-                     internal-secret.ts), tudo SÓ do servidor; no navegador, começar e cancelar (client.ts) e
-                     buscar as novidades (live-client.ts)
+                     retomada de execução parada (resume.ts), a chamada interna (trigger.ts e
+                     internal-secret.ts), a carteira vista por uma execução (wallet.ts) e o que cobrar de cada
+                     etapa (billing.ts), tudo SÓ do servidor; no navegador, começar, cancelar e continuar
+                     (client.ts) e buscar as novidades (live-client.ts). A estimativa (estimate.ts) roda nos dois
+                     lados: o servidor calcula o máximo de cada etapa com cada IA, e a tela só soma
 styles/tokens.css    TODAS as cores, fontes, espaçamentos e arredondamentos
 supabase/            banco de dados: migrations/ (a versão oficial das tabelas), seed.sql (empresa de exemplo, só
                      local) e tests/ (testes do banco, rodam nas checagens). Explicação em docs/BANCO-DE-DADOS.md
@@ -123,9 +126,11 @@ docs/                documento do projeto, diário de progresso, registro de fal
 
 ### Créditos e estimativa
 1. Antes de começar, mostra uma **estimativa** de custo e **reserva** esse valor do saldo. Sem saldo, não começa e oferece recarga.
+   Por enquanto, a estimativa é o **máximo** que o time pode gastar ("até R$ X"), calculado de novo no servidor ao
+   começar (`lib/runs/estimate.ts`, decisão do Luis de 25/10/2026).
 2. Cobra cada etapa concluída pelo **consumo real**. No fim, devolve a diferença entre o reservado e o gasto.
 3. Se o custo for passar da estimativa, **pausa e pergunta** antes de continuar. A plataforma não absorve diferenças.
-4. Cancelou no meio: paga só o que já foi consumido.
+4. Cancelou no meio: paga só as etapas concluídas; a que estava rodando não é cobrada (decisão do Luis, 25/10/2026).
 5. Estimativas honestas, calculadas a partir do histórico real de cada receita. A estimativa mostrada precisa ser confiável — gastar muito além dela é um bug.
 6. Internamente, registrar o custo real em **dólar** de cada execução.
 

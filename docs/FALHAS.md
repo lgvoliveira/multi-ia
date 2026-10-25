@@ -57,6 +57,10 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F37 | Cancelar não parava a IA no meio da fase | Código | Média | Resolvida |
 | F38 | "Concluído em" mostrava só o tempo da última fase | Produto / Código | Baixa | Resolvida |
 | F39 | A chamada interna ia para o endereço que vinha no pedido | Segurança | Média | Resolvida |
+| F40 | Os conectores das IAs de verdade medem o consumo pelo tamanho do texto | Código | Alta | Aberta |
+| F41 | "+ Adicionar agente" mostra o agente, mas ele nunca trabalha | Produto / Código | Baixa | Resolvida |
+| F42 | Sem a chave de uma IA, o site usa a IA simulada sem avisar | Código | Média | Aberta |
+| F43 | Quedas raras do servidor na hora de cobrar | Código | Baixa | Aceita |
 
 ## Negócio
 
@@ -82,6 +86,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   subindo, come a margem. Ainda não está decidido se a cobrança é por empresa, por funcionário ou pelo consumo, nem
   quanto de margem entra sobre o custo das IAs.
 - **O que fazer:** discutir no Cowork depois de medir o custo real de uso com as IAs de verdade.
+- **Andamento (25/10/2026, PR 3b):** decisão provisória do Luis: por enquanto, cada uso custa o que as IAs custam, sem
+  margem (`USAGE_MARGIN = 0` em `lib/ock/pricing.ts`, o único lugar a mudar). O custo em dólar de cada chamada fica em
+  `ai_calls`, base para decidir.
 
 ### F05 — LGPD: o que o dono vê e para onde vão os dados dos clientes
 - **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 22/10/2026
@@ -123,6 +130,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   (`/recipes/create-site`), mas fora da página inicial e sem ligação com a empresa, o funcionário ou os gastos.
 - **O que fazer:** trazer os três modos (receita pronta, receita própria, tarefa rápida) para o workspace, com o gasto
   de cada receita contando no teto do funcionário.
+- **Andamento (25/10/2026, PR 3b):** o gasto da receita "Criar um site" já sai da carteira da empresa e conta no teto
+  do funcionário. Falta trazê-la para dentro do workspace (hoje ela abre por um link em `/trabalho`).
 
 ### F09 — Resultado que um leigo não sabe usar
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 09/10/2026 (no PROGRESSO), trazida para cá em 22/10/2026
@@ -152,6 +161,14 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   misturava o relógio do banco com o do computador, e um deles estava 5 segundos adiantado ("34 s" para 29 s de espera);
   agora as duas datas vêm do relógio do banco e só o tempo da última fase vem do relógio do servidor. No teste: "27 s"
   para 27 s de espera.
+
+### F41 — "+ Adicionar agente" mostra o agente, mas ele nunca trabalha
+- **Gravidade:** Baixa · **Status:** Resolvida · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar o PR 3b)
+- **O problema:** o botão do PR #19, na tela de montar o time, acrescentava um agente na lista (com o aviso "gastam mais
+  tokens"), mas ele nunca ia para o servidor nem trabalhava. Com a estimativa de custo na tela, a pessoa ainda veria um
+  agente "de mentira" sem custo.
+- **Resolvida (25/10/2026, PR 3b):** o botão saiu (decisão do Luis). Montar o próprio time é a receita própria, da
+  etapa 6.
 
 ## Código e segurança
 
@@ -229,6 +246,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   rota interna `continue` só aceita o próprio servidor. As receitas rodam só com a IA simulada até a cobrança (parte
   3b). Saíram `/api/keys/validate` e `/api/ock/models` (com "Minhas chaves"). Faltam as rotas do chat, `/api/ock/*`
   (parte 3c).
+- **Andamento (25/10/2026, PR 3b):** nenhuma receita começa sem reservar na carteira da empresa o máximo que pode gastar,
+  e cada etapa é cobrada. As receitas continuam com a IA simulada: as de verdade entram num PR próprio, com F40 e F42.
 
 ### F17 — Preços das IAs e câmbio fixos no código
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 22/10/2026
@@ -236,6 +255,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   ao dono pode ficar longe do que a plataforma paga de verdade.
 - **O que fazer:** conferir os preços com as tabelas oficiais, registrar o custo real em dólar de cada tarefa e usar uma
   cotação atualizada.
+- **Andamento (25/10/2026, PR 3b):** cada chamada às IAs das receitas guarda o custo em dólar e o câmbio usado
+  (`ai_calls`), e o arredondamento para cima não ganha mais 1 centavo por resto de conta do computador. Os preços e o
+  dólar continuam fixos; conferir os preços oficiais entra no PR das IAs de verdade.
 
 ### F18 — Prévia de site: o Chrome "aquece" uma conexão antes de bloquear
 - **Gravidade:** Baixa · **Status:** Aceita · **Anotada:** etapa 4 (T7), trazida para cá em 22/10/2026
@@ -268,6 +290,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Andamento (24/10/2026, PR #24):** no banco novo, reservar, cobrar e recarregar só acontecem por funções que travam a
   carteira da empresa, e o que está reservado conta no teto. Falta trocar o código (PR 3). Os testes rodam numa conexão
   só e não simulam pedidos simultâneos; a garantia vem da trava.
+- **Andamento (25/10/2026, PR 3b):** as receitas já usam as funções da carteira: reservam antes de começar (e de novo,
+  ao continuar depois de uma pausa) e cobram cada etapa por elas. Falta o chat (parte 3c).
 
 ### F25 — O próprio dono define o crédito da empresa
 - **Gravidade:** Alta · **Status:** Decidida · **Anotada:** 24/10/2026
@@ -289,6 +313,10 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Andamento (24/10/2026, PR 3a):** cada etapa concluída de uma receita vira uma linha em `ai_calls` (modelo, tokens,
   tempo). Faltam o custo em dólar e as tentativas que falharam: o motor ainda não conta os tokens de uma tentativa que
   caiu. Entram com a cobrança (parte 3b).
+- **Andamento (25/10/2026, PR 3b):** nas receitas, toda chamada às IAs vira uma linha em `ai_calls`, com o custo em
+  dólar e se foi cobrada: as que deram certo, as tentativas que falharam, a etapa interrompida pelo cancelamento e a
+  etapa irmã que parou porque outra da fase falhou (essa última nem fechava a conexão com a IA; corrigido junto). Com a
+  IA de verdade, o consumo de uma chamada que caiu ainda é a conta pelo tamanho do texto (F40). Falta o chat (parte 3c).
 
 ### F27 — Qualquer pessoa pode ler as execuções direto no banco
 - **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 24/10/2026
@@ -324,6 +352,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Por que aceitar:** a diferença fica limitada ao erro de uma estimativa, o servidor pausa e pergunta antes da etapa
   seguinte quando a reserva estoura, e nenhuma reserva nova passa com saldo negativo. Reavaliar se as estimativas
   errarem muito (regra "estimativas honestas").
+- **Andamento (25/10/2026, PR 3b):** como a estimativa das receitas é o máximo que o time pode gastar, o custo só passa
+  dela se a medição estiver errada (F40) ou se uma IA reserva mais cara assumir um papel (aí a execução pausa antes da
+  fase seguinte).
 
 ### F30 — E-mails do login só chegam para a equipe do Supabase
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 24/10/2026
@@ -434,6 +465,36 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Resolvida (24/10/2026, PR 3a):** o endereço vem só da configuração (`VERCEL_URL`, o endereço configurado do site ou o
   próprio computador), nunca do pedido (`lib/runs/trigger.ts`, com teste). Na publicação, conferir se a proteção de
   acesso da Vercel deixa o site chamar a si mesmo por esse endereço.
+
+### F40 — Os conectores das IAs de verdade medem o consumo pelo tamanho do texto
+- **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar o PR 3b)
+- **O problema:** `lib/providers/real.ts` conta os tokens (os pedacinhos de texto pelos quais as empresas de IA cobram)
+  pelo tamanho do texto, 4 letras por token. Fica de fora o "pensamento", o raciocínio que a IA faz antes de responder,
+  que as empresas também cobram e que pode ser bem maior que a resposta. Com as IAs de verdade, a plataforma cobraria da
+  empresa bem menos do que paga, e a estimativa (que conta a entrada do mesmo jeito) poderia ficar abaixo do real.
+- **O que fazer:** no PR das IAs de verdade, ler o consumo que cada API devolve no fim da resposta (com o pensamento) e
+  usar esse número na cobrança e em `ai_calls`; revisar a conta da entrada na estimativa com o número de verdade (texto
+  em português gasta mais tokens por letra).
+
+### F42 — Sem a chave de uma IA, o site usa a IA simulada sem avisar
+- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar o PR 3b)
+- **O problema:** `createGetProvider` (`lib/providers/registry.ts`) usa a IA de verdade quando há a chave dela e, sem a
+  chave, cai na IA simulada sem avisar ninguém. Com a cobrança ligada, uma chave apagada ou com nome errado no servidor
+  faria a empresa pagar por um resultado de mentira.
+- **O que fazer:** no PR das IAs de verdade, faltar a chave vira erro (a etapa falha e o servidor registra o motivo), e
+  a IA simulada só roda com um interruptor próprio, ligado de propósito no computador de testes.
+
+### F43 — Quedas raras do servidor na hora de cobrar
+- **Gravidade:** Baixa · **Status:** Aceita · **Anotada:** 25/10/2026 (achada pelo Claude no PR 3b)
+- **O problema:** o caso comum está coberto: se o servidor cai entre gravar uma fase e cobrar, a chamada seguinte cobra
+  o que faltou, sem cobrar duas vezes. Ficam três casos raros: (1) se a pessoa cancela no mesmo instante em que o
+  servidor cobra as etapas da fase que acabou de terminar, as que ainda não tinham sido cobradas saem de graça; (2) se o
+  servidor cai no meio de uma fase que a pessoa cancelou, a reserva fica "aberta" até vencer (uma hora), e depois disso
+  deixa de segurar o saldo; (3) em teoria, se o servidor ficar parado um minuto inteiro entre gravar e cobrar, outro
+  pode assumir a execução e os dois cobrarem a mesma etapa.
+- **Por que aceitar:** os três dependem de uma queda ou de uma coincidência de segundos, e os valores são de centavos.
+- **O que fazer depois:** uma chave única na cobrança (migração: cada etapa só vira uma linha de gasto) e uma limpeza que
+  fecha as reservas esquecidas.
 
 ## Processo
 
