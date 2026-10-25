@@ -61,6 +61,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F41 | "+ Adicionar agente" mostra o agente, mas ele nunca trabalha | Produto / Código | Baixa | Resolvida |
 | F42 | Sem a chave de uma IA, o site usa a IA simulada sem avisar | Código | Média | Aberta |
 | F43 | Quedas raras do servidor na hora de cobrar | Código | Baixa | Aceita |
+| F44 | Anexos do chat: o texto vai inteiro para a IA, e o que ela não lê é aceito sem aviso | Código / Produto | Média | Aberta |
+| F45 | Sem a pesquisa ou o código de verdade, a IA é instruída a esconder isso | Produto | Média | Aberta |
 
 ## Negócio
 
@@ -169,6 +171,17 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   agente "de mentira" sem custo.
 - **Resolvida (25/10/2026, PR 3b):** o botão saiu (decisão do Luis). Montar o próprio time é a receita própria, da
   etapa 6.
+
+### F45 — Sem a pesquisa ou o código de verdade, a IA é instruída a esconder isso
+- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar a parte 3c)
+- **O problema:** quando o Chefe escolhe "pesquisa" (informação atual da internet) ou "código" (rodar uma conta) e o
+  Gemini não está disponível, o chat do parceiro (`app/api/ock/route.ts`) manda o pedido para o Claude com instruções
+  como "NUNCA diga que não tem acesso à internet" e "Faça a conta VOCÊ MESMO… NUNCA diga que não tem ambiente de
+  execução". A pessoa recebe uma conta feita "de cabeça" ou uma informação possivelmente velha como se tivesse sido
+  calculada ou pesquisada. Numa empresa, isso vira decisão errada, e a culpa cai na plataforma (como em F03).
+- **O que fazer:** proposta na issue #39 (parte 3c): enquanto a pesquisa e o código de verdade não estiverem ligados, a
+  resposta diz que a IA não pesquisou na internet nem rodou o código. Com as IAs de verdade, o mesmo aviso vale sempre
+  que a ferramenta falhar.
 
 ## Código e segurança
 
@@ -495,6 +508,16 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Por que aceitar:** os três dependem de uma queda ou de uma coincidência de segundos, e os valores são de centavos.
 - **O que fazer depois:** uma chave única na cobrança (migração: cada etapa só vira uma linha de gasto) e uma limpeza que
   fecha as reservas esquecidas.
+
+### F44 — Anexos do chat: o texto vai inteiro para a IA, e o que ela não lê é aceito sem aviso
+- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar a parte 3c)
+- **O problema:** no chat do parceiro (`app/api/ock/route.ts` e `lib/ock/files.ts`), dá para anexar até 5 arquivos de
+  10 MB, e o texto de cada PDF ou arquivo de texto vai **inteiro** para a IA, sem limite. Um PDF grande vira centenas de
+  milhares de tokens: com as IAs de verdade, uma mensagem poderia custar dezenas de reais, ou a IA recusaria por tamanho.
+  E um arquivo que a IA não lê (Word, Excel, áudio…) é aceito, mas não chega a ela, e ninguém avisa: a pessoa acha que a
+  IA leu.
+- **O que fazer:** proposta na issue #39 (parte 3c): o texto dos anexos entra até 30.000 caracteres por mensagem (umas
+  15 páginas), com aviso quando cortar, e um tipo que a IA não lê é recusado na hora, com aviso.
 
 ## Processo
 

@@ -4,10 +4,11 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 24/10/2026 (etapa 5: parte 3a do PR 3, receitas com login, pronta para o teste do Luis)
+**Última atualização:** 25/10/2026 (etapa 5: parte 3b testada pelo Luis e no ar; issue da parte 3c, o chat, esperando
+a aprovação dele)
 **Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite) e o aviso de troca de
-login no ar; PR 3 (trocar o código do parceiro) em 4 partes: a 3a (receitas com login, issue #33) está no PR, esperando
-o teste do Luis; depois, 3b (cobrança), 3c (chat) e 3d (painel do dono)
+login no ar; PR 3 (trocar o código do parceiro) em 4 partes: 3a (receitas com login) e 3b (receitas cobrando) no ar; a
+3c (o chat, issue #39) espera a aprovação do Luis; depois, o PR das IAs de verdade e a 3d (painel do dono)
 
 ---
 
@@ -117,7 +118,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite) e PR 3a (receitas com login) no ar; a 3b (receitas cobrando) no PR | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite), PR 3a (receitas com login) e 3b (receitas cobrando) no ar; a 3c (o chat) na issue #39 | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -625,15 +626,45 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   raras do servidor na hora de cobrar; aceita). Andamento em F04, F08, F16, F17, F24, F26 e F29.
 - **Guia do teste:** `docs/GUIA-TESTE-COBRANCA.md`, para o Luis seguir com o chat do Claude.
 
+**3b testada pelo Luis e no ar (25/10, com o chat do Claude e o guia)**
+- Todas as partes do `GUIA-TESTE-COBRANCA.md` deram o resultado esperado:
+  - **Estimativa (B):** "Custo estimado: até R$ 5,31"; R$ 3,54 com o Front-end no Gemini e de volta a R$ 5,31 no GPT.
+    Sem saldo, a recusa apareceu em vermelho.
+  - **Recarga (C):** pelo editor de SQL do `multi-ia-teste`, devolveu 2000 (R$ 20,00).
+  - **Execução inteira (D):** "Gasto até agora" subiu a cada fase e terminou em "Custou R$ 0,37"; 6 linhas de gasto no
+    extrato, uma por etapa, negativas, com a IA e sem o pedido; a reserva ficou 531 / 37 / closed.
+  - **Cancelar (E):** cancelado depois do Chefe, "Custou R$ 0,04" e a reserva fechada.
+  - **Pausa (F):** com `MOCK_AI_OVERSPEND=claude`, pausou em R$ 1,00 pedindo para reservar até R$ 4,52; Continuar
+    terminou em R$ 3,53; Parar aqui deu "Você cancelou" com R$ 1,00. A linha já saiu do `.env.local`.
+  - **Teto (G):** com teto de R$ 1,00, a Carla recebeu a recusa do teto do mês; depois o teto voltou a ficar vazio.
+- **Merge do PR #38 feito** (receitas cobrando na `main`).
+
+**Issue da parte 3c — tarefa rápida (25/10, Claude Code; issue #39)**
+- **Ordem (Luis, 25/10):** a 3c vem antes do PR das IAs de verdade. Assim aquele PR liga de uma vez as IAs das receitas
+  e as do chat.
+- **O que a issue propõe:** `/trabalho` volta com o chat do parceiro (conversas, anexos, arquivos gerados, aba
+  Entregas e aba Meus gastos), no banco novo, em nome de quem está logado e cobrando pela carteira da empresa: o servidor
+  confere saldo e teto antes de chamar qualquer IA, reserva o máximo da resposta depois que o Chefe decide e cobra o real
+  numa linha por mensagem ("Tarefa rápida · Documento", com a IA). Todas as rotas `/api/ock/*` com login (F13, F16).
+  Sem migração e sem biblioteca nova.
+- **Quatro decisões esperando o Luis**, com a recomendação do Claude: (1) no chat, o custo aparece depois de cada
+  resposta ("Custou R$ X"), sem estimativa nem OK antes; (2) imagem, pesquisa na internet, rodar código e voz ficam para
+  o PR das IAs de verdade (a IA simulada não sabe fazer nenhuma); (3) mensagem de até 4.000 caracteres, com contador;
+  (4) gastos do funcionário em reais, não em tokens.
+- **Falhas novas, achadas ao estudar o chat:** F44 (o texto dos anexos vai inteiro para a IA, sem limite, e um tipo que a
+  IA não lê é aceito sem aviso) e F45 (sem a pesquisa ou o código de verdade, a instrução manda a IA esconder isso).
+
 ## Próximo passo
 
-1. **Luis, no chat do Claude:** seguir o `docs/GUIA-TESTE-COBRANCA.md` para testar o PR da parte 3b (inclui colocar
-   crédito de mentira na empresa do projeto de testes). Se tudo der certo, fazer o merge.
-2. **Claude Code** (esforço Extra alto): **PR das IAs de verdade nas receitas**, antes de comprar créditos: ler o
-   consumo que cada API devolve (F40), faltar a chave vira erro em vez de cair na simulada (F42), conferir os nomes dos
-   modelos e os preços oficiais (F17). Depois, o Claude guia a compra de créditos (valor mínimo, recarga automática
-   desligada) e o primeiro teste com IA de verdade. Em seguida, 3c (chat) e 3d (painel do dono).
-3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
+1. **Luis:** ler a issue #39 (https://github.com/lgvoliveira/multi-ia/issues/39) e responder às 4 decisões. Com a
+   aprovação, o Claude programa a 3c, no branch `feat/tarefa-rapida`.
+2. **Claude Code** (esforço Extra alto): a parte 3c, com o teste de ponta a ponta e o guia do teste para o Luis.
+3. **Claude Code:** **PR das IAs de verdade**, nas receitas e no chat, antes de comprar créditos: ler o consumo que cada
+   API devolve (F40), faltar a chave vira erro em vez de cair na simulada (F42), conferir os nomes dos modelos e os preços
+   oficiais (F17), e ligar imagem, pesquisa, código e voz com preço e limite conferidos. Depois, o Claude guia a compra de
+   créditos (valor mínimo, recarga automática desligada) e o primeiro teste com IA de verdade. Em seguida, a 3d (painel
+   do dono).
+4. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.
 
