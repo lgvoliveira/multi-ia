@@ -103,6 +103,15 @@ saldo pode ficar um pouco negativo; aí nenhuma reserva nova passa até a próxi
 **O teto do mês** conta os gastos da pessoa desde o dia 1º, à meia-noite de Brasília, mais o que ela tem reservado no
 momento. O extrato guarda tudo, de todos os meses; só a conferência do teto olha o mês corrente.
 
+**Como as receitas usam a carteira (PR 3b, 25/10/2026):** a estimativa é o máximo que o time pode gastar
+(`lib/runs/estimate.ts`). O servidor reserva antes de criar a execução, já com o id dela em `wallet_holds.run_id`: é
+assim que cada fase acha a reserva da sua execução, sem coluna nova em `runs`. Antes de cada fase, o servidor confere se
+o que sobra da reserva cobre o máximo do que falta; se não cobre, a execução fica `paused` e pergunta. "Continuar" fecha
+a reserva antiga e reserva o que falta (com as mesmas conferências de saldo e teto). Cada etapa concluída vira uma linha
+de gasto, com no mínimo 1 centavo: assim, o número de linhas de gasto da execução diz quantas etapas já foram cobradas,
+e uma fase gravada mas não cobrada (o servidor caiu entre os dois) é cobrada na chamada seguinte, sem cobrar nada duas
+vezes.
+
 ### As funções do dinheiro
 
 | Função | Quem chama | O que faz |

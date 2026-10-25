@@ -46,7 +46,19 @@ const fakeClient = vi.hoisted(() => {
 
 vi.mock("@/lib/runs/supabase-server", () => ({ supabaseAdmin: () => fakeClient("admin") }));
 
-import { cancelRun, claimRun, createRun, EVENTS_PAGE_SIZE, loadOwnEventsAfter, loadOwnRun, renewLease } from "./store";
+import {
+  cancelRun,
+  claimRun,
+  createRun,
+  EVENTS_PAGE_SIZE,
+  loadOwnEventsAfter,
+  loadOwnRun,
+  lockPausedRun,
+  releaseRun,
+  renewLease,
+  requeuePausedRun,
+  saveSnapshot,
+} from "./store";
 
 type Op = { method: string; args: unknown[] };
 const opsOf = (index: number) => calls[index].ops as Op[];
@@ -58,10 +70,12 @@ afterEach(() => {
 });
 
 describe("store da execução persistida (com cliente dublê)", () => {
-  it("createRun insere na tabela certa, com a empresa e a pessoa, já na fila, e devolve o id gerado", async () => {
+  it("createRun insere na tabela certa, com o id pronto, a empresa, a pessoa e a estimativa, já na fila", async () => {
     nextResult.value = { data: { id: "run-123" }, error: null };
 
     const id = await createRun({
+      id: "run-123",
+      estimate_cents: 531,
       company_id: "empresa-1",
       member_id: "pessoa-1",
       recipe_id: "create-site",
@@ -113,15 +127,59 @@ describe("store da execução persistida (com cliente dublê)", () => {
     expect(await renewLease("run-123", 3)).toBeNull();
   });
 
-  it("cancelRun só cancela o que ainda não acabou e diz se cancelou", async () => {
-    nextResult.value = { data: [{ id: "run-123" }], error: null };
-    expect(await cancelRun("run-123")).toBe(true);
+  it("cancelRun só cancela o que ainda não acabou e diz até quando vale a reserva de quem roda", async () => {
+    nextResult.value = { data: [{ lease_until: "2026-10-25T12:00:00Z" }], error: null };
+    expect(await cancelRun("run-123")).toEqual({ leaseUntil: "2026-10-25T12:00:00Z" });
     const ops = opsOf(0);
     expect(ops.find((op) => op.method === "update")?.args[0]).toMatchObject({ status: "cancelled" });
     expect(ops.find((op) => op.method === "in")?.args).toEqual(["status", ["queued", "running", "paused"]]);
 
     nextResult.value = { data: [], error: null };
-    expect(await cancelRun("run-123")).toBe(false);
+    expect(await cancelRun("run-123")).toBeNull();
+  });
+
+  it("saveSnapshot só grava se a execução ainda é desta reivindicação", async () => {
+    nextResult.value = { data: [{ id: "run-123" }], error: null };
+    expect(await saveSnapshot("run-123", 4, { cursor: { stageIndex: 1, round: 1 } })).toBe(true);
+    expect(opsOf(0).filter((op) => op.method === "eq").map((op) => op.args)).toEqual([
+      ["id", "run-123"],
+      ["attempt", 4],
+    ]);
+
+    nextResult.value = { data: [], error: null };
+    expect(await saveSnapshot("run-123", 4, {})).toBe(false);
+  });
+
+  it("releaseRun só solta quem ainda está rodando com esta reivindicação (cancelou no meio: false)", async () => {
+    nextResult.value = { data: [{ id: "run-123" }], error: null };
+    expect(await releaseRun("run-123", 4, "paused")).toBe(true);
+    const ops = opsOf(0);
+    expect(ops.find((op) => op.method === "update")?.args[0]).toEqual({ status: "paused", lease_until: null });
+    expect(ops.filter((op) => op.method === "eq").map((op) => op.args)).toEqual([
+      ["id", "run-123"],
+      ["attempt", 4],
+      ["status", "running"],
+    ]);
+
+    nextResult.value = { data: [], error: null };
+    expect(await releaseRun("run-123", 4, "queued")).toBe(false);
+  });
+
+  it("lockPausedRun segura só a execução pausada que ninguém está segurando; requeuePausedRun volta para a fila", async () => {
+    nextResult.value = { data: { id: "run-123", status: "paused" }, error: null };
+    expect(await lockPausedRun("run-123")).toEqual({ id: "run-123", status: "paused" });
+    const lock = opsOf(0);
+    expect(lock.find((op) => op.method === "update")?.args[0]).toHaveProperty("lease_until");
+    expect(lock.find((op) => op.method === "eq" && op.args[0] === "status")?.args).toEqual(["status", "paused"]);
+    expect(lock.find((op) => op.method === "or")?.args[0]).toMatch(/^lease_until.is.null,lease_until.lt./);
+
+    nextResult.value = { data: [{ id: "run-123" }], error: null };
+    expect(await requeuePausedRun("run-123")).toBe(true);
+    expect(opsOf(1).find((op) => op.method === "update")?.args[0]).toEqual({ status: "queued", lease_until: null });
+
+    // Cancelada enquanto a reserva era feita: não volta para a fila.
+    nextResult.value = { data: [], error: null };
+    expect(await requeuePausedRun("run-123")).toBe(false);
   });
 
   it("loadOwnRun lê com a sessão de quem está logado, só as colunas que ela pode ver", async () => {

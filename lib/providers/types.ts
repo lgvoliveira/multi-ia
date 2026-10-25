@@ -21,6 +21,9 @@ export type Effort = "low" | "medium" | "high";
  */
 export type ModelTier = "economico" | "padrao" | "potente";
 
+/** Nível usado quando a etapa não escolhe outro. As receitas ainda não escolhem: todas rodam no padrão. */
+export const DEFAULT_TIER: ModelTier = "padrao";
+
 /** O que o motor manda para uma IA em cada etapa. */
 export interface GenerateRequest {
   /** Instrução do papel (prompt de sistema). */
@@ -68,13 +71,18 @@ export interface AiProvider {
   generate(request: GenerateRequest): AsyncIterable<GenerateChunk>;
 }
 
-/** Erro de uma IA. `retryable` diz se vale a pena tentar de novo (ex.: IA sobrecarregada). */
+/**
+ * Erro de uma IA. `retryable` diz se vale a pena tentar de novo (ex.: IA sobrecarregada).
+ * `model`, quando o conector sabe, é o modelo exato que falhou: vai para o registro interno do custo (F26).
+ */
 export class ProviderError extends Error {
   readonly retryable: boolean;
+  readonly model?: string;
 
-  constructor(message: string, options: { retryable: boolean }) {
+  constructor(message: string, options: { retryable: boolean; model?: string }) {
     super(message);
     this.name = "ProviderError";
     this.retryable = options.retryable;
+    this.model = options.model;
   }
 }

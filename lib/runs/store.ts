@@ -7,7 +7,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RunCursor, StepResult } from "@/lib/engine/types";
-import type { ProviderId } from "@/lib/providers/types";
+import type { ModelTier, ProviderId } from "@/lib/providers/types";
 import type { PublicPlannedStage, PublicRunEvent } from "@/lib/runs/public-events";
 import { supabaseAdmin } from "@/lib/runs/supabase-server";
 
@@ -21,7 +21,10 @@ const AI_CALLS = "ai_calls";
  */
 export const LEASE_MS = 60 * 1000;
 
-/** Como uma execução pode estar no banco. `paused` chega com a cobrança (parte 3b). */
+/**
+ * Como uma execução pode estar no banco. `paused`: o custo ia passar do que foi reservado, e a execução espera a pessoa
+ * dizer se continua (reservando mais) ou para.
+ */
 export type RunStatus = "queued" | "running" | "paused" | "finished" | "failed" | "cancelled";
 
 /** Os status em que a execução já acabou e nada mais muda. */
@@ -58,40 +61,61 @@ export interface RunRow {
   finished_at: string | null;
 }
 
-/** O que é preciso para criar uma execução. O id, os contadores e as datas o banco preenche. */
+/**
+ * O que é preciso para criar uma execução. O id vem pronto, porque a reserva na carteira é feita antes, já com ele;
+ * os contadores e as datas o banco preenche.
+ */
 export interface NewRun {
+  id: string;
   company_id: string;
   member_id: string;
   recipe_id: string;
   request: string;
   team: Record<string, ProviderId>;
   plan: PublicPlannedStage[];
+  /** A estimativa reservada ao começar: o máximo que o time pode gastar, em centavos. */
+  estimate_cents: number;
 }
 
 /** O que a própria pessoa vê da execução dela (as colunas que a sessão pode ler). */
 export interface OwnRun {
   id: string;
   recipe_id: string;
+  /** O pedido, escrito pela própria pessoa. */
+  request: string;
   status: RunStatus;
   plan: PublicPlannedStage[];
   cursor: RunCursor;
   result: string | null;
   duration_ms: number | null;
+  estimate_cents: number | null;
 }
 
-const OWN_RUN_COLUMNS = "id, recipe_id, status, plan, cursor, result, duration_ms";
+const OWN_RUN_COLUMNS = "id, recipe_id, request, status, plan, cursor, result, duration_ms, estimate_cents";
 
-/** Uma chamada a uma IA, para a tabela interna `ai_calls`. Modelo e tokens nunca vão para a tela. */
+/**
+ * Uma chamada a uma IA, para a tabela interna `ai_calls`, inclusive as tentativas que falharam e a que parou no meio:
+ * a plataforma paga e não cobra (F26). Modelo, tokens e custo em dólar nunca vão para a tela.
+ */
 export interface AiCallRow {
   company_id: string;
   member_id: string;
   run_id: string;
   step_id: string;
+  /** Número da tentativa com esta IA nesta etapa (1 é a primeira). */
+  attempt: number;
   provider: ProviderId;
   model: string;
+  tier: ModelTier;
   input_tokens: number;
   output_tokens: number;
+  /** O que a empresa da IA cobra da OCK, em dólar, e o câmbio usado para cobrar em reais. */
+  cost_usd: number;
+  usd_brl: number;
+  /** true quando a chamada virou linha de gasto no extrato da empresa. */
+  charged: boolean;
   status: "ok" | "error";
+  error_message: string | null;
   duration_ms: number;
 }
 
@@ -114,7 +138,7 @@ export interface StoredEvent {
   event: PublicRunEvent;
 }
 
-/** Cria a execução na fila (status 'queued', cursor na 1ª fase) e devolve o id gerado pelo banco. */
+/** Cria a execução na fila (status 'queued', cursor na 1ª fase), com o id que veio pronto, e devolve o id. */
 export async function createRun(run: NewRun): Promise<string> {
   const { data, error } = await supabaseAdmin()
     .from(RUNS)
@@ -199,10 +223,80 @@ export async function recordAiCalls(rows: AiCallRow[]): Promise<void> {
   if (error) throw error;
 }
 
-/** Salva o estado da execução depois de um segmento (saídas, etapas, cursor, status...). */
-export async function saveSnapshot(runId: string, patch: SnapshotPatch): Promise<void> {
-  const { error } = await supabaseAdmin().from(RUNS).update(patch).eq("id", runId);
+/**
+ * Salva o estado da execução depois de um segmento (saídas, etapas, cursor...), só se ela ainda é de quem a rodou
+ * (`attempt` igual ao da reivindicação). Devolve false se outro servidor a assumiu: aí nada é gravado nem cobrado.
+ */
+export async function saveSnapshot(runId: string, attempt: number, patch: SnapshotPatch): Promise<boolean> {
+  const { data, error } = await supabaseAdmin()
+    .from(RUNS)
+    .update(patch)
+    .eq("id", runId)
+    .eq("attempt", attempt)
+    .select("id");
   if (error) throw error;
+  return ((data as unknown[] | null) ?? []).length > 0;
+}
+
+/**
+ * Solta a execução que acabou de rodar uma fase: volta para a fila ('queued', para a próxima fase) ou fica pausada
+ * ('paused', esperando a pessoa). Só se ela ainda está rodando com esta reivindicação; devolve false se não (a pessoa
+ * cancelou no meio, ou outro servidor a assumiu).
+ */
+export async function releaseRun(id: string, attempt: number, status: "queued" | "paused"): Promise<boolean> {
+  const { data, error } = await supabaseAdmin()
+    .from(RUNS)
+    .update({ status, lease_until: null })
+    .eq("id", id)
+    .eq("attempt", attempt)
+    .eq("status", "running" satisfies RunStatus)
+    .select("id");
+  if (error) throw error;
+  return ((data as unknown[] | null) ?? []).length > 0;
+}
+
+/** Por quanto tempo quem apertou "Continuar" segura a execução pausada enquanto reserva o que falta. */
+const RESUME_LOCK_MS = 30 * 1000;
+
+/**
+ * Segura a execução pausada para quem vai retomá-la, usando a mesma coluna da reserva de quem roda (lease_until). Dois
+ * cliques em "Continuar" ao mesmo tempo não reservam duas vezes: só um segura. Devolve a linha, ou null se ela não está
+ * pausada ou se outro pedido já a segura.
+ */
+export async function lockPausedRun(id: string): Promise<RunRow | null> {
+  const nowIso = new Date().toISOString();
+  const { data, error } = await supabaseAdmin()
+    .from(RUNS)
+    .update({ lease_until: new Date(Date.now() + RESUME_LOCK_MS).toISOString() })
+    .eq("id", id)
+    .eq("status", "paused" satisfies RunStatus)
+    .or(`lease_until.is.null,lease_until.lt.${nowIso}`)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return (data as RunRow | null) ?? null;
+}
+
+/** Solta a execução pausada sem retomá-la (a reserva do que falta foi recusada): ela continua esperando a pessoa. */
+export async function unlockPausedRun(id: string): Promise<void> {
+  const { error } = await supabaseAdmin()
+    .from(RUNS)
+    .update({ lease_until: null })
+    .eq("id", id)
+    .eq("status", "paused" satisfies RunStatus);
+  if (error) throw error;
+}
+
+/** Volta a execução pausada para a fila. Devolve false se ela não estava mais pausada (ex.: a pessoa cancelou). */
+export async function requeuePausedRun(id: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin()
+    .from(RUNS)
+    .update({ status: "queued" satisfies RunStatus, lease_until: null })
+    .eq("id", id)
+    .eq("status", "paused" satisfies RunStatus)
+    .select("id");
+  if (error) throw error;
+  return ((data as unknown[] | null) ?? []).length > 0;
 }
 
 /** Carrega a linha inteira de uma execução, ou null se ela não existe. */
@@ -223,18 +317,20 @@ export async function setStatus(
 }
 
 /**
- * Marca a execução como cancelada, só se ela ainda não tinha acabado. Devolve true se cancelou agora.
+ * Marca a execução como cancelada, só se ela ainda não tinha acabado. Devolve null se ela já tinha acabado; senão,
+ * até quando vale a reserva de quem a está rodando (lease_until; null se ninguém roda).
  * Quem estiver rodando percebe na próxima renovação da reserva e para a IA no meio.
  */
-export async function cancelRun(id: string): Promise<boolean> {
+export async function cancelRun(id: string): Promise<{ leaseUntil: string | null } | null> {
   const { data, error } = await supabaseAdmin()
     .from(RUNS)
     .update({ status: "cancelled" satisfies RunStatus, finished_at: new Date().toISOString() })
     .eq("id", id)
     .in("status", ["queued", "running", "paused"])
-    .select("id");
+    .select("lease_until");
   if (error) throw error;
-  return ((data as unknown[] | null) ?? []).length > 0;
+  const [row] = (data as { lease_until: string | null }[] | null) ?? [];
+  return row ? { leaseUntil: row.lease_until } : null;
 }
 
 /** A execução da própria pessoa, lida com a sessão dela. Execução de outra pessoa (ou que não existe) volta null. */

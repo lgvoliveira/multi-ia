@@ -9,26 +9,37 @@ const state = vi.hoisted(() => ({ signedIn: true, run: null as OwnRun | null }))
 
 vi.mock("@/lib/auth/session", () => ({ signedInSession: async () => (state.signedIn ? {} : null) }));
 vi.mock("@/lib/runs/store", () => ({ loadOwnRun: async () => state.run }));
+vi.mock("@/lib/runs/wallet", () => ({ sumOwnRunCharges: async () => 45 }));
 
 function get(id = RUN_ID): Promise<Response> {
   return GET(new Request(`http://localhost/api/runs/${id}`), { params: Promise.resolve({ id }) });
 }
 
 describe("rota GET /api/runs/[id] (resumo da execução)", () => {
-  it("devolve só o que a pessoa pode ver: status, plano, resultado e tempo", async () => {
+  it("devolve só o que a pessoa pode ver: pedido, status, plano, resultado, tempo, estimativa e quanto custou", async () => {
     state.signedIn = true;
     state.run = {
       id: RUN_ID,
       recipe_id: "create-site",
+      request: "Um site para a confeitaria.",
       status: "finished",
       plan: [],
       cursor: { stageIndex: 4, round: 1 },
       result: "<html></html>",
       duration_ms: 26_000,
+      estimate_cents: 531,
     };
     const response = await get();
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ status: "finished", plan: [], result: "<html></html>", durationMs: 26_000 });
+    expect(await response.json()).toEqual({
+      request: "Um site para a confeitaria.",
+      status: "finished",
+      plan: [],
+      result: "<html></html>",
+      durationMs: 26_000,
+      estimateCents: 531,
+      chargedCents: 45,
+    });
   });
 
   it("sem login, 401; de outra pessoa ou com id estranho, 404", async () => {

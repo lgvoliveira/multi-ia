@@ -2,11 +2,20 @@
 // Não conhece telas nem IAs específicas: recebe as IAs prontas (getProvider) e devolve eventos.
 // Quando uma IA falha, tenta de novo e, se preciso, troca a IA do papel (regras do AGENTS.md, seção 5).
 
-import { ProviderError, type AiProvider, type ProviderId, type Usage } from "@/lib/providers/types";
+import { estimateTokens } from "@/lib/providers/mock";
+import { DEFAULT_TIER, ProviderError, type AiProvider, type ProviderId, type Usage } from "@/lib/providers/types";
 import { stageSteps, type Recipe, type Role, type Stage, type Step } from "@/lib/recipes/types";
 import { buildStepInput, buildSystemPrompt, REVIEW_FEEDBACK_KEY } from "./input";
 import { initialSnapshot, runSegment } from "./segment";
-import type { PlannedStage, RunEvent, RunInput, RunSnapshot, StepResult, TeamChoice } from "./types";
+import type {
+  AiCallReport,
+  PlannedStage,
+  RunEvent,
+  RunInput,
+  RunSnapshot,
+  StepResult,
+  TeamChoice,
+} from "./types";
 import { findRunProblems } from "./validate";
 
 /**
@@ -27,6 +36,11 @@ export interface RunOptions {
   now?: () => number;
   /** Espera entre uma tentativa e outra; para na hora se a execução for cancelada. Os testes trocam por uma que não espera. */
   wait?: (ms: number, signal?: AbortSignal) => Promise<void>;
+  /**
+   * Avisado a cada chamada a uma IA que termina, bem ou mal (veja AiCallReport). É por aqui que o servidor registra
+   * o custo real, inclusive o das tentativas que falharam, que não vão para a narração.
+   */
+  onAiCall?: (call: AiCallReport) => void;
 }
 
 /** O que uma etapa precisa para rodar. */
@@ -332,17 +346,27 @@ function tagRound(event: RunEvent, round: number): RunEvent {
   }
 }
 
-/** Repassa os eventos de uma etapa marcando a rodada, e devolve o resultado dela no fim. */
+/**
+ * Repassa os eventos de uma etapa marcando a rodada, e devolve o resultado dela no fim.
+ * Se mandarem parar no meio (numa fase em paralelo, uma etapa irmã falhou), repassa a ordem para a etapa: assim a
+ * conexão com a IA fecha e a chamada interrompida é avisada (onAiCall).
+ */
 async function* tagRoundStream<R>(
   gen: AsyncGenerator<RunEvent, R>,
   round: number,
 ): AsyncGenerator<RunEvent, R> {
-  let next = await gen.next();
-  while (!next.done) {
-    yield tagRound(next.value, round);
-    next = await gen.next();
+  let finished = false;
+  try {
+    let next = await gen.next();
+    while (!next.done) {
+      yield tagRound(next.value, round);
+      next = await gen.next();
+    }
+    finished = true;
+    return next.value;
+  } finally {
+    if (!finished) await gen.return(undefined as unknown as R);
   }
-  return next.value;
 }
 
 /** Primeira etapa de uma fase: a que fica como cancelada quando a pessoa para entre as fases. */
@@ -404,7 +428,7 @@ async function* runStepWithRetries(
 
   for (let attempt = 1; ; attempt++) {
     try {
-      return yield* runAttempt(context, provider);
+      return yield* runAttempt(context, provider, attempt);
     } catch (error) {
       const delayMs = RETRY_DELAYS_MS[attempt - 1];
       const retryable = error instanceof ProviderError && error.retryable;
@@ -423,38 +447,82 @@ async function* runStepWithRetries(
   }
 }
 
-/** Uma tentativa: repassa cada pedaço que a IA escreve e, no fim, devolve o que ela produziu. */
-async function* runAttempt(context: StepContext, provider: AiProvider): AsyncGenerator<RunEvent, AttemptResult> {
-  const { step, role } = context;
+/**
+ * Uma tentativa: repassa cada pedaço que a IA escreve e, no fim, devolve o que ela produziu.
+ * Termine como terminar (resposta completa, erro, cancelamento ou a fase mandando parar), avisa onAiCall no fim.
+ */
+async function* runAttempt(
+  context: StepContext,
+  provider: AiProvider,
+  attempt: number,
+): AsyncGenerator<RunEvent, AttemptResult> {
+  const { step, role, options } = context;
+  const now = options.now ?? Date.now;
+  const startedAt = now();
+  const systemPrompt = buildSystemPrompt(role, step);
+  const input = buildStepInput(step, context.request, context.outputs);
   let output = "";
+  let result: AttemptResult | null = null;
+  // Fica sem valor se a fase mandar esta tentativa parar no meio (uma etapa irmã falhou ou foi cancelada).
+  let failure: unknown = undefined;
 
-  const chunks = provider.generate({
-    systemPrompt: buildSystemPrompt(role, step),
-    input: buildStepInput(step, context.request, context.outputs),
-    maxOutputTokens: step.maxOutputTokens,
-    effort: step.effort ?? "medium",
-    sampleResponse: step.sampleOutput,
-    signal: context.options.signal,
-  });
+  try {
+    const chunks = provider.generate({
+      systemPrompt,
+      input,
+      maxOutputTokens: step.maxOutputTokens,
+      effort: step.effort ?? "medium",
+      tier: DEFAULT_TIER,
+      sampleResponse: step.sampleOutput,
+      signal: options.signal,
+    });
 
-  for await (const chunk of chunks) {
-    if (chunk.type === "text") {
-      output += chunk.text;
-      yield { type: "step-text", stepId: step.id, text: chunk.text };
-      continue;
+    for await (const chunk of chunks) {
+      if (chunk.type === "text") {
+        output += chunk.text;
+        yield { type: "step-text", stepId: step.id, text: chunk.text };
+        continue;
+      }
+      result = {
+        stepId: step.id,
+        provider: provider.id,
+        output,
+        model: chunk.model,
+        usage: chunk.usage,
+        truncated: chunk.truncated,
+      };
+      return result;
     }
-    return {
+
+    // A IA parou de mandar pedaços sem avisar que terminou: a resposta pode estar pela metade.
+    throw new ProviderError("A IA parou de responder antes de terminar.", { retryable: true });
+  } catch (error) {
+    failure = error;
+    throw error;
+  } finally {
+    options.onAiCall?.({
       stepId: step.id,
       provider: provider.id,
-      output,
-      model: chunk.model,
-      usage: chunk.usage,
-      truncated: chunk.truncated,
-    };
+      model: result?.model ?? (failure instanceof ProviderError ? failure.model : undefined) ?? null,
+      tier: DEFAULT_TIER,
+      // Sem a conta da IA (ela não terminou), conta pelo tamanho do que foi enviado e do que ela escreveu.
+      usage: result?.usage ?? {
+        inputTokens: estimateTokens(systemPrompt + input),
+        outputTokens: estimateTokens(output),
+      },
+      ok: result !== null,
+      ...(result ? {} : { errorMessage: failureMessage(failure, options.signal) }),
+      attempt,
+      durationMs: now() - startedAt,
+    });
   }
+}
 
-  // A IA parou de mandar pedaços sem avisar que terminou: a resposta pode estar pela metade.
-  throw new ProviderError("A IA parou de responder antes de terminar.", { retryable: true });
+/** A mensagem técnica de uma tentativa que não terminou, para o registro interno. */
+function failureMessage(failure: unknown, signal: AbortSignal | undefined): string {
+  if (signal?.aborted) return "Cancelada no meio.";
+  if (failure === undefined) return "Parou no meio: outra etapa da fase falhou.";
+  return failure instanceof Error ? failure.message : String(failure);
 }
 
 /** Espera `ms` milissegundos. Se a execução for cancelada no meio, para de esperar na hora. */

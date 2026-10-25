@@ -75,6 +75,28 @@ describe("acompanhar a execução buscando as novidades", () => {
     expect(urls).toHaveLength(2);
   });
 
+  it("avisa quanto a execução já custou, só quando muda; pausada, continua buscando", async () => {
+    const paused: PublicRunEvent = { type: "run-paused", neededCents: 452 };
+    const { send, urls } = fakeServer([
+      { status: 200, body: { status: "running", events: [{ seq: 1, event: started }], more: false, chargedCents: 0 } },
+      { status: 200, body: { status: "paused", events: [{ seq: 2, event: paused }], more: false, chargedCents: 100 } },
+      { status: 200, body: { status: "paused", events: [], more: false, chargedCents: 100 } },
+    ]);
+    const charged: number[] = [];
+
+    subscribeRun("run-1", { onEvent: () => {}, onCharged: (cents) => charged.push(cents) }, {
+      fetch: send,
+      intervalMs: 1000,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(charged).toEqual([0, 100]);
+    // A pausa não é o fim: a tela continua buscando, para ver o time voltar depois do "Continuar".
+    expect(urls).toHaveLength(3);
+  });
+
   it("não repete evento que já chegou", async () => {
     const { send } = fakeServer([
       { status: 200, body: { status: "running", events: [{ seq: 1, event: started }], more: false } },

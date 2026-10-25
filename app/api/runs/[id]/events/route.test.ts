@@ -16,6 +16,7 @@ const loadOwnEventsAfter = vi.hoisted(() => vi.fn(async () => state.events));
 
 vi.mock("@/lib/auth/session", () => ({ signedInSession: async () => (state.signedIn ? {} : null) }));
 vi.mock("@/lib/runs/resume", () => ({ resumeIfStalled }));
+vi.mock("@/lib/runs/wallet", () => ({ sumOwnRunCharges: async () => 12 }));
 vi.mock("@/lib/runs/store", () => ({
   EVENTS_PAGE_SIZE: 2,
   loadOwnRun: async () => state.run,
@@ -27,11 +28,13 @@ beforeEach(() => {
   state.run = {
     id: RUN_ID,
     recipe_id: "create-site",
+    request: "Um site para a confeitaria.",
     status: "running",
     plan: [],
     cursor: { stageIndex: 0, round: 1 },
     result: null,
     duration_ms: null,
+    estimate_cents: 531,
   };
   state.events = [{ seq: 3, event: { type: "step-text", stepId: "brief", text: "Plano" } }];
 });
@@ -47,10 +50,10 @@ function get(id = RUN_ID, after = "2"): Promise<Response> {
 }
 
 describe("rota GET /api/runs/[id]/events (novidades da narração)", () => {
-  it("devolve as novidades depois da posição pedida e o status da execução", async () => {
+  it("devolve as novidades depois da posição pedida, o status da execução e quanto já custou", async () => {
     const response = await get();
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ status: "running", events: state.events, more: false });
+    expect(await response.json()).toEqual({ status: "running", events: state.events, more: false, chargedCents: 12 });
     expect(loadOwnEventsAfter).toHaveBeenCalledWith(expect.anything(), RUN_ID, 2);
   });
 
@@ -68,6 +71,11 @@ describe("rota GET /api/runs/[id]/events (novidades da narração)", () => {
 
     resumeIfStalled.mockClear();
     state.run = { ...state.run!, status: "finished" };
+    await get();
+    expect(resumeIfStalled).not.toHaveBeenCalled();
+
+    // Pausada, esperando a pessoa: também não é retomada sozinha.
+    state.run = { ...state.run!, status: "paused" };
     await get();
     expect(resumeIfStalled).not.toHaveBeenCalled();
   });

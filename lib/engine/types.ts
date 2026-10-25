@@ -1,7 +1,7 @@
 // O que entra e o que sai do motor. Quem usa o motor (a tela agora; o conector MCP e o WhatsApp
 // no futuro) manda um RunInput e recebe uma sequência de RunEvent: a "narração" da execução.
 
-import type { ProviderId, Usage } from "@/lib/providers/types";
+import type { ModelTier, ProviderId, Usage } from "@/lib/providers/types";
 import type { Recipe, StageKind } from "@/lib/recipes/types";
 
 /** IA escolhida pelo usuário para cada papel (id do papel → IA). Papel ausente usa a IA sugerida pela receita. */
@@ -72,6 +72,28 @@ export interface StepResult {
   /** true quando a resposta foi cortada por atingir o limite de tamanho da etapa. */
   truncated: boolean;
   /** Tempo da etapa inteira, contando as tentativas que falharam e as esperas entre elas. */
+  durationMs: number;
+}
+
+/**
+ * Uma chamada a uma IA que terminou, bem ou mal: as que deram certo, as tentativas que falharam e a que parou no meio
+ * (cancelamento, ou etapa irmã que falhou numa fase em paralelo). Só interno: é o custo real que a plataforma paga,
+ * cobrado ou não da empresa (F26).
+ */
+export interface AiCallReport {
+  stepId: string;
+  provider: ProviderId;
+  /** Modelo exato, quando se sabe (numa falha, o conector pode não dizer). */
+  model: string | null;
+  tier: ModelTier;
+  /** Consumo. Numa falha sem o número da IA, é a conta pelo tamanho do texto enviado e do que ela escreveu. */
+  usage: Usage;
+  /** true quando a IA terminou a resposta. */
+  ok: boolean;
+  /** Mensagem técnica, quando não terminou. */
+  errorMessage?: string;
+  /** Número da tentativa com esta IA nesta etapa (1 é a primeira). */
+  attempt: number;
   durationMs: number;
 }
 

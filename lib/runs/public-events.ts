@@ -29,7 +29,14 @@ export type PublicRunEvent =
   | { type: "step-finished"; stepId: string; durationMs: number; round?: number }
   | { type: "run-finished"; result: string; durationMs: number }
   | { type: "run-failed"; stepId: string }
-  | { type: "run-cancelled"; stepId: string };
+  | { type: "run-cancelled"; stepId: string }
+  /**
+   * O custo ia passar do que foi reservado: a execução pausou antes da próxima fase e espera a pessoa. Para continuar,
+   * é preciso reservar até `neededCents`. Não vem do motor: quem narra é o servidor que leva a execução adiante.
+   */
+  | { type: "run-paused"; neededCents: number }
+  /** A pessoa mandou continuar e a reserva do que falta deu certo: o time volta a trabalhar. */
+  | { type: "run-resumed" };
 
 /**
  * Copia só os campos liberados para o usuário. É uma lista do que PODE sair, e não do que não pode:

@@ -1,31 +1,36 @@
 // POST /api/runs/[id]/continue: roda UM segmento (uma fase) de uma execução persistida e encadeia o próximo.
 // É interna: só o próprio servidor chama, com o segredo interno (lib/runs/internal-secret.ts). O navegador nunca.
-// Fluxo: reivindica a execução → reconstrói o estado do banco → roda um segmento, gravando a narração aos poucos
-// (F35) → guarda as chamadas às IAs e o novo estado → se acabou, encerra; senão, volta para a fila e dispara a próxima.
-// Enquanto a fase roda, renova a reserva a cada poucos segundos e, se a pessoa cancelou, para a IA no meio.
-// Se algo estourar no meio, a reserva para de ser renovada e vence logo: a próxima busca da tela retoma a execução.
-// Até a parte 3b do PR 3 (estimativa e cobrança), as receitas rodam só com a IA simulada, que não custa nada.
+// Fluxo: reivindica a execução → confere a reserva na carteira (sem o bastante para o que falta, pausa e pergunta) →
+// roda um segmento, gravando a narração aos poucos (F35) → grava o novo estado → cobra as etapas concluídas e registra
+// todas as chamadas às IAs → se acabou, fecha a reserva e encerra; senão, volta para a fila e dispara a próxima.
+// Enquanto a fase roda, renova a reserva de quem roda a cada poucos segundos e, se a pessoa cancelou, para a IA no meio.
+// Se algo estourar no meio, a reserva de quem roda vence logo e a próxima busca da tela retoma a execução.
+// As receitas rodam com a IA simulada, que custa o mesmo que a IA de verdade equivalente (as reais entram num PR
+// próprio, antes da compra de créditos).
 
 import { runSegment } from "@/lib/engine/segment";
-import type { RunEvent, RunSnapshot } from "@/lib/engine/types";
+import type { AiCallReport, RunEvent, RunSnapshot } from "@/lib/engine/types";
 import { getProvider } from "@/lib/providers/registry";
 import { getRecipe } from "@/lib/recipes/catalog";
+import type { Recipe } from "@/lib/recipes/types";
+import { aiCallRows, chargeCompletedSteps } from "@/lib/runs/billing";
+import { estimateCents, stepCosts } from "@/lib/runs/estimate";
 import { createEventBuffer } from "@/lib/runs/event-buffer";
 import { isInternalCall } from "@/lib/runs/internal-secret";
 import { toPublicEvent } from "@/lib/runs/public-events";
 import {
   appendEvents,
   claimRun,
-  loadRun,
   recordAiCalls,
+  releaseRun,
   renewLease,
   saveSnapshot,
   setStatus,
-  type AiCallRow,
   type RunError,
   type RunRow,
 } from "@/lib/runs/store";
 import { triggerContinue } from "@/lib/runs/trigger";
+import { closeRunHolds, findOpenRunHold, holdRemainingCents, type RunHold } from "@/lib/runs/wallet";
 
 // Um segmento pode levar minutos (uma fase com IAs reais): pede o teto de tempo de função.
 export const maxDuration = 300;
@@ -54,12 +59,22 @@ export async function POST(request: Request, context: RouteContext<"/api/runs/[i
 }
 
 /**
- * Roda um segmento: reconstrói o estado, executa uma fase, guarda tudo e encadeia a próxima (ou encerra).
- * `claimedAt` é quando este servidor reivindicou a execução, no relógio dele.
+ * Roda um segmento: confere o dinheiro reservado, reconstrói o estado, executa uma fase, guarda tudo, cobra e encadeia
+ * a próxima (ou encerra). `claimedAt` é quando este servidor reivindicou a execução, no relógio dele.
  */
 async function runOneSegment(row: RunRow, claimedAt: number): Promise<void> {
   const recipe = getRecipe(row.recipe_id);
   if (!recipe) throw new Error(`Receita desconhecida: "${row.recipe_id}".`);
+
+  // Todas as fases já rodaram: o servidor caiu entre gravar a última e encerrar. Cobra o que faltou e só encerra.
+  if (row.cursor.stageIndex >= recipe.stages.length) {
+    await finishInterruptedRun(row, recipe, claimedAt);
+    return;
+  }
+
+  // Nenhuma IA trabalha sem dinheiro reservado para o que falta. Se não há, pausa e pergunta (AGENTS.md, seção 5).
+  const hold = await settleBeforeSegment(row, recipe);
+  if (!hold) return;
 
   const controller = new AbortController();
   const heartbeat = startHeartbeat(row, controller);
@@ -68,33 +83,24 @@ async function runOneSegment(row: RunRow, claimedAt: number): Promise<void> {
     if (heartbeat.lost()) throw new Error("Outro servidor assumiu a execução no meio do segmento.");
     await appendEvents(row, events);
   });
-  const aiCalls: AiCallRow[] = [];
+  // Toda chamada às IAs, inclusive as que falharam: o custo real, cobrado ou não (F26).
+  const calls: AiCallReport[] = [];
   let finalResult: string | null = null;
   let finalDurationMs: number | null = null;
   let runError: RunError | null = null;
   let updated: RunSnapshot;
 
   try {
-    const generator = runSegment(hydrate(row), recipe, { getProvider, signal: controller.signal });
+    const generator = runSegment(hydrate(row), recipe, {
+      getProvider,
+      signal: controller.signal,
+      onAiCall: (call) => calls.push(call),
+    });
     let next = await generator.next();
     while (!next.done) {
       let event = next.value;
       logFailure(event);
-      if (event.type === "step-finished") {
-        // Campos internos (modelo, tokens) existem AQUI, antes de toPublicEvent apagá-los: viram o registro interno.
-        aiCalls.push({
-          company_id: row.company_id,
-          member_id: row.member_id,
-          run_id: row.id,
-          step_id: event.stepId,
-          provider: event.provider,
-          model: event.model,
-          input_tokens: event.usage.inputTokens,
-          output_tokens: event.usage.outputTokens,
-          status: "ok",
-          duration_ms: event.durationMs,
-        });
-      } else if (event.type === "run-finished") {
+      if (event.type === "run-finished") {
         // O motor conta só o tempo deste segmento; a pessoa esperou desde que pediu.
         event = { ...event, durationMs: waitedMs(row, claimedAt) };
         finalResult = event.result;
@@ -118,16 +124,21 @@ async function runOneSegment(row: RunRow, claimedAt: number): Promise<void> {
   }
   if (heartbeat.lost()) throw new Error("Outro servidor assumiu a execução no meio do segmento.");
 
-  await recordAiCalls(aiCalls);
-  await saveSnapshot(row.id, {
+  // Grava o estado ANTES de cobrar: se o servidor cair entre os dois, a fase não roda de novo, e a próxima chamada
+  // cobra o que faltou (chargeCompletedSteps). Assim nenhuma etapa é cobrada duas vezes.
+  const saved = await saveSnapshot(row.id, row.attempt, {
     outputs: updated.outputs,
     results: updated.results,
     team: updated.team,
     cursor: updated.cursor,
   });
+  if (!saved) throw new Error("Outro servidor assumiu a execução antes de gravar o segmento.");
+
+  const charged = await chargeCompletedSteps(row.id, recipe, updated.results, hold.id);
+  await recordAiCalls(aiCallRows(row, calls, new Set(charged.map((result) => result.stepId))));
 
   if (updated.done) {
-    // Terminou (sucesso, falha ou cancelamento): encerra.
+    // Terminou (sucesso, falha ou cancelamento): encerra e devolve ao saldo o que sobrou da reserva.
     await setStatus(row.id, updated.status ?? "finished", {
       result: finalResult,
       duration_ms: finalDurationMs,
@@ -135,15 +146,65 @@ async function runOneSegment(row: RunRow, claimedAt: number): Promise<void> {
       lease_until: null,
       error: runError,
     });
+    await closeHoldsQuietly(row.id);
     return;
   }
 
-  // Ainda há fases. Se a pessoa cancelou enquanto este segmento rodava, para a corrente aqui.
-  const fresh = await loadRun(row.id);
-  if (fresh?.status === "cancelled") return;
-  // Volta para a fila (libera a reserva) e dispara o próximo segmento.
-  await setStatus(row.id, "queued", { lease_until: null });
+  // Ainda há fases: volta para a fila (libera a reserva de quem roda) e dispara o próximo segmento. Se não deu, a
+  // pessoa cancelou enquanto este segmento rodava: a corrente para aqui, e o que sobrou da reserva volta ao saldo.
+  if (!(await releaseRun(row.id, row.attempt, "queued"))) {
+    await closeHoldsQuietly(row.id);
+    return;
+  }
   triggerContinue(row.id);
+}
+
+/**
+ * Antes de rodar uma fase: cobra o que ficou sem cobrar (se o servidor caiu entre gravar a fase anterior e cobrar) e
+ * confere se a reserva aberta cobre o máximo que ainda falta gastar, com o time de agora (uma IA reserva mais cara
+ * pode ter assumido um papel). Se não cobre, ou se não há reserva válida, pausa a execução e devolve null.
+ */
+async function settleBeforeSegment(row: RunRow, recipe: Recipe): Promise<RunHold | null> {
+  let hold = await findOpenRunHold(row.id);
+  if (hold && (await chargeCompletedSteps(row.id, recipe, row.results ?? [], hold.id)).length > 0) {
+    hold = await findOpenRunHold(row.id);
+  }
+
+  const neededCents = estimateCents(stepCosts(recipe, row.cursor), row.team);
+  // Reserva vencida (a execução ficou parada mais de uma hora) já não segura o saldo: precisa reservar de novo.
+  const valid = hold !== null && Date.parse(hold.expiresAt) > Date.now();
+  if (hold && valid && holdRemainingCents(hold) >= neededCents) return hold;
+
+  // A narração do pedido de pausa vai antes da mudança de status (a tela confia nessa ordem).
+  await appendEvents(row, [{ type: "run-paused", neededCents }]);
+  // Não deu para pausar: a pessoa cancelou neste instante. O que sobrou da reserva volta ao saldo.
+  if (!(await releaseRun(row.id, row.attempt, "paused"))) await closeHoldsQuietly(row.id);
+  return null;
+}
+
+/**
+ * Encerra a execução cujas fases já rodaram todas, mas que não chegou a ser encerrada (o servidor caiu no meio do
+ * caminho). A narração do fim já está gravada (ela vai antes do estado); falta cobrar, fechar a reserva e o status.
+ */
+async function finishInterruptedRun(row: RunRow, recipe: Recipe, claimedAt: number): Promise<void> {
+  const hold = await findOpenRunHold(row.id);
+  if (hold) await chargeCompletedSteps(row.id, recipe, row.results ?? [], hold.id);
+  await setStatus(row.id, "finished", {
+    result: row.results.at(-1)?.output ?? null,
+    duration_ms: waitedMs(row, claimedAt),
+    finished_at: new Date().toISOString(),
+    lease_until: null,
+  });
+  await closeHoldsQuietly(row.id);
+}
+
+/** Fecha as reservas da execução. Se falhar, a reserva vence sozinha em uma hora e deixa de segurar o saldo. */
+async function closeHoldsQuietly(runId: string): Promise<void> {
+  try {
+    await closeRunHolds(runId);
+  } catch (error) {
+    console.error(`[api/runs/continue] Não consegui fechar a reserva de ${runId}:`, error);
+  }
 }
 
 /**

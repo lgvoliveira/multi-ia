@@ -1,4 +1,5 @@
-// O lado do navegador: pede ao servidor para CRIAR uma execução (e devolve o id dela) ou para cancelá-la.
+// O lado do navegador: pede ao servidor para CRIAR uma execução (e devolve o id dela), para cancelá-la ou para
+// continuá-la depois de uma pausa (quando o custo ia passar do que foi reservado).
 // A execução roda no servidor, persistida, em chamadas curtas e separadas; o navegador acompanha
 // depois buscando as novidades (ver lib/runs/live-client.ts).
 
@@ -12,6 +13,7 @@ export const SERVER_PROBLEM = "Algo deu errado do nosso lado. Tente de novo daqu
 
 export type RunStart = { ok: true; runId: string } | { ok: false; problems: string[] };
 export type RunCancel = { ok: true } | { ok: false; problems: string[] };
+export type RunResume = { ok: true } | { ok: false; problems: string[] };
 
 export interface StartRunOptions {
   /** Cancela só o pedido de criação (não a execução, que já roda no servidor). */
@@ -59,6 +61,28 @@ export async function cancelRun(
   const send = options.fetch ?? fetch;
   try {
     const response = await send(`${RUNS_URL}/${runId}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pageMemberId }),
+    });
+    return response.ok ? { ok: true } : { ok: false, problems: await readProblems(response) };
+  } catch {
+    return { ok: false, problems: [OFFLINE_PROBLEM] };
+  }
+}
+
+/**
+ * Pede para continuar a execução pausada, reservando o que falta. O servidor confere de novo o saldo e o teto do mês;
+ * se recusar, devolve o que a pessoa pode fazer. `pageMemberId` é quem abriu a página (F34).
+ */
+export async function resumeRun(
+  runId: string,
+  pageMemberId: string,
+  options: Pick<StartRunOptions, "fetch"> = {},
+): Promise<RunResume> {
+  const send = options.fetch ?? fetch;
+  try {
+    const response = await send(`${RUNS_URL}/${runId}/resume`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pageMemberId }),

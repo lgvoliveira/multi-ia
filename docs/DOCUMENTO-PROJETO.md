@@ -172,7 +172,8 @@ sem saldo na carteira da empresa.
 
 - Formato da cobrança: mensalidade por empresa com créditos incluídos, valor por funcionário, só pelo consumo, ou uma
   mistura.
-- Margem sobre o custo das IAs e como lidar com a variação do dólar.
+- Margem sobre o custo das IAs e como lidar com a variação do dólar. Até isso ser decidido, cada uso custa o que as IAs
+  custam, sem margem, com o dólar fixo em R$ 5,50 (decisão do Luis, 25/10; um número só em `lib/ock/pricing.ts`).
 - Se haverá plano de teste grátis para empresas e como ele funciona.
 
 **A conta central:** quanto a empresa paga *versus* quanto as IAs custam de verdade para o uso dos funcionários dela.
@@ -243,10 +244,14 @@ resumo e as entregas (decisão de 24/10, acima).
 **Créditos e estimativa**
 
 1. Antes de começar, mostra uma estimativa de custo e reserva esse valor do saldo. Sem saldo suficiente, a execução não começa e aparece a opção de recarregar.
+   Por enquanto, a estimativa é o **máximo** que o time pode gastar ("até R$ X"), como a pré-autorização do cartão num
+   hotel: reserva o máximo e cobra só o que foi gasto (decisão do Luis, 25/10). No MVP, a recarga é à mão: a tela diz
+   para o funcionário pedir crédito ao dono, e para o dono falar com a nossa equipe.
 2. Cobra cada etapa concluída pelo consumo real. No fim, devolve ao saldo a diferença entre o reservado e o gasto.
 3. Se o custo for passar da estimativa, a execução pausa e pergunta antes de continuar. A plataforma não absorve diferenças.
-4. Cancelou no meio: paga só o que já foi consumido.
+4. Cancelou no meio: paga só as etapas concluídas; a etapa que estava rodando não é cobrada (decisão do Luis, 25/10).
 5. Prioridade: estimativas boas e honestas, calculadas a partir do histórico real de cada receita. Sem porcentagem de confiança na tela por enquanto.
+   O histórico só existe depois das IAs de verdade; até lá vale o máximo (item 1), que nunca fica abaixo do gasto real.
 6. Internamente, registrar o custo real em dólar de cada execução, para definir preço e margem.
 
 **O que fica salvo no histórico**

@@ -117,7 +117,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login) e PR 2b (convite) no ar; PR 3 (trocar o código) em 4 partes, a 3a no PR | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite) e PR 3a (receitas com login) no ar; a 3b (receitas cobrando) no PR | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -578,14 +578,61 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   sair da receita no meio e voltar retoma o acompanhamento; nenhum erro no navegador. Telas no computador e em 320 px.
 - **Guia do teste:** `docs/GUIA-TESTE-RECEITAS.md`, para o Luis seguir com o chat do Claude.
 
+**3a testada pelo Luis e no ar (25/10, com o chat do Claude e o guia)**
+- Todas as partes do `GUIA-TESTE-RECEITAS.md` deram o resultado esperado: a Carla viu "Em obras" com o link da receita;
+  o texto do Chefe apareceu aos poucos e as fases seguiram até o site da "Doce Encanto" (F5 mostrou de novo); Cancelar
+  parou tudo; sair e voltar retomou a mesma execução; com o login trocado, o aviso vermelho apareceu e Cancelar não
+  cancelou; `/chaves` não existe mais. **Merge do PR #35 feito.**
+- **Pendência do convite resolvida:** a tabela `member_invites` apareceu no projeto de verdade do Supabase (multi-ia).
+
+**PR 3b da etapa 5 — receitas cobrando (25/10, Claude Code; issue #37)**
+- **Decisões do Luis (25/10, na aprovação da issue):** (1) a estimativa mostra o **máximo** que o time pode gastar ("até
+  R$ X"), como a pré-autorização do cartão num hotel; a estimativa pelo histórico vem depois das IAs de verdade; (2)
+  cancelar no meio de uma etapa não cobra aquela etapa; (3) sem margem por uso por enquanto (F04); (4) sai o "+
+  Adicionar agente" (F41).
+- **O que a pessoa vê:** embaixo do Começar, "Custo estimado: até R$ 5,31" com o time recomendado (muda ao trocar uma
+  IA: com o Gemini no Front-end, R$ 3,54). Sem saldo, ou passando do teto do mês, não começa e diz o que fazer (pedir ao
+  dono; o dono, falar com a nossa equipe). Enquanto o time trabalha, "Gasto até agora"; no fim, "Custou R$ Y" (com a IA
+  simulada, uns R$ 0,37). Se o custo for passar do que foi reservado, o time **pausa** antes da fase seguinte e pergunta:
+  **Continuar** (reserva o máximo do que falta, conferindo saldo e teto de novo) ou **Parar aqui**. Voltando a uma
+  execução (recarregou, ou voltou a uma pausa mais tarde), o pedido aparece de novo (antes ficava em branco).
+- **Como funciona por dentro:** o servidor calcula a estimativa de novo (`lib/runs/estimate.ts`: o maior texto que cada
+  etapa pode receber e o maior que cada IA pode escrever, contando o pensamento, pelo mesmo teto que os conectores reais
+  usam, `lib/providers/limits.ts`) e reserva antes de criar a execução, já com o id dela na reserva (sem coluna nova).
+  Cada etapa concluída vira uma linha de gasto ("Criar um site · Front-end", com a IA), pelo consumo real e no mínimo 1
+  centavo; no fim, a reserva fecha e a sobra volta. A fase é gravada antes de cobrar, e a chamada seguinte cobra o que
+  ficou sem cobrar: nenhuma etapa é cobrada duas vezes. Antes de cada fase, o servidor confere se a reserva cobre o
+  máximo do que falta, com o time de agora (uma IA reserva mais cara pode ter assumido); sem reserva, nenhuma IA roda.
+- **Custo interno (F26):** toda chamada às IAs vai para `ai_calls`, com o custo em dólar, o câmbio, o nível do modelo e
+  se foi cobrada: as que deram certo, as tentativas que falharam, a etapa interrompida pelo cancelamento e a etapa irmã
+  que parou porque outra da fase em paralelo falhou. **Achado e corrigido no caminho:** essa última nem recebia a ordem
+  de parar (a conexão com a IA ficaria aberta); o teste novo pegou.
+- **Interruptor de teste novo:** `MOCK_AI_OVERSPEND=claude` no `.env.local` faz o Claude simulado "gastar" 10 vezes o
+  limite da etapa: com o time recomendado, a pausa vem logo depois do plano do Chefe, pedindo R$ 4,52; continuando, o
+  time termina sem pausar de novo (uns R$ 3,53 no total).
+- **Sem migração e sem biblioteca nova:** as tabelas e funções da carteira já existiam (PR #24).
+- **Como foi conferido:** lint, tipos, 314 testes (60 novos: estimativa, carteira, cobrança, rota de continuar, pausa,
+  motor avisando cada chamada, IA simulada gastando demais) e build; o código que vai para o navegador não leva as
+  instruções das IAs. **Teste de ponta a ponta** contra o projeto de testes, com um roteiro no Chrome: 26 conferências,
+  todas certas. Como o projeto de testes não tem crédito (recarga só pelo editor de SQL, F25), a execução de verdade foi
+  até a recusa por falta de saldo (funcionária e dono, sem execução nem reserva sobrando); as funções da carteira foram
+  chamadas como o servidor chama (reservar, cobrar, achar a reserva, contar as linhas, fechar, cobrar numa reserva
+  fechada); e a pausa e o "Custou" foram conferidos com execuções montadas no banco: "Continuar" sem saldo avisou e
+  manteve a pausa, e "Parar aqui" encerrou. Telas no computador e em 375 px. Ficou para o teste do Luis a execução
+  inteira com crédito (Partes C a F do guia).
+- **Falhas:** novas F40 (conectores reais medem o consumo pelo tamanho do texto, sem o pensamento; Alta, para o PR das
+  IAs de verdade), F41 (resolvida: "+ Adicionar agente"), F42 (sem a chave, cai na IA simulada sem avisar) e F43 (quedas
+  raras do servidor na hora de cobrar; aceita). Andamento em F04, F08, F16, F17, F24, F26 e F29.
+- **Guia do teste:** `docs/GUIA-TESTE-COBRANCA.md`, para o Luis seguir com o chat do Claude.
+
 ## Próximo passo
 
-1. **Luis, no chat do Claude:** seguir o `docs/GUIA-TESTE-RECEITAS.md` para testar o PR da parte 3a. Se tudo der certo,
-   fazer o merge. Se ainda não conferiu, ver também se a tabela `member_invites` apareceu no projeto de verdade (Parte
-   G do `docs/GUIA-TESTE-CONVITE.md`).
-2. **Claude Code** (esforço Extra alto): parte **3b** do PR 3 (receitas cobrando: estimativa, reserva, cobrança por
-   etapa, pausa se for passar da estimativa, custo e tentativas que falharam em `ai_calls`; F24, F26). Antes de
-   começar, a issue precisa da aprovação do Luis. Depois, 3c (chat) e 3d (painel do dono).
+1. **Luis, no chat do Claude:** seguir o `docs/GUIA-TESTE-COBRANCA.md` para testar o PR da parte 3b (inclui colocar
+   crédito de mentira na empresa do projeto de testes). Se tudo der certo, fazer o merge.
+2. **Claude Code** (esforço Extra alto): **PR das IAs de verdade nas receitas**, antes de comprar créditos: ler o
+   consumo que cada API devolve (F40), faltar a chave vira erro em vez de cair na simulada (F42), conferir os nomes dos
+   modelos e os preços oficiais (F17). Depois, o Claude guia a compra de créditos (valor mínimo, recarga automática
+   desligada) e o primeiro teste com IA de verdade. Em seguida, 3c (chat) e 3d (painel do dono).
 3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.

@@ -1,12 +1,13 @@
-// GET /api/runs/[id]/events?after=<seq>: as novidades da narração (eventos com posição maior que <seq>, em ordem) e
-// o status da execução. É o replay (do início, com after=0) e a busca de novidades que a tela faz a cada segundo.
-// Lido com a sessão de quem está logado: só a própria pessoa lê a narração dela.
+// GET /api/runs/[id]/events?after=<seq>: as novidades da narração (eventos com posição maior que <seq>, em ordem),
+// o status da execução e quanto já foi cobrado dela. É o replay (do início, com after=0) e a busca de novidades que a
+// tela faz a cada segundo. Lido com a sessão de quem está logado: só a própria pessoa lê a narração e os gastos dela.
 // Cada busca também confere se a execução parou no meio e, se parou, a retoma (lib/runs/resume.ts).
 
 import { signedInSession } from "@/lib/auth/session";
 import { isRunId } from "@/lib/runs/parse-request";
 import { resumeIfStalled } from "@/lib/runs/resume";
 import { EVENTS_PAGE_SIZE, loadOwnEventsAfter, loadOwnRun } from "@/lib/runs/store";
+import { sumOwnRunCharges } from "@/lib/runs/wallet";
 
 export async function GET(request: Request, context: RouteContext<"/api/runs/[id]/events">): Promise<Response> {
   const { id } = await context.params;
@@ -23,6 +24,7 @@ export async function GET(request: Request, context: RouteContext<"/api/runs/[id
     const run = await loadOwnRun(session, id);
     if (!run) return problem(404, "Execução não encontrada.");
     const events = await loadOwnEventsAfter(session, id, afterSeq);
+    const chargedCents = await sumOwnRunCharges(session, id);
 
     if (run.status === "queued" || run.status === "running") {
       // Se a conferência falhar, as novidades saem do mesmo jeito.
@@ -32,7 +34,7 @@ export async function GET(request: Request, context: RouteContext<"/api/runs/[id
     }
 
     return Response.json(
-      { status: run.status, events, more: events.length === EVENTS_PAGE_SIZE },
+      { status: run.status, events, more: events.length === EVENTS_PAGE_SIZE, chargedCents },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
