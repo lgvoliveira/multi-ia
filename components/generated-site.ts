@@ -1,4 +1,4 @@
-// O site feito pelas IAs: como ele roda na prévia e como vira o arquivo que a pessoa baixa.
+// O site feito pelas IAs: como ele roda na prévia. O nome do arquivo que a pessoa baixa fica em lib/ock/site-file.ts.
 //
 // A prévia é um "quarto trancado" em três camadas (regra do AGENTS.md, seção 6):
 // 1. A moldura (SitePreview.tsx) usa sandbox="allow-scripts" SEM allow-same-origin: o site não enxerga
@@ -41,21 +41,4 @@ export function buildPreviewDocument(html: string): string {
   // O <!DOCTYPE> continua na frente: sem ele na primeira linha, o navegador desenha a página no modo antigo.
   const doctype = html.match(DOCTYPE)?.[0] ?? "";
   return `${doctype}\n${PREVIEW_HEAD}\n${html.slice(doctype.length)}`;
-}
-
-const MAX_FILE_NAME_LENGTH = 60;
-const DEFAULT_FILE_NAME = "meu-site";
-
-/** Nome do arquivo para baixar, tirado do título do site: "Doce Encanto Confeitaria" vira "doce-encanto-confeitaria.html". */
-export function siteFileName(html: string): string {
-  const title = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? "";
-  const name = title
-    .replace(/&[#\w]+;/g, " ") // códigos como &amp;
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // tira os acentos: "Café" vira "Cafe"
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .slice(0, MAX_FILE_NAME_LENGTH)
-    .replace(/^-+|-+$/g, "");
-  return `${name || DEFAULT_FILE_NAME}.html`;
 }

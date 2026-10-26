@@ -1,0 +1,145 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.label {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-body);
+}
+
+.value {
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: var(--weight-bold);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-title);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.valueEmpty {
+  color: var(--color-error-text);
+}
+
+.detail {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}
+
+.alert {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-height-body);
+  color: var(--color-error-text);
+  background: var(--color-error-bg);
+}
+
+.month {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.monthTotal {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--color-text-body);
+}
+
+.monthTotal strong {
+  color: var(--color-text);
+}
+
+/* Os pedaços de cada IA, separados por um fio da cor do fundo. */
+.bar {
+  display: flex;
+  gap: var(--stacked-bar-gap);
+  height: var(--stacked-bar-height);
+}
+
+.segment {
+  flex-basis: 0;
+  min-width: var(--space-1);
+}
+
+.segment:first-child {
+  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+}
+
+.segment:last-child {
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+}
+
+.segment:only-child {
+  border-radius: var(--radius-pill);
+}
+
+.claude {
+  background: var(--color-ai-claude);
+}
+
+.gpt {
+  background: var(--color-ai-gpt);
+}
+
+.gemini {
+  background: var(--color-ai-gemini);
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  color: var(--color-text-body);
+}
+
+.legendValue {
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.note {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SAMPLE_FINAL_SITE } from "@/lib/recipes/create-site.samples";
-import { buildPreviewDocument, PREVIEW_POLICY, siteFileName } from "./generated-site";
+import { buildPreviewDocument, PREVIEW_POLICY } from "./generated-site";
 
 const POLICY_TAG = `<meta http-equiv="Content-Security-Policy" content="${PREVIEW_POLICY}">`;
 
@@ -46,24 +46,5 @@ describe("site na prévia", () => {
 
   it("links internos (#cardapio) resolvem dentro da prévia, e não no endereço da nossa página", () => {
     expect(buildPreviewDocument(SAMPLE_FINAL_SITE)).toContain('<base href="about:srcdoc">');
-  });
-});
-
-describe("nome do arquivo para baixar", () => {
-  it("vem do título do site, sem acentos e com hífens", () => {
-    expect(siteFileName(SAMPLE_FINAL_SITE)).toBe("doce-encanto-confeitaria.html");
-    expect(siteFileName("<title>Café &amp; Cia. — São Paulo</title>")).toBe("cafe-cia-sao-paulo.html");
-  });
-
-  it("sem título, ou com um título só de símbolos, vira meu-site.html", () => {
-    expect(siteFileName("<h1>Oi</h1>")).toBe("meu-site.html");
-    expect(siteFileName("<title> ★ ★ </title>")).toBe("meu-site.html");
-  });
-
-  it("um título muito comprido é cortado", () => {
-    const name = siteFileName(`<title>${"Confeitaria ".repeat(20)}</title>`);
-
-    expect(name.length).toBeLessThanOrEqual(60 + ".html".length);
-    expect(name).toMatch(/^confeitaria-[a-z-]*[a-z]\.html$/);
   });
 });

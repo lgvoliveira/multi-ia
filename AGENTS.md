@@ -76,13 +76,16 @@ app/                 telas e rotas do Next.js. app/api/runs/ são as rotas das r
                      novidades, cancelar e continuar depois de uma pausa ([id]/resume), com o login de quem pede, e a
                      rota interna [id]/continue, que roda uma fase de cada vez no servidor e cobra cada etapa;
                      app/api/ock/ são as rotas do chat (mandar mensagem, anexar, baixar, conversas, entregas e
-                     gastos), todas com o login de quem pede; app/trabalho/ é o espaço de trabalho, onde as receitas
+                     gastos) e, para o painel do dono, o mês de uma pessoa da equipe (team/[id]), todas com o login
+                     de quem pede; app/trabalho/ é o espaço de trabalho, onde as receitas
                      também abrem (app/recipes/ só leva o endereço antigo para lá); app/dono/actions.ts
                      e app/convite/ são o convite do funcionário (lado do dono e lado de quem recebe o link)
 components/          pedaços de tela reutilizáveis (cada um com seu .module.css). SitePreview.tsx e
                      generated-site.ts são a prévia isolada do site feito pelas IAs (seção 6). OckWorkspace.tsx é o
                      espaço de trabalho (abas Chat, Receitas, Entregas e Meus gastos; a aba e a receita aberta ficam
-                     no endereço, workspace-view.ts)
+                     no endereço, workspace-view.ts). OwnerHome.tsx é o painel do dono: o crédito da empresa
+                     (CompanyCredit.tsx), o mês de cada pessoa (MemberMonth.tsx) e o extrato (StatementList.tsx, que
+                     também mostra o Meus gastos)
 lib/engine/          motor: executa as etapas de um time e narra cada passo em eventos (types.ts).
                      Recebe as IAs prontas (getProvider), não as escolhe. O ESLint barra importar
                      telas, Next.js ou React aqui, em lib/providers/, lib/recipes/ e lib/runs/
@@ -104,14 +107,17 @@ lib/ock/             o workspace para empresas: a parte "Equipe" do painel do do
                      chart.ts, project.ts) e o chat da tarefa rápida: quem executa uma mensagem (run-task.ts), o que
                      cada tipo de resposta pede à IA e quanto pode custar (quick-task.ts), a chamada às IAs com novas
                      tentativas (ai-call.ts), conversas e mensagens (task-store.ts), arquivos na pasta fechada
-                     (files.ts e attachments.ts) e o gasto do mês (spending.ts), tudo SÓ do servidor; chat.ts (limites
-                     e o formato do que a tela recebe) e chat-client.ts (os pedidos do navegador) vão para a tela
+                     (files.ts e attachments.ts) e os gastos do mês, da pessoa e da empresa, lidos das contas feitas no
+                     banco (spending.ts), tudo SÓ do servidor; chat.ts (limites e o formato do que a tela recebe),
+                     statement.ts (o formato das contas do mês), site-file.ts (o nome do arquivo do site) e
+                     chat-client.ts (os pedidos do navegador) vão para a tela
 lib/runs/            a execução vista de fora: o que dos eventos pode chegar ao usuário
                      (public-events.ts), a conferência do pedido que chega pela internet (parse-request.ts),
                      o banco das execuções (store.ts), a narração gravada aos poucos (event-buffer.ts), a
                      retomada de execução parada (resume.ts), a chamada interna (trigger.ts e
-                     internal-secret.ts), a carteira vista por uma execução e por uma mensagem do chat (wallet.ts) e o que cobrar de cada
-                     etapa (billing.ts), tudo SÓ do servidor; no navegador, começar, cancelar e continuar
+                     internal-secret.ts), a carteira vista por uma execução e por uma mensagem do chat (wallet.ts),
+                     o que cobrar de cada etapa (billing.ts) e o site pronto guardado como entrega
+                     (site-delivery.ts), tudo SÓ do servidor; no navegador, começar, cancelar e continuar
                      (client.ts) e buscar as novidades (live-client.ts). A estimativa (estimate.ts) roda nos dois
                      lados: o servidor calcula o máximo de cada etapa com cada IA, e a tela só soma
 styles/tokens.css    TODAS as cores, fontes, espaçamentos e arredondamentos

@@ -137,5 +137,8 @@
   --chat-input-max-height: 200px;
   --chart-preview-max-width: 560px; /* gráfico desenhado dentro da conversa */
   --progress-height: 8px; /* barra do gasto do mês */
+  /* Painel do dono: a barra do gasto do mês dividida por IA, com um fio da cor do fundo entre os pedaços */
+  --stacked-bar-height: 12px;
+  --stacked-bar-gap: 2px;
   --page-gutter: var(--space-6);
 }

@@ -137,12 +137,6 @@
   font-weight: var(--weight-semibold);
 }
 
-.rowValue {
-  font-weight: var(--weight-semibold);
-  color: var(--color-text);
-  white-space: nowrap;
-}
-
 .usage {
   display: flex;
   flex-direction: column;
@@ -181,19 +175,6 @@
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
   color: var(--color-text-body);
-}
-
-.track {
-  height: var(--progress-height);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-muted);
-  overflow: hidden;
-}
-
-.fill {
-  height: 100%;
-  border-radius: var(--radius-pill);
-  background: var(--color-primary);
 }
 
 .visuallyHidden {

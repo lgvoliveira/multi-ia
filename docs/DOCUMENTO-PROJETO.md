@@ -8,6 +8,8 @@ Oct 8, 2026 · @Luis Gustavo Vilela Oliveira · **Revisado em 22/10/2026: o prod
 Atualizado em 24/10/2026 com as decisões do banco: teto por mês, o que o dono vê, "Traga sua chave" fora.
 Atualizado em 25/10/2026 com o chat (tarefa rápida) no banco novo: custo mostrado depois de cada resposta, imagem,
 pesquisa, código e voz só com as IAs de verdade, mensagem de até 4.000 caracteres e gastos do funcionário em reais.
+Atualizado em 25/10/2026 com o painel do dono (parte 3d, issue #43): uma receita vira uma linha só no extrato, o site da
+receita vira entrega, o funcionário lê o que o dono vê, e só o mês atual por enquanto.
 
 ## Visão e problema
 
@@ -63,6 +65,11 @@ muda pouco: receitas e textos mais específicos. Risco anotado em F02 do `FALHAS
   - **O que o dono vê (decisão do Luis, 24/10):** o resumo do trabalho de cada um (quem fez, quando, com qual receita
     ou IA, quanto custou) e as entregas. Ele **não** lê pedidos, respostas nem conversas dos funcionários. Passar a
     mostrar as conversas no futuro exige avisar os funcionários antes.
+  - **O funcionário sabe disso (F05, parte 3d):** as abas Entregas e Meus gastos dizem "O dono da empresa vê suas
+    entregas e quanto cada tarefa custou. Suas conversas, não." Por isso o nome e o título de um documento feito no chat
+    saem do que a IA escreveu, nunca do pedido (F49).
+  - **Uma receita é uma linha só** no extrato que o dono e o funcionário veem ("Criar um site · R$ 0,37", com as IAs que
+    trabalharam), e não uma por etapa (decisão do Luis, 25/10). O site pronto vira uma entrega da pessoa (F47).
   - **O crédito** só é lançado pela plataforma, depois do pagamento (no MVP, Pix conferido à mão). O dono vê o saldo e o
     extrato, mas não mexe neles (F25).
 - **Funcionário:** recebe do dono um convite (um link que só funciona uma vez e vale 24 horas, mandado por WhatsApp ou
@@ -98,7 +105,12 @@ são produtos separados e ficam para integrações futuras.
 - Painel do dono com a equipe (etapa 5, PR 2b): o dono convida um funcionário (nome, e-mail e teto do mês) e recebe um
   link para mandar, com botões para copiar e para abrir o WhatsApp com a mensagem pronta. O funcionário abre, cria a
   própria senha e entra. O dono muda o teto, desativa e reativa, e gera um link novo para quem não aceitou a tempo ou
-  perdeu a senha. Crédito, gastos e entregas de cada funcionário chegam no PR 3.
+  perdeu a senha.
+- O painel do dono com o crédito e os gastos (etapa 5, parte 3d): no alto, "Disponível para a equipe", o saldo, o que está
+  separado agora para tarefas em andamento e o gasto do mês dividido por IA (aviso vermelho sem crédito); na equipe, o
+  gasto do mês de cada pessoa contra o teto, o resumo ("8 tarefas rápidas, 1 receita, 3 entregas") e "Ver o que fez" (as
+  linhas do mês e as entregas, para baixar); e o extrato do mês, com as recargas. Só o mês atual, por enquanto. As contas
+  são feitas dentro do banco, com as mesmas regras de quem vê o quê.
 - A receita "Criar um site" (etapa 5, PRs 3a e 3b), para quem está logado, cobrando da carteira da empresa: mostra
   "até R$ X" antes de começar, reserva esse máximo, cobra cada etapa pelo consumo real e pausa se for passar.
 - O espaço de trabalho (`/trabalho`, etapa 5, PR 3c) com o chat da **tarefa rápida**: conversas, anexos (PDF, texto e
@@ -112,8 +124,10 @@ são produtos separados e ficam para integrações futuras.
 - Imagem, pesquisa na internet, rodar código e voz chegam com as IAs de verdade (decisão do Luis, 25/10): até lá,
   imagem responde "chega em breve", e pesquisa e código respondem em texto, avisando que a IA não pesquisou nem rodou
   nada. Receitas e chat ainda rodam só com a IA simulada.
-- O painel antigo do dono (gastos por IA, tarefas, crédito) saiu no PR 2a; o saldo, os gastos e as entregas voltam na
-  parte 3d, ligados ao banco novo.
+- O site feito pela receita "Criar um site" vira uma entrega da pessoa (F47): aparece na aba Entregas e no painel do
+  dono, e sempre baixa como arquivo.
+- **Falta:** escolher outro mês e baixar o extrato em planilha; ver a prévia do site no painel; recarga feita pelo
+  próprio dono e aviso de saldo baixo.
 
 ## Receitas iniciais
 

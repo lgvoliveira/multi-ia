@@ -57,7 +57,7 @@ import {
   type AttachmentText,
   type WorkPlan,
 } from "./quick-task";
-import { loadMonthSpending } from "./spending";
+import { loadMonth } from "./spending";
 import {
   createOwnConversation,
   createTask,
@@ -263,14 +263,14 @@ async function produce(plan: WorkPlan, work: GenerateRequest, prompt: string, co
 
   if (plan.kind === "answer") return finished(text);
   try {
-    return await makeDelivery(plan, text, prompt, context);
+    return await makeDelivery(plan, text, context);
   } catch (error) {
     console.error(`[chat] Não consegui montar o arquivo da mensagem ${context.taskId}:`, error);
     return failed(FILE_FAILED);
   }
 }
 
-async function makeDelivery(plan: WorkPlan, text: string, prompt: string, context: ProduceContext): Promise<Outcome> {
+async function makeDelivery(plan: WorkPlan, text: string, context: ProduceContext): Promise<Outcome> {
   const deliver = (name: string, mime: string, bytes: Uint8Array) =>
     storeFile({
       companyId: context.me.companyId,
@@ -283,7 +283,8 @@ async function makeDelivery(plan: WorkPlan, text: string, prompt: string, contex
     });
 
   if (plan.kind === "document") {
-    const doc = await generateDocument(documentTitle(prompt), text, plan.format ?? "pdf");
+    const format = plan.format ?? "pdf";
+    const doc = await generateDocument(documentTitle(text, format), text, format);
     const file = await deliver(doc.name, doc.mime, doc.bytes);
     return finished(`Pronto! Gerei o arquivo ${doc.name}. É só baixar aqui embaixo.`, [file]);
   }
@@ -380,7 +381,7 @@ async function done(
   task: ChatTask,
 ): Promise<QuickTaskResult> {
   await touchConversation(conversation.id);
-  const { month } = await loadMonthSpending(session, me.id);
+  const month = await loadMonth(session, me.id);
   return { ok: true, result: { conversation: { ...conversation, updatedAt: now() }, task, month } };
 }
 

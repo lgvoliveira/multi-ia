@@ -2,7 +2,8 @@
 
 > **Status (24/10/2026):** proposta aprovada e decisões tomadas pelo Luis (fim deste arquivo). As migrações entraram na
 > `main` no PR #24 e já estão no projeto de verdade (conferido pelo Luis: 11 tabelas vazias, pasta `files` privada,
-> Postgres 17.11, a mesma versão das checagens). A migração 6 (convites, PR 2b) chega a ele no merge do PR 2b.
+> Postgres 17.11, a mesma versão das checagens). A migração 6 (convites, PR 2b) chegou com o merge do PR #30; a 7 (as
+> contas do mês, parte 3d) chega no merge do PR #45.
 > **A versão oficial das tabelas são as migrações** em
 > `supabase/migrations/`; este arquivo explica o desenho em português e precisa mudar junto quando elas mudarem.
 
@@ -123,6 +124,23 @@ vezes.
    vira linha. A reserva fecha e a sobra volta.
 No chat não há pausa: como a reserva é o máximo, o custo real só passaria dela se a medição estivesse errada (F40, F29).
 
+### As contas do mês (migração 7, parte 3d)
+
+O painel do dono, o "Gasto do mês" do `/trabalho` e a aba Meus gastos não somam linhas no nosso servidor: o Supabase
+devolve no máximo 1.000 linhas por pedido, e a soma ficava menor que o real depois disso (F48). As contas são feitas
+dentro do banco, por quatro funções que **rodam com o login de quem chama** (`security invoker`): as regras de acesso das
+tabelas valem dentro delas, então cada um só soma o que já podia ler. Nenhuma lê pedido, resposta ou conversa.
+
+| Função | Quem recebe o quê |
+|---|---|
+| `company_credit()` | Só o dono: o saldo (o extrato inteiro), o que está reservado agora (reservas abertas e no prazo) e o gasto das pessoas no mês. O disponível é o saldo menos o reservado. Para o funcionário, nenhuma linha. |
+| `company_month_by_provider()` | Só o dono: o gasto do mês por IA; os ajustes, que não têm IA, numa linha à parte. A soma bate com o gasto do mês. |
+| `member_month_summary(pessoa)` | O mês de cada pessoa que quem chama enxerga (o dono, a equipe; o funcionário, ele mesmo): gasto, reservado, mensagens do chat cobradas, receitas e entregas do mês. |
+| `month_statement(pessoa, limite)` | O extrato do mês, das linhas mais novas para as mais antigas, com **cada execução de receita numa linha só** (as etapas somadas, as IAs que trabalharam e a hora da última cobrança). Para o dono, com as recargas; com uma pessoa, só os gastos dela. Até 500 linhas por pedido. |
+
+O mês conta como o teto: do dia 1º, à meia-noite de Brasília. Para essas contas, quem está logado passou a poder usar
+`private.month_start`, que é só a conta da data (não lê dado nenhum).
+
 ### As funções do dinheiro
 
 | Função | Quem chama | O que faz |
@@ -154,6 +172,7 @@ Isso não muda tabela nenhuma (só acrescenta uma linha ao extrato), então não
 |---|---|---|
 | Empresa e lista de funcionários | só o próprio cadastro | todos |
 | Extrato e reservas | só os próprios gastos | tudo |
+| Saldo da empresa e gasto por IA (contas do mês) | não | sim |
 | Receitas próprias | as dele e as da empresa | as da empresa (e as dele) |
 | Execuções, conversas e tarefas | as próprias | só as próprias. Dos funcionários, vê o resumo pelo extrato (quem, quando, receita ou IA, custo), sem pedidos nem respostas |
 | Arquivos | os próprios | os próprios e as entregas de todos |
@@ -214,6 +233,11 @@ chamada às IAs (o Chefe, `step_id` "chief", e a resposta, "answer", com cada te
 com `task_id`. Uma mensagem que ficou "respondendo" (o servidor caiu no meio) aparece como falha depois de 6 minutos;
 ela nunca foi cobrada, porque a resposta é gravada antes da cobrança.
 
+**O site vira entrega (parte 3d, F47):** quando a receita "Criar um site" termina, o servidor guarda o `.html` na pasta
+fechada como `delivery` da pessoa, com `files.run_id` da execução, antes de marcar a execução como terminada. Assim o
+dono, que não lê a execução, vê e baixa o site pelas entregas. Se o servidor cair e retomar, ele confere pelo `run_id` e
+não guarda duas vezes. Na pasta, o Supabase entrega todo `.html` como texto puro, com "nosniff" e como anexo.
+
 ## Migrações
 
 **Migração** é um arquivo SQL numerado que cria ou muda tabelas. Quem roda os arquivos em ordem monta o banco
@@ -225,6 +249,8 @@ igualzinho, do zero. Ficam em `supabase/migrations/`:
 4. `..._ai_calls.sql`: a tabela interna `ai_calls`
 5. `..._files_bucket.sql`: a pasta fechada dos arquivos
 6. `..._member_invites.sql`: os convites dos funcionários (PR 2b)
+7. `..._month_summaries.sql`: as contas do mês (parte 3d): crédito da empresa, gasto por IA, mês de cada pessoa e extrato
+   do mês com a receita numa linha
 
 **Regras para as próximas migrações:** toda tabela nova liga o RLS e diz com `grant` exatamente o que cada papel pode
 fazer (o projeto não dá acesso automático a tabelas novas, e a chave pública sem login, `anon`, não recebe acesso a
@@ -248,6 +274,10 @@ Ficam em `supabase/tests/database/` (formato pgTAP, que é SQL com conferências
 - `04_invites`: o dono vê os convites só da própria empresa e nunca o resumo do código; ninguém pela sessão cria, muda
   ou apaga convite; o banco só aceita o resumo (nunca o código), um convite por pessoa e sempre da empresa dela; o
   convite serve uma vez só e não depois do prazo.
+- `05_month_summaries`: as contas do mês com duas empresas de mentira. O saldo, o reservado (sem a reserva vencida) e o
+  gasto do mês da empresa; o gasto por IA e por pessoa batendo com o total; a receita numa linha só; o mês passado e os
+  anexos fora; o funcionário sem o saldo da empresa e sem o mês do colega; o dono de outra empresa sem nada; sem login,
+  recusado. O `01_structure` confere que as contas rodam com o login de quem chama.
 
 **Onde rodam:** nas checagens do GitHub (`.github/workflows/ci.yml`, parte "Banco de dados"), com a ferramenta oficial
 do Supabase (aprovada pelo Luis em 24/10), num banco temporário que some no fim. O banco de verdade não é tocado.

@@ -2,7 +2,8 @@
 // É interna: só o próprio servidor chama, com o segredo interno (lib/runs/internal-secret.ts). O navegador nunca.
 // Fluxo: reivindica a execução → confere a reserva na carteira (sem o bastante para o que falta, pausa e pergunta) →
 // roda um segmento, gravando a narração aos poucos (F35) → grava o novo estado → cobra as etapas concluídas e registra
-// todas as chamadas às IAs → se acabou, fecha a reserva e encerra; senão, volta para a fila e dispara a próxima.
+// todas as chamadas às IAs → se acabou, guarda o site pronto como entrega da pessoa (F47), fecha a reserva e encerra;
+// senão, volta para a fila e dispara a próxima.
 // Enquanto a fase roda, renova a reserva de quem roda a cada poucos segundos e, se a pessoa cancelou, para a IA no meio.
 // Se algo estourar no meio, a reserva de quem roda vence logo e a próxima busca da tela retoma a execução.
 // As receitas rodam com a IA simulada, que custa o mesmo que a IA de verdade equivalente (as reais entram num PR
@@ -18,6 +19,7 @@ import { estimateCents, stepCosts } from "@/lib/runs/estimate";
 import { createEventBuffer } from "@/lib/runs/event-buffer";
 import { isInternalCall } from "@/lib/runs/internal-secret";
 import { toPublicEvent } from "@/lib/runs/public-events";
+import { finalSite, saveSiteDelivery } from "@/lib/runs/site-delivery";
 import {
   appendEvents,
   claimRun,
@@ -138,8 +140,11 @@ async function runOneSegment(row: RunRow, claimedAt: number): Promise<void> {
   await recordAiCalls(aiCallRows(row, calls, new Set(charged.map((result) => result.stepId))));
 
   if (updated.done) {
-    // Terminou (sucesso, falha ou cancelamento): encerra e devolve ao saldo o que sobrou da reserva.
-    await setStatus(row.id, updated.status ?? "finished", {
+    // Terminou (sucesso, falha ou cancelamento): encerra e devolve ao saldo o que sobrou da reserva. O site vai para as
+    // entregas antes de a execução aparecer como terminada, para a aba Entregas já o mostrar quando a tela avisar.
+    const status = updated.status ?? "finished";
+    if (status === "finished") await keepSiteQuietly(row, recipe, finalResult);
+    await setStatus(row.id, status, {
       result: finalResult,
       duration_ms: finalDurationMs,
       finished_at: new Date().toISOString(),
@@ -189,13 +194,29 @@ async function settleBeforeSegment(row: RunRow, recipe: Recipe): Promise<RunHold
 async function finishInterruptedRun(row: RunRow, recipe: Recipe, claimedAt: number): Promise<void> {
   const hold = await findOpenRunHold(row.id);
   if (hold) await chargeCompletedSteps(row.id, recipe, row.results ?? [], hold.id);
+  const result = row.results.at(-1)?.output ?? null;
+  await keepSiteQuietly(row, recipe, result);
   await setStatus(row.id, "finished", {
-    result: row.results.at(-1)?.output ?? null,
+    result,
     duration_ms: waitedMs(row, claimedAt),
     finished_at: new Date().toISOString(),
     lease_until: null,
   });
   await closeHoldsQuietly(row.id);
+}
+
+/**
+ * Guarda o site pronto nas entregas da pessoa (F47). Se não der, a execução termina assim mesmo: o site continua na tela
+ * do resultado, com o botão de baixar; só não aparece em Entregas.
+ */
+async function keepSiteQuietly(row: RunRow, recipe: Recipe, result: string | null): Promise<void> {
+  const site = finalSite(recipe, result);
+  if (!site) return;
+  try {
+    await saveSiteDelivery(row, site);
+  } catch (error) {
+    console.error(`[api/runs/continue] Não consegui guardar o site de ${row.id} nas entregas:`, error);
+  }
 }
 
 /** Fecha as reservas da execução. Se falhar, a reserva vence sozinha em uma hora e deixa de segurar o saldo. */

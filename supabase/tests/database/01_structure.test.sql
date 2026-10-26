@@ -2,7 +2,7 @@
 -- se alguém esquecer de ligar as regras de acesso ou abrir demais uma permissão, a checagem do PR fica vermelha.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(14);
 
 select is_empty(
   $$
@@ -43,8 +43,23 @@ select results_eq(
       and has_function_privilege('authenticated', p.oid, 'EXECUTE')
     order by 1
   $$,
-  $$ values ('current_company_id'), ('current_member_id'), ('current_member_is_owner') $$,
-  'Quem está logado só chama as funções que dizem quem ele é'
+  $$
+    values ('company_credit'), ('company_month_by_provider'), ('current_company_id'), ('current_member_id'),
+      ('current_member_is_owner'), ('member_month_summary'), ('month_start'), ('month_statement')
+  $$,
+  'Quem está logado só chama as funções que dizem quem ele é e as contas do mês (que só somam o que ele pode ver)'
+);
+
+select ok(
+  not exists (
+    select 1 from pg_proc p
+    where p.oid in (
+      'public.company_credit()'::regprocedure, 'public.company_month_by_provider()'::regprocedure,
+      'public.member_month_summary(uuid)'::regprocedure, 'public.month_statement(uuid, integer)'::regprocedure
+    )
+    and p.prosecdef
+  ),
+  'As contas do mês rodam com o login de quem chama, para as regras de acesso valerem dentro delas'
 );
 
 select results_eq(

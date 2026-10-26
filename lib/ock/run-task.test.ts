@@ -53,7 +53,7 @@ vi.mock("@/lib/runs/wallet", async (importOriginal) => {
 });
 vi.mock("@/lib/runs/store", () => ({ recordAiCalls: async (rows: AiCallRow[]) => void db.aiCalls.push(...rows) }));
 vi.mock("@/lib/ock/spending", () => ({
-  loadMonthSpending: async () => ({ month: { spentCents: 42, budgetCents: 5000 }, entries: [] }),
+  loadMonth: async () => ({ spentCents: 42, budgetCents: 5000 }),
 }));
 vi.mock("@/lib/ock/task-store", () => ({
   loadOwnConversation: async (_session: unknown, id: string) => db.conversations.find((c) => c.id === id) && {
@@ -286,7 +286,8 @@ describe("uma mensagem do chat", () => {
     const { task } = outcome.result;
     expect(db.stored).toHaveLength(1);
     expect(db.stored[0]).toMatchObject({ kind: "delivery", mime: "application/pdf", taskId: task.id });
-    expect(db.stored[0].name).toMatch(/\.pdf$/);
+    // O nome vem do que a IA escreveu (a primeira linha), nunca do pedido: o dono vê as entregas (F49).
+    expect(db.stored[0].name).toBe("Resumo.pdf");
     expect(new TextDecoder().decode(db.stored[0].bytes.slice(0, 5))).toBe("%PDF-");
     expect(task.deliveries).toEqual([{ id: "arquivo-1", name: db.stored[0].name }]);
     expect(task.answer).toContain(`Gerei o arquivo ${db.stored[0].name}`);

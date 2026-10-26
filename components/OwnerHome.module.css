@@ -158,13 +158,3 @@
   color: var(--color-status-waiting-text);
   background: var(--color-status-waiting-bg);
 }
-
-.notice {
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-control);
-  font-size: var(--text-md);
-  line-height: var(--line-height-body);
-  color: var(--color-warning-text);
-  background: var(--color-warning-bg);
-}

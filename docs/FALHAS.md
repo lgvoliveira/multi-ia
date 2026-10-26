@@ -64,8 +64,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F44 | Anexos do chat: o texto vai inteiro para a IA, e o que ela não lê é aceito sem aviso | Código / Produto | Média | Resolvida |
 | F45 | Sem a pesquisa ou o código de verdade, a IA é instruída a esconder isso | Produto | Média | Resolvida |
 | F46 | O PR #40 entrou na `main` sem descrição e antes do teste pelo guia | Processo | Baixa | Resolvida |
-| F47 | O site feito pela receita não vira entrega | Produto | Média | Decidida |
-| F48 | O "Gasto do mês" fica menor que o real depois de 1.000 gastos no mês | Código | Baixa | Decidida |
+| F47 | O site feito pela receita não vira entrega | Produto | Média | Resolvida |
+| F48 | O "Gasto do mês" fica menor que o real depois de 1.000 gastos no mês | Código | Baixa | Resolvida |
+| F49 | O nome e o título dos documentos do chat saíam do pedido do funcionário | Segurança / LGPD | Média | Resolvida |
 
 ## Negócio
 
@@ -109,6 +110,11 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Andamento (25/10/2026, PR 3c):** com o chat de volta, o teste de ponta a ponta conferiu a parte (1): a dona da
   empresa recebeu "não encontrada" para a conversa da funcionária e para o anexo que ela mandou; só as entregas (os
   arquivos que as IAs fizeram) ela pode baixar, como decidido.
+- **Andamento (25/10/2026, parte 3d):** o painel do dono mostra o crédito, o gasto do mês de cada pessoa, as linhas do
+  extrato (a receita numa linha só) e as entregas, tudo lido com o login do dono; as contas novas do banco rodam com o
+  login de quem chama, então as regras de acesso valem dentro delas (testado no banco e de ponta a ponta: o dono nunca
+  recebe o pedido). O funcionário lê, nas abas Entregas e Meus gastos, "O dono da empresa vê suas entregas e quanto cada
+  tarefa custou. Suas conversas, não." Achada e corrigida no caminho a F49 (o nome dos documentos vinha do pedido).
 
 ### F06 — Vender para empresa é mais lento e trabalhoso
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 22/10/2026
@@ -206,6 +212,11 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O que fazer:** issue #43 (parte 3d), aprovada pelo Luis: quando o site fica pronto, o servidor guarda o `.html` na
   pasta fechada como entrega da pessoa, ligado à execução. Sempre baixa como arquivo, nunca abre como página (AGENTS.md,
   seção 6). Só os sites novos.
+- **Resolvida (25/10/2026, parte 3d):** quando a receita termina, o servidor guarda o `.html` como entrega de quem pediu
+  (`lib/runs/site-delivery.ts`), com o nome tirado do título do site, antes de a execução aparecer como terminada; se o
+  servidor cair e retomar, não guarda duas vezes. Se não der para guardar, a execução termina assim mesmo (o site
+  continua na tela, com o botão de baixar). Na pasta, o Supabase entrega todo `.html` como texto puro, com "nosniff" e
+  como anexo: o navegador só salva, e nem aberto direto o site roda. Os sites feitos antes desta parte não viraram entrega.
 
 ## Código e segurança
 
@@ -580,6 +591,19 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   da empresa inteira, esbarraria nisso muito antes.
 - **O que fazer:** issue #43 (parte 3d), aprovada pelo Luis: as somas (saldo, reservado, gasto do mês por pessoa e por
   IA) passam a ser feitas dentro do banco, numa migração com testes, e a lista mostra só as linhas mais recentes.
+- **Resolvida (25/10/2026, parte 3d):** a migração `20261025200001_month_summaries.sql` traz quatro contas feitas dentro
+  do banco (crédito da empresa, gasto do mês por IA, mês de cada pessoa e extrato do mês com a receita numa linha), com
+  26 testes. O "Gasto do mês" do `/trabalho`, o Meus gastos e o painel do dono usam essas contas; as listas mostram as
+  200 linhas mais recentes e avisam quando há mais.
+
+### F49 — O nome e o título dos documentos do chat saíam do pedido do funcionário
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 25/10/2026 (achada pelo Claude no teste da parte 3d)
+- **O problema:** no chat, o PDF, o Word, o Excel e o CSV recebiam como nome do arquivo e como título os primeiros 60
+  caracteres do pedido (ex.: "Gere-um-PDF-com-um-resumo-da-reuniao-de-hoje.pdf"). Com a parte 3d, o dono vê o nome das
+  entregas no painel e pode baixá-las: leria o começo do pedido, contra a decisão de que o dono não lê pedidos (F05).
+- **Resolvida (25/10/2026, parte 3d):** o título e o nome vêm da primeira linha do que a IA escreveu (a instrução do
+  documento já pede um título no começo), sem marcas como "#"; a planilha se chama "Planilha"; sem título, "Documento".
+  As entregas feitas antes desta parte continuam com o nome antigo (só existem no projeto de testes).
 
 ## Processo
 

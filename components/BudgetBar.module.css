@@ -1,0 +1,35 @@
+/* O trilho é um tom mais claro da mesma cor do preenchimento: a situação se lê na barra inteira. */
+.track {
+  height: var(--progress-height);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+}
+
+.ok {
+  background: var(--color-status-working-bg);
+}
+
+.ok .fill {
+  background: var(--color-primary);
+}
+
+.near {
+  background: var(--color-warning-bg);
+}
+
+.near .fill {
+  background: var(--color-warning-text);
+}
+
+.full {
+  background: var(--color-error-bg);
+}
+
+.full .fill {
+  background: var(--color-error-text);
+}

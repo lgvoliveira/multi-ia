@@ -1,17 +1,32 @@
-// Painel do dono (etapa 5): a empresa e a equipe. Convidar funcionários, mudar o teto, gerar link novo e desativar
-// entraram no PR 2b; crédito, gastos e entregas de cada um chegam no PR 3.
+// Painel do dono (etapa 5): no alto, o crédito da empresa; depois a equipe, com o gasto do mês de cada pessoa, o resumo
+// do que fez e as entregas ("Ver o que fez"); o convite de funcionários; e o extrato do mês, com as recargas. O dono vê
+// o que cada um fez e quanto custou, nunca os pedidos, as respostas nem as conversas (F05; decisão 2 de 24/10/2026).
 
 import { firstName, type CurrentMember } from "@/lib/auth/member";
-import { formatBRL } from "@/lib/ock/pricing";
+import {
+  emptyMonth,
+  STATEMENT_PAGE_SIZE,
+  type CompanyCredit as Credit,
+  type MemberMonth as Month,
+  type StatementLine,
+} from "@/lib/ock/statement";
 import { deadlineText, type TeamMember } from "@/lib/ock/team";
 import { budgetInputValue } from "@/lib/ock/team-forms";
+import { CompanyCredit } from "./CompanyCredit";
 import { InviteEmployee } from "./InviteEmployeeForm";
 import { MemberActions } from "./MemberActions";
+import { MemberMonth } from "./MemberMonth";
+import { StatementList } from "./StatementList";
 import styles from "./OwnerHome.module.css";
 
-function budgetText(person: TeamMember): string | null {
-  if (person.role === "owner") return null;
-  return person.monthlyBudgetCents === null ? "Sem teto" : `Teto de ${formatBRL(person.monthlyBudgetCents)} por mês`;
+interface OwnerHomeProps {
+  me: CurrentMember;
+  team: TeamMember[];
+  credit: Credit;
+  /** O mês de cada pessoa da equipe, pelo id. */
+  months: ReadonlyMap<string, Month>;
+  /** O extrato do mês da empresa (as linhas mais recentes) e se há mais. */
+  statement: { lines: StatementLine[]; more: boolean };
 }
 
 /** A etiqueta e a frase do convite que a pessoa ainda não usou. Quem foi desativado não mostra convite. */
@@ -33,25 +48,19 @@ function inviteInfo(person: TeamMember): { tag: string; note: string } | null {
   };
 }
 
-export function OwnerHome({ me, team }: { me: CurrentMember; team: TeamMember[] }) {
+export function OwnerHome({ me, team, credit, months, statement }: OwnerHomeProps) {
+  const people = new Map(team.map((person) => [person.id, person.name]));
   return (
     <main className={styles.main}>
       <section className={styles.intro}>
         <p className={styles.kicker}>Painel do dono</p>
         <h1 className={styles.title}>{me.companyName}</h1>
-        <p className={styles.lead}>Olá, {firstName(me.name)}. Aqui você acompanha a equipe da empresa.</p>
+        <p className={styles.lead}>
+          Olá, {firstName(me.name)}. Aqui você acompanha o crédito da empresa e o que cada pessoa da equipe fez e gastou.
+        </p>
       </section>
 
-      <section className={styles.section} aria-labelledby="invite-title">
-        <h2 id="invite-title" className={styles.sectionTitle}>
-          Convidar um funcionário
-        </h2>
-        <p className={styles.sectionLead}>
-          Você gera um link e manda para a pessoa (pelo WhatsApp, por exemplo). Ela abre, cria a própria senha e entra.
-          Ninguém além dela fica sabendo a senha.
-        </p>
-        <InviteEmployee ownerId={me.id} />
-      </section>
+      <CompanyCredit credit={credit} />
 
       <section className={styles.section} aria-labelledby="team-title">
         <h2 id="team-title" className={styles.sectionTitle}>
@@ -59,7 +68,6 @@ export function OwnerHome({ me, team }: { me: CurrentMember; team: TeamMember[] 
         </h2>
         <ul className={styles.team}>
           {team.map((person) => {
-            const budget = budgetText(person);
             const invite = inviteInfo(person);
             return (
               <li key={person.id} className={styles.person}>
@@ -73,12 +81,17 @@ export function OwnerHome({ me, team }: { me: CurrentMember; team: TeamMember[] 
                   </div>
                   <ul className={styles.tags} aria-label="Detalhes">
                     <li className={styles.tag}>{person.role === "owner" ? "Dono" : "Funcionário"}</li>
-                    {budget && <li className={styles.tag}>{budget}</li>}
                     {invite && <li className={styles.tagWarning}>{invite.tag}</li>}
                     {person.status === "disabled" && <li className={styles.tagMuted}>Desativado</li>}
                   </ul>
                 </div>
                 {invite && <p className={styles.personNote}>{invite.note}</p>}
+                <MemberMonth
+                  memberId={person.id}
+                  name={person.name}
+                  month={months.get(person.id) ?? emptyMonth(person.id)}
+                  budgetCents={person.monthlyBudgetCents}
+                />
                 {person.role === "employee" && (
                   <MemberActions
                     ownerId={me.id}
@@ -94,9 +107,33 @@ export function OwnerHome({ me, team }: { me: CurrentMember; team: TeamMember[] 
         </ul>
       </section>
 
-      <p className={styles.notice}>
-        Em obras: o crédito da empresa e os gastos e as entregas de cada um chegam no próximo passo.
-      </p>
+      <section className={styles.section} aria-labelledby="invite-title">
+        <h2 id="invite-title" className={styles.sectionTitle}>
+          Convidar um funcionário
+        </h2>
+        <p className={styles.sectionLead}>
+          Você gera um link e manda para a pessoa (pelo WhatsApp, por exemplo). Ela abre, cria a própria senha e entra.
+          Ninguém além dela fica sabendo a senha.
+        </p>
+        <InviteEmployee ownerId={me.id} />
+      </section>
+
+      <section className={styles.section} aria-labelledby="statement-title">
+        <h2 id="statement-title" className={styles.sectionTitle}>
+          Extrato do mês
+        </h2>
+        <p className={styles.sectionLead}>
+          As recargas e os gastos da empresa neste mês, com quem gastou. É aqui que você confere se o Pix entrou.
+        </p>
+        {statement.lines.length === 0 ? (
+          <p className={styles.personNote}>Nenhum movimento neste mês ainda.</p>
+        ) : (
+          <StatementList lines={statement.lines} label="Extrato do mês" people={people} />
+        )}
+        {statement.more && (
+          <p className={styles.personNote}>Mostrando os {STATEMENT_PAGE_SIZE} movimentos mais recentes.</p>
+        )}
+      </section>
     </main>
   );
 }
