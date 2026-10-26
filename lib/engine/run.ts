@@ -6,6 +6,7 @@ import { estimateTokens } from "@/lib/providers/mock";
 import { DEFAULT_TIER, ProviderError, type AiProvider, type ProviderId, type Usage } from "@/lib/providers/types";
 import { stageSteps, type Recipe, type Role, type Stage, type Step } from "@/lib/recipes/types";
 import { buildStepInput, buildSystemPrompt, REVIEW_FEEDBACK_KEY } from "./input";
+import { finalStepOutput } from "./output";
 import { initialSnapshot, runSegment } from "./segment";
 import type {
   AiCallReport,
@@ -486,7 +487,8 @@ async function* runAttempt(
       result = {
         stepId: step.id,
         provider: provider.id,
-        output,
+        // O site sai sem as marcas de código que as IAs às vezes põem em volta (lib/engine/output.ts).
+        output: finalStepOutput(output, step.format),
         model: chunk.model,
         usage: chunk.usage,
         truncated: chunk.truncated,

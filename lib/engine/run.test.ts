@@ -166,6 +166,38 @@ describe("motor de orquestração", () => {
     expect(ofType(events, "step-finished").at(-1)?.output).toBe(SAMPLE_FINAL_SITE);
   });
 
+  it("o site que a IA cerca com marcas de código (```html) sai limpo no resultado e para a etapa seguinte", async () => {
+    // Todas as IAs respondem como as de verdade às vezes fazem: uma frase e o site dentro da cerca.
+    const fence = "```";
+    const fenced = (id: ProviderId): AiProvider => {
+      const mock = createMockProvider({ id, chunkDelayMs: 0 });
+      return {
+        id,
+        generate: (request) =>
+          mock.generate(
+            request.sampleResponse?.includes("<!DOCTYPE")
+              ? { ...request, sampleResponse: `Aqui está:\n\n${fence}html\n${request.sampleResponse}\n${fence}\n` }
+              : request,
+          ),
+      };
+    };
+    const { getProvider } = createTestProviders({ claude: fenced("claude"), gpt: fenced("gpt"), gemini: fenced("gemini") });
+
+    const events = await collect(runRecipe({ recipe, request: REQUEST }, { getProvider }));
+
+    const [finished] = ofType(events, "run-finished");
+    expect(finished.result).toBe(SAMPLE_FINAL_SITE.trim());
+    expect(finished.result).not.toContain(fence);
+    // O Front-end (html) também sai limpo; o texto narrado ao vivo continua com o que a IA escreveu.
+    const front = ofType(events, "step-finished").find((step) => step.stepId === "front");
+    expect(front?.output.startsWith("<!DOCTYPE")).toBe(true);
+    const narrated = ofType(events, "step-text")
+      .filter((event) => event.stepId === "front")
+      .map((event) => event.text)
+      .join("");
+    expect(narrated).toContain(`${fence}html`);
+  });
+
   it("os pedaços narrados de cada etapa, juntos, formam a resposta completa da etapa", async () => {
     const { getProvider } = createTestProviders();
 

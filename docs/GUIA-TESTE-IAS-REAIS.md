@@ -55,7 +55,7 @@ cartão de crédito.
 2. Abra um **terminal novo** do VS Code (menu **Terminal → New Terminal**) e rode:
    ```
    git fetch
-   git checkout fix/planilha-sem-xlsx
+   git checkout fix/site-sem-crases
    git pull
    npm run dev
    ```
