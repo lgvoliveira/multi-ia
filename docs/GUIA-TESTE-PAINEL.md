@@ -208,10 +208,12 @@ funcionários), e nenhuma conversa da Carla aparece no Chat.
 
 ## Parte J: no celular (2 min, opcional)
 
-Na janela normal, aperte **F12**, clique no ícone de celular (ou **Ctrl + Shift + M**) e escolha uma largura pequena
-(ex.: 360). Volte ao painel.
+Na janela normal, clique com o **botão direito** em qualquer lugar da página → **Inspecionar** (funciona em qualquer
+navegador; no Opera GX, o F12 e o Ctrl + Shift + I não abrem as ferramentas). Clique no ícone de celular (ou
+**Ctrl + Shift + M**) e escolha uma largura pequena (ex.: 360). Volte ao painel.
 
-**Deu certo se:** tudo cabe na largura (sem rolar para o lado) e o "Ver o que fez" continua funcionando. Feche com F12.
+**Deu certo se:** tudo cabe na largura (sem rolar para o lado) e o "Ver o que fez" continua funcionando. Feche as
+ferramentas no **X** do canto delas.
 
 ## Depois do teste
 
