@@ -107,3 +107,9 @@ export interface SendResult {
   task: ChatTask;
   month: MonthSpending;
 }
+
+/** O ditado mais longo, em segundos (a voz do chat). A tela para de gravar sozinha aqui, e a reserva conta este máximo. */
+export const MAX_VOICE_SECONDS = 120;
+
+/** O maior áudio aceito, em bytes (2 minutos de voz comprimida pelo navegador ficam bem abaixo disso). */
+export const MAX_VOICE_BYTES = 4 * 1024 * 1024;

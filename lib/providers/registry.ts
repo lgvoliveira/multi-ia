@@ -5,6 +5,7 @@ import { KEY_ENV_NAMES, serverKeys } from "@/lib/keys/server-keys";
 import { getProviderInfo } from "./catalog";
 import { createMockImageGenerator, createOpenAiImageGenerator, type ImageGenerator } from "./images";
 import { createMockProvider, parseMockFailures, parseMockOverspend } from "./mock";
+import { createMockTranscriber, createOpenAiTranscriber, type Transcriber } from "./transcribe";
 import { aiMode } from "./mode";
 import { createRealProvider } from "./real";
 import { ProviderError, type AiProvider, type GenerateChunk, type ProviderId } from "./types";
@@ -69,6 +70,19 @@ export function getImageGenerator(): ImageGenerator {
   if (key) return createOpenAiImageGenerator(key);
   return {
     generate: () =>
+      Promise.reject(
+        new ProviderError(`A chave do GPT não está configurada no servidor (${KEY_ENV_NAMES.gpt}).`, { retryable: false }),
+      ),
+  };
+}
+
+/** Quem transcreve a voz (o gpt-transcribe), pelo mesmo interruptor das IAs. Sem a chave do GPT, falha (F42). */
+export function getTranscriber(): Transcriber {
+  if (aiMode() === "simulada") return createMockTranscriber();
+  const key = serverKeys().gpt?.trim();
+  if (key) return createOpenAiTranscriber(key);
+  return {
+    transcribe: () =>
       Promise.reject(
         new ProviderError(`A chave do GPT não está configurada no servidor (${KEY_ENV_NAMES.gpt}).`, { retryable: false }),
       ),

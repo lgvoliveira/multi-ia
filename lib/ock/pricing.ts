@@ -2,7 +2,7 @@
 // É o que a OCK usa para MEDIR quanto cada tarefa gastou e descontar da carteira da empresa.
 
 import type { ImageUsage } from "@/lib/providers/images";
-import { IMAGE_MODEL, modelPrice } from "@/lib/providers/models";
+import { IMAGE_MODEL, modelPrice, TRANSCRIBE_MODEL } from "@/lib/providers/models";
 import type { ModelTier, ProviderId, Usage } from "@/lib/providers/types";
 
 /** O nível mais caro de todos (Claude Opus). Base da "economia": e se tudo rodasse no mais potente? */
@@ -43,6 +43,11 @@ export function imageCostInUsd(usage: ImageUsage): number {
   const microDollars =
     usage.textInputTokens * price.textInput + usage.imageInputTokens * price.imageInput + usage.outputTokens * price.output;
   return microDollars / 1_000_000;
+}
+
+/** Quanto transcrever `seconds` segundos de voz custa, em DÓLAR (a OpenAI cobra por minuto de áudio). */
+export function transcriptionCostInUsd(seconds: number): number {
+  return (seconds / 60) * TRANSCRIBE_MODEL.usdPerMinute;
 }
 
 /**

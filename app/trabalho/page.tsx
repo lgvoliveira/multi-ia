@@ -6,6 +6,7 @@ import { signedInSession } from "@/lib/auth/session";
 import { requireMember } from "@/lib/auth/viewer";
 import { loadMonth } from "@/lib/ock/spending";
 import { listOwnConversations } from "@/lib/ock/task-store";
+import { aiTools } from "@/lib/providers/mode";
 import { listRecipeSummaries, RECIPES } from "@/lib/recipes/catalog";
 import { recipeScreen } from "@/lib/recipes/screen";
 import { stepCosts } from "@/lib/runs/estimate";
@@ -46,6 +47,7 @@ export default async function TrabalhoPage(props: PageProps<"/trabalho">) {
       recipeCards={listRecipeSummaries()}
       recipes={recipes}
       initialView={view}
+      voice={aiTools().has("voz")}
     />
   );
 }

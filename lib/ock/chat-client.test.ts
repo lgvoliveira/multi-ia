@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OFFLINE_PROBLEM, SERVER_PROBLEM, sendMessage, uploadAttachment } from "./chat-client";
+import { OFFLINE_PROBLEM, SERVER_PROBLEM, sendMessage, transcribeAudio, uploadAttachment } from "./chat-client";
 
 const PAGE_MEMBER = "11111111-1111-4111-8111-111111111111";
 
@@ -38,5 +38,20 @@ describe("o chat no navegador", () => {
     expect(docx).toMatchObject({ ok: false, problem: expect.stringContaining("ainda não lê") });
     const big = await uploadAttachment(new File([new Uint8Array(10 * 1024 * 1024 + 1)], "a.pdf"), PAGE_MEMBER, never);
     expect(big).toMatchObject({ ok: false, problem: expect.stringContaining("10 MB") });
+  });
+
+  it("manda o ditado como formulário, com o áudio e o id de quem abriu a página", async () => {
+    let form: FormData | null = null;
+    let url = "";
+    const fake = (async (address: string, init: RequestInit) => {
+      url = address;
+      form = init.body as FormData;
+      return Response.json({ text: "Oi", costCents: 1, month: { spentCents: 1, budgetCents: null } });
+    }) as typeof fetch;
+    const result = await transcribeAudio(new Blob(["áudio"], { type: "audio/webm" }), PAGE_MEMBER, fake);
+    expect(result).toMatchObject({ ok: true, data: { text: "Oi", costCents: 1 } });
+    expect(url).toBe("/api/ock/transcribe");
+    expect(form!.get("pageMemberId")).toBe(PAGE_MEMBER);
+    expect((form!.get("audio") as File).type).toBe("audio/webm");
   });
 });

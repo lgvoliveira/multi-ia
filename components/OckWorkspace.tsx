@@ -39,6 +39,8 @@ interface OckWorkspaceProps {
   recipes: WorkspaceRecipe[];
   /** A aba e a receita com que a página abre, lidas do endereço. */
   initialView: WorkspaceView;
+  /** Se a voz está ligada no chat (OCK_AI_TOOLS). */
+  voice: boolean;
 }
 
 export function OckWorkspace({
@@ -50,6 +52,7 @@ export function OckWorkspace({
   recipeCards,
   recipes,
   initialView,
+  voice,
 }: OckWorkspaceProps) {
   const ids = useId();
   const [view, setView] = useState(initialView);
@@ -130,6 +133,7 @@ export function OckWorkspace({
           onMonthChange={setMonth}
           recipeSuggestions={suggestions}
           onOpenRecipe={(recipeId) => changeView({ tab: "recipes", recipeId })}
+          voice={voice}
         />
       </div>
       {/* A receita aberta também fica montada nas outras abas: o acompanhamento do time continua. */}

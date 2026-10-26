@@ -225,6 +225,30 @@ export async function chargeTask(holdId: string, taskId: string, charge: StepCha
   return Number(data);
 }
 
+/**
+ * Reserva `amountCents` para um ditado (a voz do chat). Não fica ligada a nenhuma execução nem mensagem: a linha de
+ * gasto entra no total do mês, mas não conta como tarefa rápida nem receita.
+ * Recusa com WalletRefusedError (sem saldo, passaria do teto do mês, pessoa desativada).
+ */
+export async function reserveForVoice(memberId: string, amountCents: number): Promise<string> {
+  return reserve({ p_member_id: memberId, p_amount_cents: amountCents, p_ttl: TASK_HOLD_TTL });
+}
+
+/** Cobra um ditado na reserva dele. Devolve quanto sobra, ou null se a reserva já foi fechada (nada é cobrado). */
+export async function chargeVoice(holdId: string, charge: StepCharge): Promise<number | null> {
+  const { data, error } = await supabaseAdmin().rpc("wallet_charge", {
+    p_hold_id: holdId,
+    p_amount_cents: charge.amountCents,
+    p_description: charge.description,
+    p_provider: charge.provider,
+  });
+  if (error) {
+    if (error.message === "hold_closed") return null;
+    throw error;
+  }
+  return Number(data);
+}
+
 /** Fecha uma reserva: o que não foi cobrado volta a ficar disponível. Fechar de novo não faz nada. */
 export async function closeHold(holdId: string): Promise<void> {
   const { error } = await supabaseAdmin().rpc("wallet_close_hold", { p_hold_id: holdId });

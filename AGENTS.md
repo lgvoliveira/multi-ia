@@ -75,8 +75,8 @@ Estrutura de pastas (criada na etapa 4, pode ser ajustada com aprovação):
 app/                 telas e rotas do Next.js. app/api/runs/ são as rotas das receitas: começar, ver, buscar as
                      novidades, cancelar e continuar depois de uma pausa ([id]/resume), com o login de quem pede, e a
                      rota interna [id]/continue, que roda uma fase de cada vez no servidor e cobra cada etapa;
-                     app/api/ock/ são as rotas do chat (mandar mensagem, anexar, baixar, conversas, entregas e
-                     gastos) e, para o painel do dono, o mês de uma pessoa da equipe (team/[id]), todas com o login
+                     app/api/ock/ são as rotas do chat (mandar mensagem, anexar, ditar, baixar, conversas, entregas
+                     e gastos) e, para o painel do dono, o mês de uma pessoa da equipe (team/[id]), todas com o login
                      de quem pede; app/trabalho/ é o espaço de trabalho, onde as receitas
                      também abrem (app/recipes/ só leva o endereço antigo para lá); app/dono/actions.ts
                      e app/convite/ são o convite do funcionário (lado do dono e lado de quem recebe o link)
@@ -90,7 +90,8 @@ lib/engine/          motor: executa as etapas de um time e narra cada passo em e
                      Recebe as IAs prontas (getProvider), não as escolhe. O ESLint barra importar
                      telas, Next.js ou React aqui, em lib/providers/, lib/recipes/ e lib/runs/
 lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts): real.ts (as IAs de verdade) e
-                     mock.ts (a simulada); images.ts cria as imagens (GPT Image e a simulada). catalog.ts e models.ts (o modelo e o preço oficial de cada nível, o
+                     mock.ts (a simulada); images.ts cria as imagens e transcribe.ts transcreve a voz (as de verdade e
+                     as simuladas). catalog.ts e models.ts (o modelo e o preço oficial de cada nível, o
                      único lugar a mudar quando uma empresa trocar nome ou preço) são só dados e podem ir para a
                      tela; registry.ts entrega as IAs e é SÓ do servidor, escolhendo a simulada ou a de verdade pelo
                      interruptor OCK_AI_MODE (mode.ts); limits.ts é o teto de saída de cada IA (resposta +
@@ -110,7 +111,7 @@ lib/ock/             o workspace para empresas: a parte "Equipe" do painel do do
                      chart.ts, project.ts) e o chat da tarefa rápida: quem executa uma mensagem (run-task.ts), o que
                      cada tipo de resposta pede à IA e quanto pode custar (quick-task.ts), a chamada às IAs com novas
                      tentativas (ai-call.ts), conversas e mensagens (task-store.ts), arquivos na pasta fechada
-                     (files.ts e attachments.ts) e os gastos do mês, da pessoa e da empresa, lidos das contas feitas no
+                     (files.ts e attachments.ts), a voz ditada (voice.ts) e os gastos do mês, da pessoa e da empresa, lidos das contas feitas no
                      banco (spending.ts), tudo SÓ do servidor; chat.ts (limites e o formato do que a tela recebe),
                      statement.ts (o formato das contas do mês), site-file.ts (o nome do arquivo do site) e
                      chat-client.ts (os pedidos do navegador) vão para a tela

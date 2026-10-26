@@ -110,3 +110,9 @@ export const IMAGE_MODEL = {
   // A reserva conta uma folga de uns 25% sobre isso (o número exato varia um pouco de imagem para imagem).
   maxOutputTokens: 2200,
 } as const;
+
+/**
+ * O modelo que transcreve a voz (é do GPT) e o preço dele: por minuto de áudio. Conferido na página oficial em
+ * 26/10/2026 (o gpt-4o-mini-transcribe, mais barato, foi descontinuado).
+ */
+export const TRANSCRIBE_MODEL = { id: "gpt-transcribe", usdPerMinute: 0.0045 } as const;

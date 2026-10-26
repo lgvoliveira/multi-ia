@@ -59,6 +59,21 @@ export async function uploadAttachment(
   return result.ok ? { ok: true, data: result.data.file } : result;
 }
 
+/** O que volta de um ditado: o texto, quanto custou e o gasto do mês atualizado. */
+export interface Dictation {
+  text: string;
+  costCents: number;
+  month: MonthSpending;
+}
+
+/** Manda o áudio ditado para transcrever (a voz do chat). */
+export function transcribeAudio(audio: Blob, pageMemberId: string, send: typeof fetch = fetch): Promise<Fetched<Dictation>> {
+  const form = new FormData();
+  form.append(PAGE_MEMBER_FIELD, pageMemberId);
+  form.append("audio", audio, "ditado");
+  return request<Dictation>("/api/ock/transcribe", { method: "POST", body: form }, send);
+}
+
 export async function listConversations(send: typeof fetch = fetch): Promise<Fetched<ChatConversation[]>> {
   const result = await request<{ conversations: ChatConversation[] }>("/api/ock/conversations", {}, send);
   return result.ok ? { ok: true, data: result.data.conversations } : result;

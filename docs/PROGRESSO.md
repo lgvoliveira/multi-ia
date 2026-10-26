@@ -4,7 +4,7 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 26/10/2026, madrugada (o Claude trabalhou sozinho: PRs #46 a #49 abertos, empilhados, esperando o
+**Última atualização:** 26/10/2026, madrugada (o Claude trabalhou sozinho: PRs #46 a #50 abertos, empilhados, esperando o
 teste do Luis; resumo em "Resumo da madrugada de 26/10", antes do "Próximo passo")
 **Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite), o aviso de troca de login
 e o PR 3 inteiro (3a receitas com login, 3b receitas cobrando, 3c o chat, a aba Receitas e a 3d, painel do dono) no ar
@@ -889,6 +889,28 @@ código)**
   aba Entregas).
 - **Guia:** Partes D e G do `docs/GUIA-TESTE-IAS-REAIS.md` ganharam a imagem.
 
+**PR da voz (madrugada de 26/10, Claude Code sozinho; branch `feat/voz`, empilhado sobre o PR da imagem)**
+- **O que ficou pronto, desligado:** com `voz` em `OCK_AI_TOOLS`, o chat ganha o botão **Ditar**: grava até 2 minutos
+  no navegador (o relógio aparece no botão, que vira "Parar"), manda o áudio para a rota nova `/api/ock/transcribe` e o
+  texto volta para a caixa de escrever, para a pessoa revisar e enviar. Nada é enviado sozinho; o Enviar fica desligado
+  enquanto grava. O áudio não é guardado.
+- **Quem transcreve:** o **gpt-transcribe** da OpenAI, em português, US$ 0,0045 por minuto (uns R$ 0,025). O
+  gpt-4o-mini-transcribe, que o código antigo do parceiro usava (via whisper-1), está descontinuado.
+- **Dinheiro:** reserva o máximo de 2 minutos (uns 5 centavos) antes de chamar a IA, cobra os segundos que a OpenAI
+  informa (sem eles, o máximo) numa linha "Voz · Transcrição", que entra no gasto do mês mas não conta como tarefa
+  rápida. Falha e áudio sem fala não são cobrados; o custo fica no registro interno (`ai_calls`, `step_id` = `voice`).
+- **Rota com as mesmas proteções das outras:** login, a pessoa que abriu a página (F34), a voz ligada, até 4 MB, só
+  áudio.
+- **Simulada:** devolve "Texto ditado (transcrição simulada)." e "custa" 5 segundos.
+- **Não mexe no PR #36 do parceiro** (o botão "Ouvir", que lê a resposta em voz alta): aquele PR mexe no
+  `OckWorkspace.tsx` antigo, e o ditado fica no `QuickChat.tsx`. Os dois PRs vão brigar só no `PROGRESSO.md`.
+- **Como foi conferido:** lint, tipos, 508 testes (novos: o conector, o preço, o ditado do começo ao fim com sucesso,
+  falha, áudio vazio e sem saldo, o envio do navegador, o interruptor e o entregador sem chave) e build; nada de chave no
+  código do navegador. Ponta a ponta contra o projeto de testes, com um microfone falso do Chrome e a empresa sem
+  crédito: 11 conferências (o botão e a dica, o relógio, o Enviar desligado, a recusa por falta de saldo antes de
+  qualquer IA sem perder o texto já escrito, nada em `ai_calls` nem reserva, 360 px sem rolar para o lado).
+- **Guia:** Partes D e G do `docs/GUIA-TESTE-IAS-REAIS.md` ganharam a voz.
+
 ## Resumo da madrugada de 26/10 (para o Luis ler primeiro)
 
 O Claude trabalhou sozinho, sem merge, sem o Supabase de verdade, sem chaves e sem créditos. Tudo com a IA simulada.
@@ -901,15 +923,16 @@ O Claude trabalhou sozinho, sem merge, sem o Supabase de verdade, sem chaves e s
 | #47 | IAs de verdade prontas, sem gastar: consumo informado pelas empresas (F40), `OCK_AI_MODE` (F42), modelos e preços oficiais (F17), correções F50 e F51, guia `docs/GUIA-TESTE-IAS-REAIS.md` com a compra dos créditos | #46 |
 | #48 | Pesquisa na internet (Claude) e contas com um programa (Gemini) no chat, desligadas (`OCK_AI_TOOLS`) | #47 |
 | #49 | Imagens no chat com o GPT Image 2 (uns R$ 0,29 cada), desligadas (`OCK_AI_TOOLS`) | #48 |
+| #50 | Voz no chat: o botão Ditar, transcrito pelo gpt-transcribe (uns R$ 0,025 por minuto), desligado (`OCK_AI_TOOLS`) | #49 |
 
 O PR #45 já estava na `main` quando a madrugada começou (merge às 23:39 de 25/10 pela conta `lgvoliveira`; **confirmar se
 foi você**). Por isso a pilha parte da `main`, não do branch do #45.
 
 **Ordem de testar e fazer o merge:**
 1. **Supabase de verdade:** conferir a migração do #45 (passos em "3d testada pelo Luis e no ar", acima).
-2. **Testar a pilha de uma vez:** a sessão 1 do `docs/GUIA-TESTE-IAS-REAIS.md` (Partes A a D, uns 25 minutos, sem gastar)
+2. **Testar a pilha de uma vez:** a sessão 1 do `docs/GUIA-TESTE-IAS-REAIS.md` (Partes A a D, uns 30 minutos, sem gastar)
    no branch do PR mais alto (a Parte A diz qual).
-3. **Merge em ordem:** #46, depois #47, depois #48, depois #49. **Depois de cada merge, clique em "Delete branch"** no PR que entrou:
+3. **Merge em ordem:** #46, #47, #48, #49 e #50. **Depois de cada merge, clique em "Delete branch"** no PR que entrou:
    só assim o GitHub troca a base do PR seguinte para a `main` (o repositório não apaga o branch sozinho). Antes de cada
    merge, confira que o alto do PR diz "into main" e que as checagens estão verdes. Se um PR falhar no teste, pare ali:
    os de baixo podem entrar, os de cima esperam a correção.
@@ -928,6 +951,7 @@ foi você**). Por isso a pilha parte da `main`, não do branch do #45.
 6. Pesquisa na internet pelo Claude, não pelo Gemini (termos do Google); código pelo Gemini.
 7. Fontes e "programa rodado" escritos no fim da resposta, sem coluna nova no banco (F53, limitação aceita).
 8. Imagem de qualidade média e quadrada, criada só a partir do pedido.
+9. Voz: até 2 minutos por ditado, e o texto volta para a caixa (nunca é enviado sozinho).
 
 **Para você decidir:**
 - **Câmbio:** continua R$ 5,50 (sua decisão de 25/10), mas cada dólar pago com cartão brasileiro sai por uns R$ 5,6 a
@@ -935,16 +959,16 @@ foi você**). Por isso a pilha parte da `main`, não do branch do #45.
   diferença. Mudar é uma linha (`USD_TO_BRL` em `lib/ock/pricing.ts`).
 - **F52:** manter as chamadas diretas ou trocar pelas bibliotecas oficiais.
 
-**Não feito nesta madrugada:** a voz (ver o próximo passo).
+**Tudo o que foi pedido para a madrugada ficou pronto**, desligado até as chaves: consumo de verdade (F40), chave
+faltando vira erro (F42), modelos e preços oficiais (F17), pesquisa, código, imagem e voz, e o guia com a compra dos
+créditos.
 
 ## Próximo passo
 
 1. **Luis:** seguir a "Ordem de testar e fazer o merge" do resumo da madrugada, acima, e decidir o câmbio e as
    decisões provisórias.
-2. **Claude Code:** a **voz** (ditar a mensagem no chat), que ficou de fora da madrugada: pede uma tela nova (gravar no
-   navegador), uma rota que recebe o áudio e uma cobrança por minuto (OpenAI gpt-4o-mini-transcribe, US$ 0,003 por
-   minuto), e o PR #36 do parceiro (o botão "Ouvir") mexe na mesma tela; combinar com ele antes. Depois, com as chaves,
-   medir custo e tempo de verdade e rever as folgas da estimativa.
+2. **Claude Code, depois das chaves:** medir custo e tempo de verdade (receita e chat) e rever as folgas da estimativa
+   (pensamento, 3 caracteres por token, ferramentas); conferir o consumo com o painel das empresas (F40).
 3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.

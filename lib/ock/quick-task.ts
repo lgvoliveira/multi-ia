@@ -71,7 +71,7 @@ const TOOL_WORKERS = {
     reason: "Conta: o Gemini roda um programa para conferir o resultado.",
   },
 } as const satisfies Record<
-  Exclude<ToolSwitch, "imagem">,
+  Extract<ToolSwitch, "pesquisa" | "codigo">,
   { provider: ProviderId; tier: ModelTier; effort: Effort; tools: AiTool[]; reason: string }
 >;
 
