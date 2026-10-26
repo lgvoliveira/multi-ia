@@ -1009,7 +1009,8 @@ créditos.
 - Nome e marca (OCK é provisório)
 - Formato do preço (por empresa, por funcionário, pelo consumo), margem e plano de teste (F04)
 - Se e quando nichar (F02)
-- Modelo de cada papel e de cada nível (econômico, padrão, potente)
+- Modelo de cada papel e de cada nível (econômico, padrão, potente): escolha provisória do Claude desde 26/10 (resumo da
+  madrugada), a confirmar e a rever com as primeiras medições
 - Cronograma
 
 ## Como retomar em uma conversa nova
