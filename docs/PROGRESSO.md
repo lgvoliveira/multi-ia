@@ -4,11 +4,12 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 25/10/2026 (etapa 5: chat testado pelo Luis; PR de telas da issue #42 aberto; a 3d, issue #43, depois)
+**Última atualização:** 25/10/2026 (etapa 5: PR de telas testado e no ar; a 3d, painel do dono, no PR #45, esperando o
+teste do Luis)
 **Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite) e o aviso de troca de
 login no ar; PR 3 (trocar o código do parceiro) em 4 partes: 3a (receitas com login), 3b (receitas cobrando) e 3c (o
-chat) no ar e testadas; agora, o PR de telas (aba Receitas, issue #42), depois a 3d (painel do dono, issue #43) e o PR
-das IAs de verdade
+chat) no ar e testadas, mais o PR de telas (aba Receitas, issue #42); a 3d (painel do dono, issue #43) no PR #45; depois,
+o PR das IAs de verdade
 
 ---
 
@@ -118,7 +119,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite), PR 3a (receitas com login), 3b (receitas cobrando) e 3c (o chat) no ar e testados; falta a aba Receitas (#42) e a 3d (#43) | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite), PR 3a (receitas com login), 3b (receitas cobrando) e 3c (o chat) no ar e testados, mais a aba Receitas (#42); a 3d (#43) no PR #45, esperando o teste | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -727,10 +728,61 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   avisos do navegador foram o `favicon.ico` que o site ainda não tem e a recusa por falta de crédito, de propósito.
   Ficou para o teste do Luis rodar a receita inteira com crédito, dentro da aba.
 
+**PR de telas testado pelo Luis e no ar (25/10)**
+- Tudo deu o resultado esperado: como Carla, as abas Chat · Receitas · Entregas · Meus gastos; os cartões ("Criar um site"
+  e 3 "Em breve"); "Usar receita" abre ali mesmo, com "← Todas as receitas"; a receita inteira rodou com crédito dentro da
+  aba e o site ficou pronto; o "Gasto do mês" subiu sem recarregar; trocar para o Chat no meio e voltar continuou o
+  acompanhamento; o F5 voltou para o mesmo lugar; a sugestão do chat vazio abre a receita; `/recipes/create-site` leva
+  para a aba. Como dono, os atalhos "Painel do dono" e "Trabalho" funcionam nas duas direções, e o `/trabalho` do dono não
+  mostra conversas da Carla; para a Carla, os atalhos não aparecem. O site pronto não foi para Entregas (F47, entra na 3d).
+- **Merge do PR #44 feito.** O Luis pediu para seguir com a 3d, dizendo que o mais importante para ele é ver logo no
+  painel o crédito da empresa e quanto cada funcionário gastou no mês.
+
+**PR 3d — painel do dono (25/10, Claude Code; issue #43, PR #45, branch `feat/painel-do-dono`)**
+- **O que o dono vê no `/dono`:** no alto, o **crédito da empresa** ("Disponível para a equipe" grande; "Saldo R$ Y", e
+  "· R$ Z separado agora para tarefas em andamento" quando há reserva aberta; "Gasto da empresa neste mês" com uma barra
+  dividida por IA e cada IA com o nome e o valor; "Para colocar crédito, fale com a nossa equipe"; sem crédito, aviso
+  vermelho e o disponível em R$ 0,00, com o saldo negativo mostrado com o sinal, F29). Na **Equipe**, cada pessoa com
+  "Gasto do mês: R$ X de R$ Y" e a barra (amarela a partir de 80% do teto, vermelha no teto), ou "· sem teto"; o que está
+  separado para ela agora, quando há; "Neste mês: 8 tarefas rápidas, 1 receita, 3 entregas"; e **"Ver o que fez"**, que
+  busca no servidor as linhas do mês (dia e hora, o que foi, as IAs, o valor) e as entregas do mês, com "Baixar". Saiu a
+  etiqueta "Teto de R$ … por mês" (o teto já aparece no gasto). Depois, "Convidar um funcionário" e o **Extrato do mês**
+  (recargas em verde com "+", gastos com "−" e o nome de quem gastou). Saiu o "Em obras".
+- **Para o funcionário:** Meus gastos com cada receita numa linha só e a barra do teto nova; nas abas Entregas e Meus
+  gastos, "O dono da empresa vê suas entregas e quanto cada tarefa custou. Suas conversas, não." (para o dono, não
+  aparece). As IAs aparecem sempre na ordem Claude, GPT, Gemini.
+- **O site vira entrega (F47):** quando a receita termina, o servidor guarda o `.html` como entrega de quem pediu, antes
+  de marcar a execução como terminada, sem guardar duas vezes se o servidor retomar. O Supabase entrega todo `.html` da
+  pasta como texto puro, com "nosniff" e como anexo: o navegador só salva. O nome do arquivo do site passou de
+  `components/generated-site.ts` para `lib/ock/site-file.ts` (o servidor também usa).
+- **Por dentro:** migração `20261025200001_month_summaries.sql` com quatro contas feitas no banco (crédito da empresa,
+  gasto do mês por IA, mês de cada pessoa e extrato do mês com a receita numa linha), que rodam com o login de quem chama
+  (as regras de acesso valem dentro delas); resolve a F48. Rota nova `GET /api/ock/team/[id]` (só o dono). Componentes
+  novos: `CompanyCredit`, `MemberMonth`, `StatementList` e `BudgetBar`. Sem biblioteca nova.
+- **Falha nova achada no teste e corrigida (F49):** o nome e o título dos documentos do chat (PDF, Word, Excel) eram os
+  primeiros 60 caracteres do pedido; com o painel, o dono leria o começo do pedido nas entregas. Agora vêm da primeira
+  linha do que a IA escreveu ("Resumo.pdf"); a planilha se chama "Planilha". Os documentos antigos ficam com o nome antigo.
+- **Decisões do Claude:** "Ver o que fez" busca a lista só quando o dono abre (o painel não fica pesado com equipes
+  grandes); as listas mostram as 200 linhas mais recentes e avisam quando há mais; a barra por IA segue a paleta das IAs,
+  conferida com o validador de cores (passa, com o nome e o valor escritos ao lado de cada cor).
+- **Como foi conferido:** lint, tipos, 418 testes (novos: contas do mês e extrato, rota do "Ver o que fez", site virando
+  entrega, nome dos documentos) e build. Testes do banco: 26 novos (`05_month_summaries`) e a checagem de estrutura
+  atualizada, 137 no ensaio local e verdes no GitHub; cada conta foi estragada de propósito numa cópia (sem a conferência
+  do dono, sem o login de quem chama, contando reserva vencida, sem juntar a receita) e o teste pegou. **Teste de ponta a
+  ponta** contra o projeto de testes, com um roteiro no Chrome (empresa nova sem crédito; Carla e Bruno; outra empresa):
+  67 conferências, todas certas — o site guardado como entrega uma vez só e baixado como anexo; saldo, reservado e gasto
+  batendo com o extrato; a soma por IA e por pessoa batendo com o total; o funcionário sem o saldo da empresa e sem o
+  colega; o dono de outra empresa sem nada; o dono nunca recebendo o pedido; o painel inteiro, "Ver o que fez", o extrato
+  e o aviso sem crédito na tela; Meus gastos e Entregas da Carla com a frase; telas em 360 e 320 px sem rolar para o lado.
+  Ficou para o teste do Luis (com crédito): a receita nova virando entrega pela tela, o PDF do chat com o nome novo, o
+  teto recusando o chat (Parte I do guia do chat) e a recarga aparecendo no extrato.
+- **Guia do teste:** `docs/GUIA-TESTE-PAINEL.md`, para o Luis seguir com o chat do Claude. A migração já foi para o
+  projeto de testes (workflow "Banco de testes" rodado no branch do PR).
+
 ## Próximo passo
 
-1. **Luis:** testar o PR de telas (issue #42) pelos passos da descrição do PR e fazer o merge. Depois, **Claude Code:**
-   a **3d** (issue #43).
+1. **Luis:** testar o PR #45 (parte 3d, painel do dono) pelo `docs/GUIA-TESTE-PAINEL.md`, com o chat do Claude, e voltar
+   ao Claude Code contando como foi. O merge só depois do teste.
 2. **Claude Code:** **PR das IAs de verdade**, nas receitas e no chat, antes de comprar créditos: ler o consumo que cada
    API devolve (F40), faltar a chave vira erro em vez de cair na simulada (F42), conferir os nomes dos modelos e os preços
    oficiais (F17), e ligar imagem, pesquisa, código e voz com preço e limite conferidos. Depois, o Claude guia a compra de
