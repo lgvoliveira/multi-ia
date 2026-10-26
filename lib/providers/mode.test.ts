@@ -33,6 +33,7 @@ describe("interruptor OCK_AI_TOOLS", () => {
     expect(aiTools({ OCK_AI_TOOLS: "Pesquisa, codigo" })).toEqual(new Set(["pesquisa", "codigo"]));
     expect(aiTools({ OCK_AI_TOOLS: "codigo" })).toEqual(new Set(["codigo"]));
     expect(aiTools({ OCK_AI_TOOLS: "imagem,pesquisa" })).toEqual(new Set(["imagem", "pesquisa"]));
+    expect(aiTools({ OCK_AI_TOOLS: "voz" })).toEqual(new Set(["voz"]));
   });
 
   it("nome que não dá para entender é erro", () => {

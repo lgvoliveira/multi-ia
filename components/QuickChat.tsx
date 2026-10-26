@@ -15,13 +15,14 @@ import {
   EFFORT_LABEL,
   MAX_ATTACHMENTS,
   MAX_MESSAGE_CHARS,
+  MAX_VOICE_SECONDS,
   TIER_LABEL,
   type ChatConversation,
   type ChatFile,
   type ChatTask,
   type MonthSpending,
 } from "@/lib/ock/chat";
-import { fileUrl, loadConversation, sendMessage, uploadAttachment } from "@/lib/ock/chat-client";
+import { fileUrl, loadConversation, sendMessage, transcribeAudio, uploadAttachment } from "@/lib/ock/chat-client";
 import { formatBRL } from "@/lib/ock/pricing";
 import { getProviderInfo } from "@/lib/providers/catalog";
 import type { RecipeSummary } from "@/lib/recipes/types";
@@ -35,6 +36,8 @@ interface QuickChatProps {
   /** As receitas prontas, sugeridas com o chat vazio. */
   recipeSuggestions: RecipeSummary[];
   onOpenRecipe: (recipeId: string) => void;
+  /** Se a voz está ligada (OCK_AI_TOOLS): mostra o botão Ditar. */
+  voice: boolean;
 }
 
 /** Uma mensagem na tela: já respondida, ou esperando a resposta. */
@@ -48,6 +51,7 @@ export function QuickChat({
   onMonthChange,
   recipeSuggestions,
   onOpenRecipe,
+  voice,
 }: QuickChatProps) {
   const ids = useId();
   const [conversations, setConversations] = useState(initialConversations);
@@ -58,14 +62,35 @@ export function QuickChat({
   const [attached, setAttached] = useState<ChatFile[]>([]);
   const [uploading, setUploading] = useState(0);
   const [sending, setSending] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordedSeconds, setRecordedSeconds] = useState(0);
+  const [transcribing, setTranscribing] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // A gravação do ditado: o gravador do navegador, os pedaços do áudio e o relógio.
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunks = useRef<Blob[]>([]);
+  const clockRef = useRef<number | null>(null);
   // Cada conversa aberta ganha um número: a resposta de uma conversa que a pessoa já trocou é ignorada.
   const openTicket = useRef(0);
   const pendingCounter = useRef(0);
+
+  // Saindo da página no meio de um ditado: o microfone desliga e nada é enviado.
+  useEffect(
+    () => () => {
+      if (clockRef.current !== null) window.clearInterval(clockRef.current);
+      const recorder = recorderRef.current;
+      if (recorder) {
+        recorder.onstop = null;
+        if (recorder.state !== "inactive") recorder.stop();
+        recorder.stream.getTracks().forEach((track) => track.stop());
+      }
+    },
+    [],
+  );
 
   // A lista acompanha a mensagem mais nova. Sem mensagens, fica no alto: o começo do chat vazio não some.
   useEffect(() => {
@@ -123,6 +148,76 @@ export function QuickChat({
     }
   }
 
+  /** Começa a gravar o ditado. O navegador pede licença para usar o microfone na primeira vez. */
+  async function startDictation() {
+    setProblem(null);
+    if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setProblem("Este navegador não grava áudio. Escreva a mensagem ou use outro navegador.");
+      return;
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setProblem("Não deu para usar o microfone. Libere o microfone para este site no navegador e tente de novo.");
+      return;
+    }
+    const recorder = new MediaRecorder(stream);
+    audioChunks.current = [];
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) audioChunks.current.push(event.data);
+    };
+    recorder.onstop = () => {
+      stream.getTracks().forEach((track) => track.stop());
+      void finishDictation(new Blob(audioChunks.current, { type: recorder.mimeType || "audio/webm" }));
+    };
+    recorder.start();
+    recorderRef.current = recorder;
+    setRecording(true);
+    setRecordedSeconds(0);
+    setAnnouncement("Gravando. Fale e aperte Parar quando terminar.");
+    const startedAt = Date.now();
+    clockRef.current = window.setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      setRecordedSeconds(elapsed);
+      // No limite, para sozinho e transcreve o que foi gravado.
+      if (elapsed >= MAX_VOICE_SECONDS) stopDictation();
+    }, 250);
+  }
+
+  function stopDictation() {
+    if (clockRef.current !== null) {
+      window.clearInterval(clockRef.current);
+      clockRef.current = null;
+    }
+    setRecording(false);
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+  }
+
+  /** Manda o áudio para transcrever e põe o texto na caixa, para a pessoa revisar antes de enviar. */
+  async function finishDictation(audio: Blob) {
+    if (audio.size === 0) {
+      setProblem("O áudio veio vazio. Grave de novo.");
+      return;
+    }
+    setTranscribing(true);
+    setAnnouncement("Transcrevendo o que você disse…");
+    const result = await transcribeAudio(audio, pageMemberId);
+    setTranscribing(false);
+    if (!result.ok) {
+      setProblem(result.problem);
+      setAnnouncement(result.problem);
+      return;
+    }
+    const { text, costCents, month } = result.data;
+    setMessage((current) => (current.trim() ? `${current.trimEnd()} ${text}` : text).slice(0, MAX_MESSAGE_CHARS));
+    onMonthChange(month);
+    setAnnouncement(`Texto ditado. ${costLabel(costCents)}. Revise e envie.`);
+    inputRef.current?.focus();
+  }
+
   async function send() {
     const text = message.trim();
     if (sending || uploading > 0 || (!text && attached.length === 0)) return;
@@ -170,7 +265,8 @@ export function QuickChat({
     }
   }
 
-  const canSend = !sending && uploading === 0 && (message.trim().length > 0 || attached.length > 0);
+  const dictating = recording || transcribing;
+  const canSend = !sending && uploading === 0 && !dictating && (message.trim().length > 0 || attached.length > 0);
   const atLimit = message.length >= MAX_MESSAGE_CHARS;
   const inputId = `${ids}-message`;
   const counterId = `${ids}-counter`;
@@ -289,6 +385,17 @@ export function QuickChat({
             >
               Anexar arquivo
             </button>
+            {voice && (
+              <button
+                type="button"
+                className={styles.attach}
+                onClick={recording ? stopDictation : () => void startDictation()}
+                disabled={sending || transcribing}
+                aria-pressed={recording}
+              >
+                {recording ? `Parar (${clock(recordedSeconds)})` : transcribing ? "Transcrevendo…" : "Ditar"}
+              </button>
+            )}
             <span id={counterId} className={styles.counter} data-full={atLimit}>
               {formatNumber(message.length)}/{formatNumber(MAX_MESSAGE_CHARS)} caracteres
             </span>
@@ -296,7 +403,10 @@ export function QuickChat({
               {sending ? "Respondendo…" : "Enviar"}
             </button>
           </div>
-          <p className={styles.hint}>PDF, texto (.txt, .csv, .md, .json) ou imagem, até 5 arquivos de 10 MB.</p>
+          <p className={styles.hint}>
+            PDF, texto (.txt, .csv, .md, .json) ou imagem, até 5 arquivos de 10 MB.
+            {voice && ` Ditar: até ${MAX_VOICE_SECONDS / 60} minutos de voz, que viram texto aqui para você revisar.`}
+          </p>
         </form>
 
         <p className={styles.visuallyHidden} aria-live="polite">
@@ -305,6 +415,11 @@ export function QuickChat({
       </section>
     </div>
   );
+}
+
+/** O tempo do ditado, como num relógio: 75 → "1:15". */
+function clock(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 /** Quantas receitas o chat vazio sugere, no máximo. */

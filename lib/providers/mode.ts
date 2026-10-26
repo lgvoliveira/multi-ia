@@ -20,14 +20,14 @@ export function aiMode(env: Record<string, string | undefined> = process.env): A
 }
 
 /** As ferramentas que dá para ligar, com o nome que vai no interruptor OCK_AI_TOOLS. */
-export type ToolSwitch = "pesquisa" | "codigo" | "imagem";
-const TOOL_SWITCHES: readonly ToolSwitch[] = ["pesquisa", "codigo", "imagem"];
+export type ToolSwitch = "pesquisa" | "codigo" | "imagem" | "voz";
+const TOOL_SWITCHES: readonly ToolSwitch[] = ["pesquisa", "codigo", "imagem", "voz"];
 
 /**
  * Lê o interruptor OCK_AI_TOOLS (veja .env.example): quais ferramentas estão ligadas, separadas por vírgula
- * ("pesquisa,codigo,imagem"). Vazio: nenhuma (o padrão, até o Luis decidir ligar). Com a IA simulada, as ferramentas
- * ligadas são fingidas (uma fonte de exemplo, um programa "rodado", um quadriculado no lugar da imagem), para testar a
- * tela sem gastar. Nome que não dá para
+ * ("pesquisa,codigo,imagem,voz"). Vazio: nenhuma (o padrão, até o Luis decidir ligar). Com a IA simulada, as
+ * ferramentas ligadas são fingidas (uma fonte de exemplo, um programa "rodado", um quadriculado no lugar da imagem, um
+ * texto de exemplo no lugar do ditado), para testar a tela sem gastar. Nome que não dá para
  * entender é erro, como nos outros interruptores.
  */
 export function aiTools(env: Record<string, string | undefined> = process.env): Set<ToolSwitch> {

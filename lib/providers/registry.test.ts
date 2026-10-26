@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createGetProvider, getImageGenerator, getProvider, getSimulatedProvider } from "./registry";
+import { createGetProvider, getImageGenerator, getProvider, getSimulatedProvider, getTranscriber } from "./registry";
 import { ProviderError, type GenerateChunk, type GenerateRequest } from "./types";
 
 const request: GenerateRequest = {
@@ -110,5 +110,22 @@ describe("quem cria as imagens, conforme OCK_AI_MODE", () => {
     expect(error).toMatchObject({ retryable: false });
     expect((error as Error).message).toContain("OCK_GPT_KEY");
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("quem transcreve a voz, conforme OCK_AI_MODE", () => {
+  it("simulada: a transcrição simulada", async () => {
+    vi.stubEnv("OCK_AI_MODE", "simulada");
+    expect((await getTranscriber().transcribe(new Blob(["x"]), "ditado.webm")).model).toBe("mock-gpt-transcribe");
+  });
+
+  it("real sem a chave do GPT: falha sem chamar ninguém", async () => {
+    vi.stubEnv("OCK_AI_MODE", "real");
+    vi.stubEnv("OCK_GPT_KEY", "");
+    const error = await getTranscriber()
+      .transcribe(new Blob(["x"]), "ditado.webm")
+      .catch((caught: unknown) => caught);
+    expect(error).toMatchObject({ retryable: false });
+    expect((error as Error).message).toContain("OCK_GPT_KEY");
   });
 });

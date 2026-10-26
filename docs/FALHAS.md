@@ -329,6 +329,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   da empresa, e a rota da voz (`/api/ock/transcribe`, que usava a chave do GPT sem login nem cobrança) saiu até o PR das
   IAs de verdade. No teste de ponta a ponta, sem login as rotas responderam 401. Receitas e chat seguem com a IA
   simulada; ligar as de verdade é o próximo PR (F40, F42).
+- **Nota (26/10/2026, PR da voz):** a rota da voz voltou (`/api/ock/transcribe`), já do jeito das outras: só com login,
+  só para quem abriu a página (F34), só com a voz ligada (`OCK_AI_TOOLS`) e reservando na carteira da empresa antes de
+  chamar a IA.
 
 ### F17 — Preços das IAs e câmbio fixos no código
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 22/10/2026

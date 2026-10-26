@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { costInCents, costInUsd, formatBRL, USD_TO_BRL } from "./pricing";
+import { costInCents, costInUsd, formatBRL, transcriptionCostInUsd, USD_TO_BRL } from "./pricing";
 
 const million = (inputTokens: number, outputTokens: number) => ({ inputTokens, outputTokens });
 
@@ -21,6 +21,11 @@ describe("preço de cada uso", () => {
   it("cada pesquisa na internet do Claude custa US$ 0,01, além dos tokens", () => {
     expect(costInUsd("claude", "padrao", { inputTokens: 0, outputTokens: 0, webSearchRequests: 3 })).toBeCloseTo(0.03, 10);
     expect(costInUsd("claude", "padrao", { inputTokens: 1_000_000, outputTokens: 0, webSearchRequests: 1 })).toBeCloseTo(2.01, 10);
+  });
+
+  it("transcrever a voz custa US$ 0,0045 por minuto de áudio", () => {
+    expect(transcriptionCostInUsd(60)).toBeCloseTo(0.0045, 10);
+    expect(transcriptionCostInUsd(30)).toBeCloseTo(0.00225, 10);
   });
 
   it("o preço muda sozinho na data anunciada pela empresa da IA", () => {
