@@ -80,7 +80,7 @@ export function taskView(
     tier: row.chosen_tier,
     effort: row.chosen_effort,
     reason: null,
-    notice: status === "finished" ? actionNotice(row.action) : null,
+    notice: status === "finished" ? actionNotice(row.action, row.answer) : null,
     costCents: extras.costCents,
     attachmentsCut: false,
     createdAt: row.created_at,

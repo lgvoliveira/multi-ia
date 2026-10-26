@@ -5,21 +5,26 @@
 // O modelo e o preço de cada nível ficam em models.ts. O consumo cobrado é o que a empresa da IA informa no fim da
 // resposta, com o "pensamento" e o cache (F40), nunca a conta pelo tamanho do texto.
 
-import { maxInputTokens, outputTokenCap } from "./limits";
+import { MAX_WEB_SEARCHES, maxInputTokens, outputTokenCap } from "./limits";
 import { modelId } from "./models";
 import {
   DEFAULT_TIER,
   ProviderError,
   type AiProvider,
+  type AiTool,
   type Effort,
   type GenerateChunk,
   type GenerateRequest,
   type ProviderId,
   type Usage,
+  type WebSource,
 } from "./types";
 
 /** Uma imagem que a IA deve "enxergar": o tipo (ex.: image/png) e o conteúdo em base64. */
 type ImageInput = { mime: string; base64: string };
+
+/** O último pedaço de uma resposta: o consumo, o modelo e o que mais a IA fez. */
+type DoneChunk = Extract<GenerateChunk, { type: "done" }>;
 
 /** O que um conector precisa para uma chamada. */
 interface Call {
@@ -31,6 +36,7 @@ interface Call {
   maxTokens: number;
   effort: Effort;
   images: ImageInput[];
+  tools: AiTool[];
   signal?: AbortSignal;
   fetch: typeof fetch;
 }
@@ -54,6 +60,7 @@ export function createRealProvider(id: ProviderId, apiKey: string, options: Real
         maxTokens: outputTokenCap(id, request.maxOutputTokens, effort),
         effort,
         images: request.images ?? [],
+        tools: request.tools ?? [],
         signal: request.signal,
         fetch: options.fetch ?? fetch,
       };
@@ -74,6 +81,18 @@ export function createRealProvider(id: ProviderId, apiKey: string, options: Real
 // Os modelos 5.5 do Claude sempre pensam ("adaptive"): o Opus nem aceita desligar, e sem o esforço explícito o Sonnet
 // pensa no nível alto. Por isso o esforço vai sempre, inclusive o baixo. Não pedimos o "fallback" da Anthropic (outro
 // modelo dela assumir quando ele recusa): a nossa troca de IA já cuida disso, e o preço continua o do modelo pedido.
+
+/**
+ * A pesquisa na internet do Claude: no máximo MAX_WEB_SEARCHES pesquisas, com resultados do Brasil. Ele filtra o que
+ * as páginas trazem antes de ler (menos tokens), e a resposta não devolve o conteúdo cru das páginas.
+ */
+const CLAUDE_WEB_SEARCH = {
+  type: "web_search_20260318",
+  name: "web_search",
+  max_uses: MAX_WEB_SEARCHES,
+  response_inclusion: "excluded",
+  user_location: { type: "approximate", country: "BR", timezone: "America/Sao_Paulo" },
+};
 
 async function* streamClaude(call: Call): AsyncGenerator<GenerateChunk> {
   const content = call.images.length
@@ -96,11 +115,13 @@ async function* streamClaude(call: Call): AsyncGenerator<GenerateChunk> {
       output_config: { effort: call.effort },
       system: call.system,
       messages: [{ role: "user", content }],
+      ...(call.tools.includes("web_search") ? { tools: [CLAUDE_WEB_SEARCH] } : {}),
       stream: true,
     },
   );
 
   const meter = new UsageMeter();
+  const sources = new SourceList();
   let text = "";
   let stopReason: string | null = null;
   let finished = false;
@@ -111,10 +132,15 @@ async function* streamClaude(call: Call): AsyncGenerator<GenerateChunk> {
       if (event.type === "message_start") {
         meter.claude(event.message?.usage);
       } else if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
-        // Só o texto da resposta entra; os blocos de "pensamento" (thinking_delta) ficam de fora.
+        // Só o texto da resposta entra; os blocos de "pensamento" (thinking_delta) e da pesquisa ficam de fora.
         const piece = String(event.delta.text ?? "");
         text += piece;
         yield { type: "text", text: piece };
+      } else if (event.type === "content_block_delta" && event.delta?.type === "citations_delta") {
+        // A página que sustenta o trecho que a IA está escrevendo (a pesquisa na internet).
+        sources.add(event.delta.citation);
+      } else if (event.type === "content_block_start" && Array.isArray(event.content_block?.citations)) {
+        for (const citation of event.content_block.citations) sources.add(citation);
       } else if (event.type === "message_delta") {
         meter.claude(event.usage);
         if (event.delta?.stop_reason) stopReason = event.delta.stop_reason;
@@ -134,7 +160,9 @@ async function* streamClaude(call: Call): AsyncGenerator<GenerateChunk> {
   if (stopReason === "refusal") {
     throw new ProviderError("A IA recusou o pedido.", { retryable: false, model: call.model, usage: meter.usage() });
   }
-  yield finish(call, meter, text, finished, stopReason === "max_tokens");
+  // "pause_turn": a pesquisa demorou demais e a Anthropic parou o turno; o que ela escreveu vale, mas pode estar incompleto.
+  const cut = stopReason === "max_tokens" || stopReason === "pause_turn";
+  yield { ...finish(call, meter, text, finished, cut), ...sources.chunkFields() };
 }
 
 // ---------- OpenAI (GPT) ----------
@@ -231,11 +259,14 @@ async function* streamGemini(call: Call): AsyncGenerator<GenerateChunk> {
         // Os modelos Gemini 3.5 em diante aceitam "low", "medium" e "high" ("minimal" dá erro no 3.8 Flash).
         thinkingConfig: { thinkingLevel: call.effort },
       },
+      // Rodar código: o Gemini escreve um programa e o roda num ambiente isolado do Google, sem custo a mais.
+      ...(call.tools.includes("code_execution") ? { tools: [{ code_execution: {} }] } : {}),
     },
   );
 
   const meter = new UsageMeter();
   let text = "";
+  let codeRuns = 0;
   let finishReason: string | null = null;
   try {
     for await (const data of readSse(response, call.signal)) {
@@ -254,6 +285,8 @@ async function* streamGemini(call: Call): AsyncGenerator<GenerateChunk> {
       const candidate = event.candidates?.[0];
       if (!candidate) continue;
       for (const part of candidate.content?.parts ?? []) {
+        // O programa rodou (o código e o resultado ficam de fora do texto: a resposta explica o que deu).
+        if (part.codeExecutionResult) codeRuns += 1;
         // O texto da resposta tem part.text; os blocos de "pensamento" vêm com part.thought e ficam de fora.
         const piece = part.text;
         if (typeof piece === "string" && piece && !part.thought) {
@@ -270,10 +303,28 @@ async function* streamGemini(call: Call): AsyncGenerator<GenerateChunk> {
   if (finishReason && GEMINI_REFUSALS.has(finishReason)) {
     throw new ProviderError("A IA recusou o pedido.", { retryable: false, model: call.model, usage: meter.usage() });
   }
-  yield finish(call, meter, text, finishReason !== null, finishReason === "MAX_TOKENS");
+  const done = finish(call, meter, text, finishReason !== null, finishReason === "MAX_TOKENS");
+  yield codeRuns ? { ...done, codeRuns } : done;
 }
 
 // ---------- Consumo ----------
+
+/** As páginas citadas, sem repetir, na ordem em que apareceram. Só endereços da web (http e https). */
+class SourceList {
+  private readonly byUrl = new Map<string, WebSource>();
+
+  add(citation: Json): void {
+    const url = typeof citation?.url === "string" ? citation.url.trim() : "";
+    if (!/^https?:\/\//i.test(url) || this.byUrl.has(url)) return;
+    const title = typeof citation.title === "string" && citation.title.trim() ? citation.title.trim() : url;
+    this.byUrl.set(url, { title: title.slice(0, 200), url: url.slice(0, 2000) });
+  }
+
+  /** O pedaço que vai no "done": as fontes, quando houve alguma. */
+  chunkFields(): { sources?: WebSource[] } {
+    return this.byUrl.size ? { sources: [...this.byUrl.values()] } : {};
+  }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = any;
@@ -284,6 +335,7 @@ class UsageMeter {
   private output = 0;
   private cached = 0;
   private written = 0;
+  private searches = 0;
 
   /** Claude: o começo traz a entrada; o fim, a saída (com o pensamento) até ali. Os números já são totais. */
   claude(usage: Json): void {
@@ -294,6 +346,8 @@ class UsageMeter {
       this.input = usage.input_tokens + this.cached + this.written;
     }
     if (typeof usage.output_tokens === "number") this.output = usage.output_tokens;
+    const searches = usage.server_tool_use?.web_search_requests;
+    if (typeof searches === "number") this.searches = searches;
   }
 
   /** OpenAI: um pedaço só, no fim. prompt_tokens já conta o cache; completion_tokens já conta o raciocínio. */
@@ -320,6 +374,7 @@ class UsageMeter {
       outputTokens: this.output,
       ...(this.cached ? { cachedInputTokens: this.cached } : {}),
       ...(this.written ? { cacheWriteTokens: this.written } : {}),
+      ...(this.searches ? { webSearchRequests: this.searches } : {}),
     };
   }
 }
@@ -329,7 +384,7 @@ class UsageMeter {
  * falha que vale tentar de novo: o texto pode estar pela metade. Se a empresa da IA não informou o consumo (não
  * deveria acontecer), cobra o máximo possível, para a plataforma nunca cobrar menos do que pagou.
  */
-function finish(call: Call, meter: UsageMeter, text: string, finished: boolean, truncated: boolean): GenerateChunk {
+function finish(call: Call, meter: UsageMeter, text: string, finished: boolean, truncated: boolean): DoneChunk {
   const reported = meter.usage();
   if (!finished) {
     throw new ProviderError("A resposta da IA caiu no meio.", { retryable: true, model: call.model, usage: reported });

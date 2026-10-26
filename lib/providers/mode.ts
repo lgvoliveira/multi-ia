@@ -18,3 +18,24 @@ export function aiMode(env: Record<string, string | undefined> = process.env): A
   if (value) throw new Error(`OCK_AI_MODE: não entendi "${value}". Use "real" ou "simulada".`);
   return env.NODE_ENV === "development" || env.NODE_ENV === "test" ? "simulada" : "real";
 }
+
+/** As ferramentas que dá para ligar, com o nome que vai no interruptor OCK_AI_TOOLS. */
+export type ToolSwitch = "pesquisa" | "codigo";
+const TOOL_SWITCHES: readonly ToolSwitch[] = ["pesquisa", "codigo"];
+
+/**
+ * Lê o interruptor OCK_AI_TOOLS (veja .env.example): quais ferramentas estão ligadas, separadas por vírgula
+ * ("pesquisa,codigo"). Vazio: nenhuma (o padrão, até o Luis decidir ligar). Com a IA simulada, as ferramentas ligadas
+ * são fingidas (uma fonte de exemplo, um programa "rodado"), para testar a tela sem gastar. Nome que não dá para
+ * entender é erro, como nos outros interruptores.
+ */
+export function aiTools(env: Record<string, string | undefined> = process.env): Set<ToolSwitch> {
+  const tools = new Set<ToolSwitch>();
+  for (const entry of (env.OCK_AI_TOOLS ?? "").split(",").map((part) => part.trim().toLowerCase())) {
+    if (!entry) continue;
+    const tool = TOOL_SWITCHES.find((name) => name === entry);
+    if (!tool) throw new Error(`OCK_AI_TOOLS: não entendi "${entry}". Use, por exemplo, "pesquisa,codigo".`);
+    tools.add(tool);
+  }
+  return tools;
+}

@@ -21,6 +21,20 @@ export type Effort = "low" | "medium" | "high";
  */
 export type ModelTier = "economico" | "padrao" | "potente";
 
+/**
+ * Ferramentas que a IA pode usar numa chamada, além de escrever. Cada uma existe numa IA só (a pesquisa no Claude, o
+ * código no Gemini; veja lib/ock/quick-task.ts) e só liga com o interruptor OCK_AI_TOOLS (lib/providers/mode.ts).
+ * - web_search: pesquisar na internet e citar as fontes.
+ * - code_execution: escrever e rodar um programa (num ambiente isolado da empresa da IA) para fazer uma conta.
+ */
+export type AiTool = "web_search" | "code_execution";
+
+/** Uma página que a IA consultou na internet, para a resposta citar. */
+export interface WebSource {
+  title: string;
+  url: string;
+}
+
 /** Nível usado quando a etapa não escolhe outro. As receitas ainda não escolhem: todas rodam no padrão. */
 export const DEFAULT_TIER: ModelTier = "padrao";
 
@@ -38,6 +52,8 @@ export interface GenerateRequest {
   tier?: ModelTier;
   /** Imagens para a IA "enxergar" (visão). Cada uma com o tipo (ex.: image/png) e o conteúdo em base64. */
   images?: { mime: string; base64: string }[];
+  /** Ferramentas que a IA pode usar nesta chamada. Sem valor: nenhuma. */
+  tools?: AiTool[];
   /**
    * Exemplo de resposta definido na receita. Só a IA simulada usa;
    * os adaptadores das IAs reais ignoram este campo.
@@ -57,6 +73,8 @@ export interface Usage {
   cachedInputTokens?: number;
   /** Quanto da entrada foi gravado no cache nesta chamada (na OpenAI, sai mais caro). Sem valor: nada. */
   cacheWriteTokens?: number;
+  /** Quantas pesquisas na internet a IA fez (cobradas à parte, por pesquisa). Sem valor: nenhuma. */
+  webSearchRequests?: number;
 }
 
 /** Cada pedaço que a IA devolve enquanto escreve. */
@@ -69,6 +87,10 @@ export type GenerateChunk =
       model: string;
       /** true quando a resposta foi cortada por atingir maxOutputTokens. */
       truncated: boolean;
+      /** As páginas que a IA citou, quando pesquisou na internet. */
+      sources?: WebSource[];
+      /** Quantas vezes a IA rodou um programa, quando pôde rodar código. */
+      codeRuns?: number;
     };
 
 /** Uma IA: recebe um pedido e devolve a resposta em pedaços, terminando com um "done". */

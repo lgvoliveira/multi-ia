@@ -2,7 +2,7 @@
 // para a API de cada empresa (real.ts) e a base da estimativa de custo (lib/runs/estimate.ts e a reserva do chat):
 // mudou aqui, muda nos dois lugares, e a estimativa continua sendo o máximo que a IA consegue gastar.
 
-import type { Effort, ProviderId } from "./types";
+import type { AiTool, Effort, ProviderId } from "./types";
 
 /**
  * Folga para o pensamento, em tokens, além do limite da resposta, por esforço. Nos modelos de hoje, as três IAs pensam
@@ -18,6 +18,21 @@ export const THINKING_ROOM: Record<Effort, number> = { low: 2000, medium: 8000, 
  * caracteres por token, contra 4 ou mais), então a conta usa 3.
  */
 export const ESTIMATE_CHARS_PER_TOKEN = 3;
+
+/** No máximo quantas pesquisas na internet a IA faz numa chamada (cada uma é cobrada à parte). */
+export const MAX_WEB_SEARCHES = 3;
+
+/**
+ * Quanto cada ferramenta pode somar à entrada, em tokens, para estimar o máximo: o que a pesquisa traz das páginas (por
+ * pesquisa) e o código e os resultados que a IA relê quando roda um programa. Não há teto exato (a empresa da IA não
+ * deixa limitar); se passar, a mensagem é cobrada pelo que a IA informou (F29). Rever com o consumo de verdade.
+ */
+export const TOOL_INPUT_TOKENS: Record<AiTool, number> = { web_search: 40_000, code_execution: 20_000 };
+
+/** O máximo que as ferramentas de um pedido somam à entrada, em tokens. */
+export function toolInputTokens(tools: readonly AiTool[] = []): number {
+  return tools.reduce((total, tool) => total + (tool === "web_search" ? MAX_WEB_SEARCHES : 1) * TOOL_INPUT_TOKENS[tool], 0);
+}
 
 /** A entrada que um texto pode gastar, em tokens, para estimar o máximo. */
 export function maxInputTokens(text: string): number {

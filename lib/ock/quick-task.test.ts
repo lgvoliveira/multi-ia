@@ -12,6 +12,7 @@ import {
   buildWorkerInput,
   chargeDescription,
   chiefMaxCents,
+  CODE_RAN_NOTE,
   conversationTitle,
   documentTitle,
   HISTORY_MAX_CHARS,
@@ -19,8 +20,10 @@ import {
   IMAGE_INPUT_TOKENS,
   planWork,
   requestInputTokens,
+  SOURCES_HEADING,
   taskAiCallRows,
   taskChargeCents,
+  toolNotes,
   workRequest,
 } from "./quick-task";
 
@@ -74,12 +77,73 @@ describe("o que cada tipo de resposta pede à IA", () => {
     expect(search.kind).toBe("answer");
     expect(search.systemPrompt).toContain("não tem acesso à internet");
     expect(search.systemPrompt).not.toMatch(/NUNCA diga/i);
-    expect(actionNotice("pesquisa")).toContain("pesquisa na internet ainda não está ligada");
+    expect(actionNotice("pesquisa", "O dólar está em alta.")).toContain("não veio de uma pesquisa na internet");
 
     const code = planWork(route("codigo"), "Rode este cálculo");
     expect(code.systemPrompt).toContain("não pode rodar código");
-    expect(actionNotice("codigo")).toContain("sem executar um programa");
-    expect(actionNotice("responder")).toBeNull();
+    expect(actionNotice("codigo", "Dá 1.268,25.")).toContain("sem rodar um programa");
+    expect(actionNotice("responder", "Oi")).toBeNull();
+    // Com as ferramentas desligadas, nenhuma vai para a IA.
+    expect(search.tools).toBeUndefined();
+    expect(workRequest(search, "x").tools).toBeUndefined();
+  });
+
+  it("com a pesquisa ligada, quem pesquisa é o Claude padrão, e o motivo explica a troca", () => {
+    const search = planWork(route("pesquisa", { provider: "gemini", tier: "economico" }), "Cotação do dólar hoje", new Set(["pesquisa"] as const));
+    expect(search).toMatchObject({ provider: "claude", tier: "padrao", effort: "low", tools: ["web_search"], kind: "answer" });
+    expect(search.systemPrompt).toContain("Pesquise na internet");
+    expect(search.reason).toContain("Claude pesquisa");
+    expect(workRequest(search, "x").tools).toEqual(["web_search"]);
+    // Ligar só a pesquisa não muda o código.
+    expect(planWork(route("codigo"), "Calcule", new Set(["pesquisa"] as const)).tools).toBeUndefined();
+  });
+
+  it("com o código ligado, quem roda o programa é o Gemini padrão", () => {
+    const code = planWork(route("codigo", { provider: "claude" }), "Calcule os juros", new Set(["codigo"] as const));
+    expect(code).toMatchObject({ provider: "gemini", tier: "padrao", tools: ["code_execution"] });
+    expect(code.systemPrompt).toContain("rode um programa");
+  });
+
+  it("as fontes e o programa rodado vão escritos no fim da resposta, e aí não há aviso", () => {
+    const notes = toolNotes({
+      sources: [
+        { title: "Banco Central", url: "https://www.bcb.gov.br/a" },
+        { title: "Jornal", url: "https://example.com/b" },
+      ],
+      codeRuns: 0,
+    });
+    expect(notes).toBe(`\n\n${SOURCES_HEADING}\n- Banco Central: https://www.bcb.gov.br/a\n- Jornal: https://example.com/b`);
+    expect(actionNotice("pesquisa", "O dólar subiu." + notes)).toBeNull();
+
+    const ran = toolNotes({ sources: [], codeRuns: 2 });
+    expect(ran).toBe(`\n\n${CODE_RAN_NOTE}`);
+    expect(actionNotice("codigo", "Dá 1.268,25." + ran)).toBeNull();
+    expect(toolNotes({ sources: [], codeRuns: 0 })).toBe("");
+  });
+
+  it("no máximo 8 fontes aparecem no fim", () => {
+    const sources = Array.from({ length: 12 }, (_, index) => ({ title: `Página ${index}`, url: `https://example.com/${index}` }));
+    expect(toolNotes({ sources, codeRuns: 0 }).match(/^- /gm)).toHaveLength(8);
+  });
+
+  it("a reserva da pesquisa cobre as 3 pesquisas e o que elas trazem para a entrada", () => {
+    const offline = planWork(route("pesquisa", { provider: "claude", tier: "padrao" }), "Notícias de hoje");
+    const online = planWork(route("pesquisa"), "Notícias de hoje", new Set(["pesquisa"] as const));
+    const input = buildWorkerInput("", "", "Notícias de hoje");
+    const maxCall = call({
+      provider: "claude",
+      tier: "padrao",
+      usage: {
+        inputTokens: requestInputTokens(workRequest(online, input)) + 3 * 40_000,
+        outputTokens: outputTokenCap("claude", online.maxOutputTokens, online.effort),
+        webSearchRequests: 3,
+      },
+    });
+    const hold = answerHoldCents(0, online, workRequest(online, input));
+    expect(hold).toBeGreaterThan(answerHoldCents(0, offline, workRequest(offline, input)));
+    expect(taskChargeCents([maxCall])).toBeLessThanOrEqual(hold);
+    // Uns R$ 1,80 no máximo (o consumo comum fica bem abaixo).
+    expect(hold).toBeLessThanOrEqual(200);
   });
 
   it("a linha do extrato diz o tipo de resposta, nunca o pedido", () => {

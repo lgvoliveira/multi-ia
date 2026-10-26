@@ -70,6 +70,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F50 | Os conectores das IAs de verdade mandariam pedidos que as APIs de hoje recusam | Código | Alta | Resolvida |
 | F51 | Resposta cortada no meio, ou recusada pela IA, era aceita como resposta completa | Código | Média | Resolvida |
 | F52 | O código fala com as IAs sem as bibliotecas oficiais, ao contrário do que diz o AGENTS.md | Processo | Baixa | Aberta |
+| F53 | O aviso de "não pesquisou" depende do texto no fim da resposta | Produto / Código | Baixa | Aceita |
 
 ## Negócio
 
@@ -206,6 +207,11 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Resolvida (25/10/2026, PR 3c):** saíram as instruções que mandavam esconder. Enquanto a pesquisa e o código de
   verdade não chegam, a IA é instruída a dizer que não pesquisou nem rodou o código, e a resposta vem com um aviso fixo,
   escrito por nós ("A pesquisa na internet ainda não está ligada..."), que não depende de a IA obedecer.
+- **Andamento (26/10/2026, PR da pesquisa e do código):** a pesquisa na internet (do Claude) e o código (do Gemini)
+  ficaram prontos, desligados até o Luis ligar (`OCK_AI_TOOLS`). Quando a IA pesquisa, a resposta termina com as fontes;
+  quando roda um programa, com a frase "A IA rodou um programa para fazer esta conta." O aviso fixo passou a dizer o que
+  aconteceu, com a ferramenta desligada ou com a IA preferindo não usar: "Esta resposta não veio de uma pesquisa na
+  internet…" e "A IA fez esta conta sem rodar um programa…". Limitação aceita: F53.
 
 ### F47 — O site feito pela receita não vira entrega
 - **Gravidade:** Média · **Status:** Decidida · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar a parte 3d)
@@ -220,6 +226,19 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   servidor cair e retomar, não guarda duas vezes. Se não der para guardar, a execução termina assim mesmo (o site
   continua na tela, com o botão de baixar). Na pasta, o Supabase entrega todo `.html` como texto puro, com "nosniff" e
   como anexo: o navegador só salva, e nem aberto direto o site roda. Os sites feitos antes desta parte não viraram entrega.
+
+### F53 — O aviso de "não pesquisou" depende do texto no fim da resposta
+- **Gravidade:** Baixa · **Status:** Aceita · **Anotada:** 26/10/2026 (percebida pelo Claude no PR da pesquisa e do
+  código)
+- **O problema:** para o histórico saber se uma resposta foi pesquisada na internet (ou se a IA rodou um programa), sem
+  coluna nova no banco, o servidor escreve no fim da resposta as fontes ("Fontes consultadas:") ou a frase do programa,
+  e o aviso amarelo só aparece quando esse fim não está lá. Se a IA, sem ter pesquisado, terminasse a resposta com uma
+  lista igual (inventando fontes), o aviso sumiria. As instruções da IA pedem para não inventar fontes, e o formato
+  exato (linha em branco, o título e "- título: endereço") torna isso improvável.
+- **Por que aceitar:** evita uma migração agora (a opção mais fácil de desfazer, pedida pelo Luis para a madrugada de
+  26/10), e o efeito é só o aviso faltar numa resposta rara.
+- **O que fazer depois:** guardar numa coluna de `tasks` se a IA pesquisou ou rodou um programa (migração), junto com
+  outra mudança de banco do chat (o apagar da F28 ou a escolha livre da etapa 6).
 
 ## Código e segurança
 

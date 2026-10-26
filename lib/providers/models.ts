@@ -22,6 +22,8 @@ export interface ModelPrice {
   cachedInput: number;
   /** Entrada que a empresa da IA guarda no cache nesta chamada. Na OpenAI, custa 1,25 vez a entrada comum. */
   cacheWrite: number;
+  /** Cada pesquisa na internet, em dólar (só onde a plataforma usa a pesquisa da própria IA). */
+  webSearch?: number;
 }
 
 /** Um preço e a partir de quando ele vale (data e hora em UTC). O primeiro de cada modelo não tem data. */
@@ -44,10 +46,11 @@ function fixed(input: number, output: number, cache: Partial<ModelPrice> = {}): 
 
 export const MODELS: Record<ProviderId, Record<ModelTier, ModelInfo>> = {
   // Não usamos o cache do Claude (ele só guarda quando o pedido manda); os valores ficam para o caso de vir no consumo.
+  // A pesquisa na internet do Claude custa US$ 10 a cada mil pesquisas, além dos tokens (o que ela traz conta como entrada).
   claude: {
-    economico: { id: "claude-haiku-5-5", prices: fixed(0.1, 0.5, { cachedInput: 0.01, cacheWrite: 0.125 }) },
-    padrao: { id: "claude-sonnet-5-5", prices: fixed(2, 10, { cachedInput: 0.2, cacheWrite: 2.5 }) },
-    potente: { id: "claude-opus-5-5", prices: fixed(4, 20, { cachedInput: 0.2, cacheWrite: 5 }) },
+    economico: { id: "claude-haiku-5-5", prices: fixed(0.1, 0.5, { cachedInput: 0.01, cacheWrite: 0.125, webSearch: 0.01 }) },
+    padrao: { id: "claude-sonnet-5-5", prices: fixed(2, 10, { cachedInput: 0.2, cacheWrite: 2.5, webSearch: 0.01 }) },
+    potente: { id: "claude-opus-5-5", prices: fixed(4, 20, { cachedInput: 0.2, cacheWrite: 5, webSearch: 0.01 }) },
   },
   // A OpenAI guarda pedidos longos no cache sozinha: gravar custa 1,25 vez a entrada, e ler sai bem mais barato.
   gpt: {
@@ -55,7 +58,8 @@ export const MODELS: Record<ProviderId, Record<ModelTier, ModelInfo>> = {
     padrao: { id: "gpt-6.1-sol", prices: fixed(2, 10, { cachedInput: 0.1, cacheWrite: 2.5 }) },
     potente: { id: "gpt-6-astra", prices: fixed(10, 50, { cachedInput: 1, cacheWrite: 12.5 }) },
   },
-  // O Google também guarda sozinho e cobra a leitura mais barata; gravar não custa a mais. Dois modelos dobram de preço
+  // O Google também guarda sozinho e cobra a leitura mais barata; gravar não custa a mais. Rodar código não custa a mais
+  // (o código e o resultado contam como tokens). Dois modelos dobram de preço
   // em datas já anunciadas: a conta troca sozinha (meia-noite UTC, umas horas antes da Califórnia, para nunca cobrar
   // a menos).
   gemini: {

@@ -76,7 +76,7 @@ export interface ChatTask {
   effort: Effort;
   /** Por que o Chefe escolheu essa IA. Só na resposta que acabou de chegar (não fica guardado). */
   reason: string | null;
-  /** Aviso fixo do tipo de resposta (ex.: a pesquisa na internet ainda não está ligada). */
+  /** Aviso fixo do tipo de resposta (ex.: a resposta não veio de uma pesquisa na internet). */
   notice: string | null;
   /** Quanto a resposta custou, em centavos (0 quando nada foi cobrado). */
   costCents: number;

@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentMember } from "@/lib/auth/member";
-import { createMockProvider } from "@/lib/providers/mock";
+import { createMockProvider, MOCK_SOURCE } from "@/lib/providers/mock";
 import { createGetProvider } from "@/lib/providers/registry";
 import type { AiProvider, GenerateRequest, ProviderId } from "@/lib/providers/types";
 import type { AiCallRow } from "@/lib/runs/store";
 import type { WalletRefusalReason } from "@/lib/runs/wallet";
 import type { ChatConversation } from "./chat";
 import type { FileRow } from "./files";
-import { AI_FAILED, IMAGE_UNAVAILABLE } from "./quick-task";
+import { AI_FAILED, CODE_RAN_NOTE, IMAGE_UNAVAILABLE, SOURCES_HEADING } from "./quick-task";
 import { runQuickTask, type QuickTaskOptions } from "./run-task";
 import type { TaskRow } from "./task-store";
 
@@ -347,12 +347,46 @@ describe("uma mensagem do chat", () => {
     expect(db.aiCalls.map((row) => row.charged)).toEqual([false]);
   });
 
-  it("pesquisa vem com o aviso de que a internet ainda não está ligada (F45)", async () => {
+  it("pesquisa, com a ferramenta desligada, vem com o aviso de que não pesquisou na internet (F45)", async () => {
     const { result } = send("Pesquise as notícias de hoje sobre o dólar");
     const outcome = await result;
     if (!outcome.ok) throw new Error(outcome.problem);
     expect(outcome.result.task.action).toBe("pesquisa");
-    expect(outcome.result.task.notice).toContain("pesquisa na internet ainda não está ligada");
+    expect(outcome.result.task.notice).toContain("não veio de uma pesquisa na internet");
+  });
+
+  it("com a pesquisa ligada, o Claude pesquisa, as fontes vão no fim da resposta e a pesquisa entra no custo", async () => {
+    const ai = simulated();
+    const outcome = await runQuickTask(
+      CARLA,
+      SESSION,
+      { message: "Pesquise as notícias de hoje sobre o dólar", conversationId: null, fileIds: [] },
+      { ...ai.options, tools: new Set(["pesquisa"] as const) },
+    );
+    if (!outcome.ok) throw new Error(outcome.problem);
+    const { task } = outcome.result;
+    expect(task).toMatchObject({ action: "pesquisa", provider: "claude", tier: "padrao", notice: null });
+    expect(task.reason).toContain("Claude pesquisa");
+    expect(task.answer).toContain(`\n\n${SOURCES_HEADING}\n- ${MOCK_SOURCE.title}: ${MOCK_SOURCE.url}`);
+    // A resposta guardada é a mesma que a tela mostra (com as fontes), para o histórico reconhecer.
+    expect(db.finished[0].answer).toBe(task.answer);
+    expect(ai.requests.find((item) => item.provider === "claude")?.request.tools).toEqual(["web_search"]);
+    const answerRow = db.aiCalls.find((row) => row.step_id === "answer");
+    // A pesquisa simulada custa US$ 0,01, além dos tokens.
+    expect(answerRow?.cost_usd).toBeGreaterThanOrEqual(0.01);
+  });
+
+  it("com o código ligado, o Gemini roda o programa e a resposta diz isso no fim", async () => {
+    const ai = simulated();
+    const outcome = await runQuickTask(
+      CARLA,
+      SESSION,
+      { message: "Rode um cálculo dos juros compostos de 1000 reais a 1% por 12 meses", conversationId: null, fileIds: [] },
+      { ...ai.options, tools: new Set(["codigo"] as const) },
+    );
+    if (!outcome.ok) throw new Error(outcome.problem);
+    expect(outcome.result.task).toMatchObject({ action: "codigo", provider: "gemini", notice: null });
+    expect(outcome.result.task.answer?.endsWith(CODE_RAN_NOTE)).toBe(true);
   });
 
   it("numa conversa que já existe, a IA recebe as trocas respondidas (as que falharam ficam de fora)", async () => {

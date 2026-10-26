@@ -15,6 +15,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentMember } from "@/lib/auth/member";
 import type { AiCallReport } from "@/lib/engine/types";
+import { aiTools, type ToolSwitch } from "@/lib/providers/mode";
 import { getProvider as platformProvider } from "@/lib/providers/registry";
 import { ProviderError, type AiProvider, type GenerateRequest, type ProviderId } from "@/lib/providers/types";
 import { recordAiCalls } from "@/lib/runs/store";
@@ -53,6 +54,7 @@ import {
   PROJECT_FAILED,
   taskAiCallRows,
   taskChargeCents,
+  toolNotes,
   workRequest,
   type AttachmentText,
   type WorkPlan,
@@ -91,6 +93,8 @@ export type QuickTaskResult = { ok: true; result: SendResult } | { ok: false; st
 export interface QuickTaskOptions {
   /** Quem entrega as IAs. Sem valor, o mesmo das receitas: a simulada ou a de verdade, conforme OCK_AI_MODE. */
   getProvider?: (id: ProviderId) => AiProvider;
+  /** As ferramentas ligadas (pesquisa, código). Sem valor, as do interruptor OCK_AI_TOOLS. */
+  tools?: ReadonlySet<ToolSwitch>;
   /** Os testes trocam a espera entre as tentativas. */
   wait?: (ms: number) => Promise<void>;
 }
@@ -154,7 +158,7 @@ async function answerMessage(
   const route = await decide(getProvider, chiefRequest, prompt, onCall);
   await closeHold(chiefHold.id);
 
-  const plan = planWork(route, prompt);
+  const plan = planWork(route, prompt, options.tools ?? aiTools());
   const newTask = (conversation: ChatConversation): NewTask => ({
     id: taskId,
     company_id: me.companyId,
@@ -179,8 +183,8 @@ async function answerMessage(
     provider: plan.provider,
     tier: plan.tier,
     effort: plan.effort,
-    reason: route.reason || null,
-    notice: outcome.status === "finished" ? actionNotice(plan.action) : null,
+    reason: plan.reason ?? (route.reason || null),
+    notice: outcome.status === "finished" ? actionNotice(plan.action, outcome.answer) : null,
     costCents,
     attachmentsCut: attachments.cut,
     createdAt: new Date().toISOString(),
@@ -248,6 +252,7 @@ interface ProduceContext {
 /** A IA responde e, quando foi pedido um arquivo, a OCK o monta e guarda na pasta da pessoa. */
 async function produce(plan: WorkPlan, work: GenerateRequest, prompt: string, context: ProduceContext): Promise<Outcome> {
   let text: string;
+  let notes: string;
   try {
     const answer = await callAi(context.getProvider(plan.provider), work, {
       stepId: ANSWER_STEP,
@@ -255,13 +260,15 @@ async function produce(plan: WorkPlan, work: GenerateRequest, prompt: string, co
       wait: context.wait,
     });
     text = answer.text;
+    notes = toolNotes(answer);
   } catch (error) {
     if (!(error instanceof ProviderError)) throw error;
     console.error(`[chat] A IA (${plan.provider}) não conseguiu responder a mensagem ${context.taskId}:`, error.message);
     return failed(AI_FAILED);
   }
 
-  if (plan.kind === "answer") return finished(text);
+  // As fontes da pesquisa e o aviso do programa rodado vão escritos no fim da resposta (e ficam no histórico).
+  if (plan.kind === "answer") return finished(text.trimEnd() + notes);
   try {
     return await makeDelivery(plan, text, context);
   } catch (error) {

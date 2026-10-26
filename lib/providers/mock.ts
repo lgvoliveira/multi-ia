@@ -29,6 +29,9 @@ export interface MockProviderOptions {
   overspend?: boolean;
 }
 
+/** A fonte que a IA simulada diz ter consultado quando a pesquisa na internet está ligada. */
+export const MOCK_SOURCE = { title: "Fonte de exemplo (resposta simulada)", url: "https://example.com/fonte-simulada" };
+
 /** No teste de gasto a mais, quantas vezes o limite de resposta da etapa a IA simulada diz ter gastado. */
 export const OVERSPEND_FACTOR = 10;
 
@@ -67,14 +70,20 @@ export function createMockProvider(options: MockProviderOptions): AiProvider {
       }
       if (failing) throw intentionalFailure(id, model);
 
+      const tools = request.tools ?? [];
+      const searched = tools.includes("web_search");
       yield {
         type: "done",
         usage: {
           inputTokens: estimateTokens(request.systemPrompt + request.input),
           outputTokens: overspend ? request.maxOutputTokens * OVERSPEND_FACTOR : estimateTokens(text),
+          ...(searched ? { webSearchRequests: 1 } : {}),
         },
         model,
         truncated,
+        // Com as ferramentas ligadas, finge que pesquisou (uma fonte de exemplo) e que rodou um programa.
+        ...(searched ? { sources: [MOCK_SOURCE] } : {}),
+        ...(tools.includes("code_execution") ? { codeRuns: 1 } : {}),
       };
     },
   };

@@ -186,6 +186,12 @@ em 24/10 (PR 3a). Se a ideia voltar, entra numa mudança própria.
 a de verdade; a simulada (respostas de mentira, cobradas como as de verdade) serve para testar no computador sem gastar.
 Com as IAs de verdade ligadas, uma IA sem chave falha (e a troca de IA entra), nunca vira a simulada sem avisar (F42).
 
+**Ferramentas do chat** (ligadas uma a uma pelo interruptor `OCK_AI_TOOLS`, desligadas até a decisão do Luis): a
+**pesquisa na internet** é a do Claude, que cita as fontes no fim da resposta (US$ 0,01 por pesquisa, até 3 por
+mensagem); a do Gemini exige mostrar junto um bloco do Google e proíbe misturar o resultado com outro conteúdo, o que não
+combina com as entregas. **Rodar código** para fazer contas é do Gemini, sem custo além dos tokens. Sem a ferramenta, a
+resposta avisa que não pesquisou ou não rodou o programa (F45).
+
 **Modelos de cada nível** (econômico / padrão / potente), conferidos nas páginas oficiais em 26/10/2026: Claude Haiku,
 Sonnet e Opus 5.5; GPT-6 Luna, GPT-6.1 Sol e GPT-6 Astra; Gemini 3.5 Flash-Lite, 3.8 Flash e 4 Argon. Nomes e preços
 ficam num lugar só (`lib/providers/models.ts`); o consumo cobrado é o que cada empresa informa, com o "pensamento" da
