@@ -312,7 +312,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   (`lib/ock/spreadsheet.ts`): um leitor de CSV pequeno e o `.xlsx` montado com o `jszip`, que o projeto já usava (um
   `.xlsx` é um `.zip` de arquivos XML). Sem biblioteca nova. Tudo o que não é número entra como texto (um valor com
   "=" nunca vira fórmula), e os sinais do XML são trocados. Antes de remover, o próprio `xlsx` leu a planilha nova com os
-  valores certos. O `npm audit` passou a dizer 0 vulnerabilidades.
+  valores certos. O `npm audit` passou a dizer 0 vulnerabilidades. Em 26/10, o Luis abriu a planilha do chat no Excel:
+  abriu sem aviso, com os títulos em negrito e os números somáveis.
 
 ### F16 — Rotas que gastam IA de verdade abertas para qualquer um
 - **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 09/10/2026 (no PROGRESSO), ampliada em 22/10/2026
@@ -620,7 +621,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   registro interno guarda o nome da variável que falta. Vazio, vale a simulada só no computador de desenvolvimento
   (`npm run dev` e testes) e a real em qualquer outro lugar, para o site publicado nunca cair na simulada por
   esquecimento. Decisão provisória do Claude (Luis confirmar): o vazio no computador continuar simulado evita mexer no
-  `.env.local` de quem já testa. Testado de ponta a ponta nos dois modos.
+  `.env.local` de quem já testa. Testado de ponta a ponta nos dois modos. Em 26/10, o Luis conferiu pela tela (Parte C
+  do `docs/GUIA-TESTE-IAS-REAIS.md`): sem as chaves, o chat avisou que não deu, a receita parou com R$ 0,00 e o
+  `ai_calls` guardou o erro sem cobrança e sem nenhuma resposta da simulada.
 
 ### F43 — Quedas raras do servidor na hora de cobrar
 - **Gravidade:** Baixa · **Status:** Aceita · **Anotada:** 25/10/2026 (achada pelo Claude no PR 3b)
