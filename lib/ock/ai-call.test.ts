@@ -76,6 +76,20 @@ describe("chamar uma IA no chat", () => {
     }
   });
 
+  it("a tentativa que caiu fica registrada com o consumo que a IA informou, quando ela informou (F26)", async () => {
+    const { reports, options } = collect();
+    const usage = { inputTokens: 5000, outputTokens: 1200, cachedInputTokens: 1000 };
+    const provider: AiProvider = {
+      id: "claude",
+      async *generate() {
+        yield { type: "text", text: "começo" };
+        throw new ProviderError("recusou", { retryable: false, model: "claude-sonnet-5-5", usage });
+      },
+    };
+    await expect(callAi(provider, REQUEST, options)).rejects.toBeInstanceOf(ProviderError);
+    expect(reports[0]).toMatchObject({ ok: false, model: "claude-sonnet-5-5", usage });
+  });
+
   it("a IA que para de mandar pedaços sem terminar conta como erro passageiro", async () => {
     const { reports, options } = collect();
     const provider: AiProvider = {

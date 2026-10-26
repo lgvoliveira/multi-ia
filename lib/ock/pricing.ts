@@ -1,38 +1,17 @@
-// Preço de cada IA e o cálculo do custo de uma tarefa em reais.
+// O cálculo do custo de cada uso em reais, a partir do preço oficial de cada modelo (lib/providers/models.ts).
 // É o que a OCK usa para MEDIR quanto cada tarefa gastou e descontar da carteira da empresa.
-// Os valores ficam todos aqui: é o único lugar a ajustar quando um preço mudar.
 
-import type { ModelTier, ProviderId } from "@/lib/providers/types";
-
-/**
- * Preço por MILHÃO de tokens, em dólar (entrada / saída), por IA e por NÍVEL de modelo.
- * O NÍVEL é a maior alavanca de custo (econômico ≪ padrão ≪ potente) e é onde o Chefe otimiza.
- * Valores aproximados das tabelas públicas — ajustar AQUI quando um preço mudar.
- */
-const PRICE_USD: Record<ProviderId, Record<ModelTier, { input: number; output: number }>> = {
-  claude: {
-    economico: { input: 0.8, output: 4 }, // Haiku
-    padrao: { input: 3, output: 15 }, // Sonnet
-    potente: { input: 15, output: 75 }, // Opus
-  },
-  gpt: {
-    economico: { input: 0.4, output: 1.6 }, // Luna/mini
-    padrao: { input: 2.5, output: 10 }, // Sol
-    potente: { input: 10, output: 40 }, // Astra
-  },
-  gemini: {
-    economico: { input: 0.3, output: 1.2 }, // Flash
-    padrao: { input: 0.3, output: 1.2 }, // Flash
-    potente: { input: 1.25, output: 5 }, // Pro
-  },
-};
+import { modelPrice } from "@/lib/providers/models";
+import type { ModelTier, ProviderId, Usage } from "@/lib/providers/types";
 
 /** O nível mais caro de todos (Claude Opus). Base da "economia": e se tudo rodasse no mais potente? */
 const PREMIUM: { provider: ProviderId; tier: ModelTier } = { provider: "claude", tier: "potente" };
 
 /**
- * Câmbio usado para cobrar em reais. Fixo por enquanto (F17); depois vira cotação ao vivo.
+ * Câmbio usado para cobrar em reais. Fixo por enquanto (F17, decisão do Luis de 25/10/2026); depois vira cotação ao vivo.
  * Cada chamada de IA guarda o câmbio usado (tabela interna ai_calls), para a conta fechar depois.
+ * Atenção (26/10/2026, a decidir com o Luis): o dólar comercial estava em R$ 5,22 (28/09), mas a plataforma paga as IAs
+ * com cartão brasileiro, que soma o IOF de 3,5% e a margem do banco: cada dólar sai por uns R$ 5,6 a 5,7.
  */
 export const USD_TO_BRL = 5.5;
 
@@ -42,28 +21,26 @@ export const USD_TO_BRL = 5.5;
  */
 const USAGE_MARGIN = 0;
 
-/** Quanto a empresa da IA cobra da OCK, em DÓLAR, pelos tokens consumidos. Só interno (tabela ai_calls). */
-export function costInUsd(
-  provider: ProviderId,
-  tier: ModelTier,
-  inputTokens: number,
-  outputTokens: number,
-): number {
-  const price = PRICE_USD[provider][tier];
-  return (inputTokens / 1_000_000) * price.input + (outputTokens / 1_000_000) * price.output;
+/**
+ * Quanto a empresa da IA cobra da OCK, em DÓLAR, por um consumo, no preço que vale em `at` (agora, se não vier). A
+ * entrada que veio do cache e a que foi gravada nele têm preços próprios. Só interno (tabela ai_calls).
+ */
+export function costInUsd(provider: ProviderId, tier: ModelTier, usage: Usage, at?: Date): number {
+  const price = modelPrice(provider, tier, at);
+  const cached = usage.cachedInputTokens ?? 0;
+  const written = usage.cacheWriteTokens ?? 0;
+  const plainInput = Math.max(0, usage.inputTokens - cached - written);
+  const microDollars =
+    plainInput * price.input + cached * price.cachedInput + written * price.cacheWrite + usage.outputTokens * price.output;
+  return microDollars / 1_000_000;
 }
 
 /**
- * Custo de uma tarefa em CENTAVOS de real, a partir da IA, do nível e dos tokens consumidos: o custo em dólar, no
- * câmbio do dia, mais a margem, arredondado para cima (fração de centavo vira 1 centavo).
+ * Custo de um consumo em CENTAVOS de real: o custo em dólar, no câmbio do dia, mais a margem, arredondado para cima
+ * (fração de centavo vira 1 centavo).
  */
-export function costInCents(
-  provider: ProviderId,
-  tier: ModelTier,
-  inputTokens: number,
-  outputTokens: number,
-): number {
-  return usdToCents(costInUsd(provider, tier, inputTokens, outputTokens));
+export function costInCents(provider: ProviderId, tier: ModelTier, usage: Usage, at?: Date): number {
+  return usdToCents(costInUsd(provider, tier, usage, at));
 }
 
 /** Um custo em dólar em CENTAVOS de real: no câmbio do dia, mais a margem, arredondado para cima. */
@@ -74,11 +51,11 @@ export function usdToCents(usd: number): number {
 }
 
 /**
- * Quanto a MESMA quantidade de tokens custaria no modelo mais potente (Claude Opus).
+ * Quanto o MESMO consumo custaria no modelo mais potente (Claude Opus).
  * A diferença entre isto e o custo real é a ECONOMIA que o Chefe gerou escolhendo IAs/níveis mais baratos.
  */
-export function premiumCostInCents(inputTokens: number, outputTokens: number): number {
-  return costInCents(PREMIUM.provider, PREMIUM.tier, inputTokens, outputTokens);
+export function premiumCostInCents(usage: Usage): number {
+  return costInCents(PREMIUM.provider, PREMIUM.tier, usage);
 }
 
 /** Mostra centavos de real como texto: 1234 → "R$ 12,34". */

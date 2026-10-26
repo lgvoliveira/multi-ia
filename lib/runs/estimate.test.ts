@@ -93,7 +93,7 @@ describe("estimativa de custo (o máximo que o time pode gastar)", () => {
       for await (const event of events) void event;
 
       const spent = calls.reduce(
-        (sum, call) => sum + costInCents(call.provider, call.tier, call.usage.inputTokens, call.usage.outputTokens),
+        (sum, call) => sum + costInCents(call.provider, call.tier, call.usage),
         0,
       );
       expect(calls).toHaveLength(6);

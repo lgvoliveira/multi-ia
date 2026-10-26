@@ -92,7 +92,7 @@ describe("o dinheiro de uma mensagem", () => {
   it("a primeira reserva é o máximo que o Chefe (GPT econômico) pode gastar para decidir", () => {
     const request = routerRequest("Escreva um e-mail para um cliente");
     const output = outputTokenCap("gpt", 300, "low");
-    expect(chiefMaxCents(request)).toBe(usdToCents(costInUsd("gpt", "economico", requestInputTokens(request), output)));
+    expect(chiefMaxCents(request)).toBe(usdToCents(costInUsd("gpt", "economico", { inputTokens: requestInputTokens(request), outputTokens: output })));
     // Uns 2 centavos, mesmo com a mensagem e o contexto mais longos.
     expect(chiefMaxCents(routerRequest("a".repeat(4000), "b".repeat(4000)))).toBeLessThanOrEqual(3);
   });
@@ -119,31 +119,35 @@ describe("o dinheiro de uma mensagem", () => {
             outputTokens: outputTokenCap(provider, plan.maxOutputTokens, plan.effort),
           },
         });
-        const hold = answerHoldCents(costInUsd("gpt", "economico", 900, 60), plan, request);
+        const hold = answerHoldCents(costInUsd("gpt", "economico", { inputTokens: 900, outputTokens: 60 }), plan, request);
         expect(taskChargeCents([chief, answer])).toBeLessThanOrEqual(hold);
       }
     }
   });
 
-  it("exemplos de reserva com os preços de hoje (os da issue #39)", () => {
+  it("exemplos de reserva com os preços oficiais conferidos em 25/10/2026 (F17)", () => {
     const simple = planWork(heuristicRoute("O que é CNPJ?"), "O que é CNPJ?");
     const simpleHold = answerHoldCents(0, simple, workRequest(simple, buildWorkerInput("", "", "O que é CNPJ?")));
     expect(simpleHold).toBeLessThanOrEqual(5);
 
     const doc = planWork(route("documento"), "Gere um PDF");
-    expect(answerHoldCents(0, doc, workRequest(doc, "Gere um PDF"))).toBeLessThanOrEqual(120);
+    // Claude Sonnet com esforço alto: até 22 mil tokens de saída (6 mil de documento e 16 mil de pensamento), uns R$ 1,22.
+    expect(answerHoldCents(0, doc, workRequest(doc, "Gere um PDF"))).toBeLessThanOrEqual(130);
 
     const project = planWork(route("projeto", { tier: "potente" }), "Monte um app");
     const projectHold = answerHoldCents(0, project, workRequest(project, buildWorkerInput("x".repeat(4000), "", "Monte um app")));
-    expect(projectHold).toBeGreaterThan(800);
-    expect(projectHold).toBeLessThanOrEqual(900);
+    // Claude Opus: uns R$ 2,24 (com o preço antigo do Opus, passava de R$ 8).
+    expect(projectHold).toBeGreaterThan(200);
+    expect(projectHold).toBeLessThanOrEqual(260);
   });
 
   it("cobra o consumo real das chamadas que deram certo, somado em dólar e com no mínimo 1 centavo", () => {
     const chief = call({ stepId: "chief", provider: "gpt", tier: "economico", usage: { inputTokens: 900, outputTokens: 60 } });
     const failed = call({ ok: false, attempt: 1, usage: { inputTokens: 100_000, outputTokens: 0 } });
     const answer = call({ attempt: 2 });
-    const usd = costInUsd("gpt", "economico", 900, 60) + costInUsd("claude", "padrao", 1000, 500);
+    const usd =
+      costInUsd("gpt", "economico", { inputTokens: 900, outputTokens: 60 }) +
+      costInUsd("claude", "padrao", { inputTokens: 1000, outputTokens: 500 });
     // A tentativa que falhou não é cobrada.
     expect(taskChargeCents([chief, failed, answer])).toBe(usdToCents(usd));
     expect(taskChargeCents([call({ usage: { inputTokens: 1, outputTokens: 0 } })])).toBe(1);

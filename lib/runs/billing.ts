@@ -17,8 +17,7 @@ export const UNKNOWN_MODEL = "desconhecido";
  * cada etapa vire exatamente uma linha de gasto, que é como se sabe o que já foi cobrado (countRunCharges).
  */
 export function stepChargeCents(result: StepResult): number {
-  const { inputTokens, outputTokens } = result.usage;
-  return Math.max(1, costInCents(result.provider, DEFAULT_TIER, inputTokens, outputTokens));
+  return Math.max(1, costInCents(result.provider, DEFAULT_TIER, result.usage));
 }
 
 /** A descrição da linha de gasto no extrato: a receita e a etapa ("Criar um site · Front-end"), nunca o pedido. */
@@ -73,7 +72,7 @@ export function aiCallRows(
     input_tokens: call.usage.inputTokens,
     output_tokens: call.usage.outputTokens,
     // A coluna guarda 6 casas depois da vírgula.
-    cost_usd: Number(costInUsd(call.provider, call.tier, call.usage.inputTokens, call.usage.outputTokens).toFixed(6)),
+    cost_usd: Number(costInUsd(call.provider, call.tier, call.usage).toFixed(6)),
     usd_brl: USD_TO_BRL,
     charged: call.ok && chargedStepIds.has(call.stepId),
     status: call.ok ? "ok" : "error",

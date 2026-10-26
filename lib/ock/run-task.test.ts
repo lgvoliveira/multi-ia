@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentMember } from "@/lib/auth/member";
 import { createMockProvider } from "@/lib/providers/mock";
+import { createGetProvider } from "@/lib/providers/registry";
 import type { AiProvider, GenerateRequest, ProviderId } from "@/lib/providers/types";
 import type { AiCallRow } from "@/lib/runs/store";
 import type { WalletRefusalReason } from "@/lib/runs/wallet";
@@ -266,6 +267,27 @@ describe("uma mensagem do chat", () => {
       ["answer", "error", false],
       ["answer", "error", false],
     ]);
+    expect(log).toHaveBeenCalled();
+  });
+
+  it("com as IAs de verdade ligadas e sem nenhuma chave, a mensagem falha sem cobrar e sem cair na simulada (F42)", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const outcome = await runQuickTask(
+      CARLA,
+      SESSION,
+      { message: "Me dê 3 ideias de nome para uma padaria", conversationId: null, fileIds: [] },
+      { getProvider: createGetProvider({}), wait: async () => {} },
+    );
+    if (!outcome.ok) throw new Error(outcome.problem);
+    expect(outcome.result.task).toMatchObject({ status: "failed", answer: AI_FAILED, costCents: 0 });
+    expect(db.charges).toEqual([]);
+    // O Chefe (GPT) falhou e valeu a regra simples; a IA escolhida também falhou, numa tentativa só (não adianta
+    // repetir), e o registro interno guarda o motivo, com o nome da variável que falta.
+    expect(db.aiCalls.map((row) => [row.step_id, row.status, row.charged])).toEqual([
+      ["chief", "error", false],
+      ["answer", "error", false],
+    ]);
+    expect(db.aiCalls[0].error_message).toContain("OCK_GPT_KEY");
     expect(log).toHaveBeenCalled();
   });
 

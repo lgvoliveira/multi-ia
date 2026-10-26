@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMockProvider } from "@/lib/providers/mock";
+import { createGetProvider } from "@/lib/providers/registry";
 import { ProviderError, type AiProvider, type GenerateRequest, type ProviderId } from "@/lib/providers/types";
 import { createSiteRecipe } from "@/lib/recipes/create-site";
 import {
@@ -614,6 +615,25 @@ describe("mesclar as etapas em paralelo", () => {
   });
 });
 
+describe("IAs de verdade ligadas sem as chaves (F42)", () => {
+  it("o Chefe sem chave passa para a IA reserva, que também está sem chave, e o time para sem nenhuma etapa concluída", async () => {
+    const reports: AiCallReport[] = [];
+    const events = await collect(
+      runRecipe({ recipe, request: REQUEST }, { getProvider: createGetProvider({}), onAiCall: (call) => reports.push(call) }),
+    );
+
+    expect(ofType(events, "step-switched")).toEqual([expect.objectContaining({ stepId: "brief", from: "claude", to: "gpt" })]);
+    expect(ofType(events, "step-finished")).toEqual([]);
+    expect(ofType(events, "run-failed")).toEqual([expect.objectContaining({ stepId: "brief", provider: "gpt", retryable: false })]);
+    // Uma tentativa com cada IA (não adianta repetir), e o motivo no registro interno.
+    expect(reports.map((call) => [call.provider, call.ok])).toEqual([
+      ["claude", false],
+      ["gpt", false],
+    ]);
+    expect(reports[0].errorMessage).toContain("OCK_CLAUDE_KEY");
+  });
+});
+
 describe("registro de cada chamada às IAs (onAiCall, base do custo real)", () => {
   it("avisa cada chamada que deu certo, com o modelo, o nível e o mesmo consumo da etapa", async () => {
     const { getProvider } = createTestProviders();
@@ -654,6 +674,28 @@ describe("registro de cada chamada às IAs (onAiCall, base do custo real)", () =
     expect(front[0]).toMatchObject({ model: "mock-gpt", errorMessage: MOCK_FAILURE("gpt") });
     expect(front[0].usage.inputTokens).toBeGreaterThan(0);
     expect(front[0].usage.outputTokens).toBeGreaterThan(0);
+  });
+
+  it("a tentativa que falhou leva o consumo que a IA informou, quando ela informou (F26)", async () => {
+    const usage = { inputTokens: 4321, outputTokens: 987 };
+    // O Chefe (Claude) recusa: erro que não adianta repetir, com o consumo da empresa da IA.
+    const refusing: AiProvider = {
+      id: "claude",
+      async *generate() {
+        yield { type: "text", text: "Não posso" };
+        throw new ProviderError("A IA recusou o pedido.", { retryable: false, model: "claude-sonnet-5-5", usage });
+      },
+    };
+    const { getProvider, wait } = createTestProviders({ claude: refusing });
+    const reports: AiCallReport[] = [];
+
+    await collect(runRecipe({ recipe, request: REQUEST }, { getProvider, wait, onAiCall: (call) => reports.push(call) }));
+
+    expect(reports.find((call) => call.stepId === "brief" && call.provider === "claude")).toMatchObject({
+      ok: false,
+      model: "claude-sonnet-5-5",
+      usage,
+    });
   });
 
   it("avisa a chamada interrompida pelo cancelamento", async () => {

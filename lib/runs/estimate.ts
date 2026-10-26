@@ -12,7 +12,7 @@ import type { RunCursor } from "@/lib/engine/types";
 import { MAX_REQUEST_CHARS } from "@/lib/engine/validate";
 import { costInCents } from "@/lib/ock/pricing";
 import { PROVIDERS } from "@/lib/providers/catalog";
-import { outputTokenCap } from "@/lib/providers/limits";
+import { ESTIMATE_CHARS_PER_TOKEN, outputTokenCap } from "@/lib/providers/limits";
 import { CHARS_PER_TOKEN } from "@/lib/providers/mock";
 import { DEFAULT_TIER, type ProviderId } from "@/lib/providers/types";
 import { stageSteps, type Recipe, type Stage, type Step, type StepInput } from "@/lib/recipes/types";
@@ -46,7 +46,10 @@ export function stepCosts(recipe: Recipe, from: RunCursor = START): StepCost[] {
     const cents = Object.fromEntries(
       PROVIDERS.map(({ id }) => [
         id,
-        costInCents(id, DEFAULT_TIER, inputTokens, outputTokenCap(id, step.maxOutputTokens, step.effort ?? "medium")),
+        costInCents(id, DEFAULT_TIER, {
+          inputTokens,
+          outputTokens: outputTokenCap(id, step.maxOutputTokens, step.effort ?? "medium"),
+        }),
       ]),
     ) as Record<ProviderId, number>;
     costs.push({ stepId: step.id, roleId: step.roleId, provider: step.provider, runs: times, cents });
@@ -92,8 +95,10 @@ function countRuns(recipe: Recipe, from: RunCursor): Map<string, number> {
 }
 
 /**
- * O maior texto que a etapa pode receber, em tokens, contado como o consumo é contado (lib/providers/mock.ts): as
- * instruções, o pedido mais longo, a resposta mais longa de cada etapa anterior e as marcas que separam as partes.
+ * O maior texto que a etapa pode receber, em tokens: as instruções, o pedido mais longo, a resposta mais longa de cada
+ * etapa anterior e as marcas que separam as partes, contados com a folga do português (ESTIMATE_CHARS_PER_TOKEN). As
+ * respostas anteriores entram pelo tamanho em caracteres (4 por token), o que dá folga também para a IA seguinte, que
+ * pode contar os tokens de outro jeito.
  */
 function maxInputTokens(recipe: Recipe, step: Step): number {
   const role = recipe.roles.find((candidate) => candidate.id === step.roleId);
@@ -105,7 +110,7 @@ function maxInputTokens(recipe: Recipe, step: Step): number {
       total + `<parte nome="${input.label}">\n`.length + maxContentChars(recipe, input) + "\n</parte>".length,
     separators,
   );
-  return Math.ceil((systemChars + inputChars) / CHARS_PER_TOKEN);
+  return Math.ceil((systemChars + inputChars) / ESTIMATE_CHARS_PER_TOKEN);
 }
 
 /** O maior conteúdo de uma parte da entrada, em caracteres. */

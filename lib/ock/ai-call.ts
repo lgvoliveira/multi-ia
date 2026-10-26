@@ -76,8 +76,9 @@ async function attemptOnce(
       provider: provider.id,
       model: answer?.model ?? (failure instanceof ProviderError ? failure.model : undefined) ?? null,
       tier: request.tier ?? DEFAULT_TIER,
-      // Sem a conta da IA (ela não terminou), conta pelo tamanho do que foi enviado e do que ela escreveu.
-      usage: answer?.usage ?? {
+      // Sem a conta da IA (ela não terminou e não informou o consumo), conta pelo tamanho do que foi enviado e do que
+      // ela escreveu.
+      usage: answer?.usage ?? (failure instanceof ProviderError ? failure.usage : undefined) ?? {
         inputTokens: estimateTokens(request.systemPrompt + request.input),
         outputTokens: estimateTokens(text),
       },
