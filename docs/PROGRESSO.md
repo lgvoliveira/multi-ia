@@ -985,6 +985,11 @@ foi você**). Por isso a pilha parte da `main`, não do branch do #45.
   diferença. Mudar é uma linha (`USD_TO_BRL` em `lib/ock/pricing.ts`).
 - **F52:** manter as chamadas diretas ou trocar pelas bibliotecas oficiais.
 
+**Falhas (`docs/FALHAS.md`):** resolvidas F15 (pacote `xlsx`), F40 (consumo de verdade) e F42 (chave faltando);
+andamento na F17 (falta o câmbio) e na F45. Novas: F50 e F51 (achadas e resolvidas), F52 (decidir: bibliotecas oficiais),
+F53 (aceita: o aviso de "não pesquisou" depende do fim da resposta) e **F54** (para a publicação: uma fase longa com IA
+de verdade pode passar dos 5 minutos da função na Vercel; medir o tempo na Parte F do guia).
+
 **Tudo o que foi pedido para a madrugada ficou pronto**, desligado até as chaves: consumo de verdade (F40), chave
 faltando vira erro (F42), modelos e preços oficiais (F17), pesquisa, código, imagem e voz, e o guia com a compra dos
 créditos.
