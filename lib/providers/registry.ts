@@ -3,6 +3,7 @@
 
 import { KEY_ENV_NAMES, serverKeys } from "@/lib/keys/server-keys";
 import { getProviderInfo } from "./catalog";
+import { createMockImageGenerator, createOpenAiImageGenerator, type ImageGenerator } from "./images";
 import { createMockProvider, parseMockFailures, parseMockOverspend } from "./mock";
 import { aiMode } from "./mode";
 import { createRealProvider } from "./real";
@@ -55,5 +56,21 @@ function missingKeyProvider(id: ProviderId): AiProvider {
     generate: (): AsyncIterable<GenerateChunk> => ({
       [Symbol.asyncIterator]: () => ({ next: () => Promise.reject(problem) }),
     }),
+  };
+}
+
+/**
+ * Quem cria as imagens (o GPT Image), pelo mesmo interruptor das IAs: simulada ou de verdade. Sem a chave do GPT, falha
+ * com um erro que não adianta repetir, como as IAs de texto (F42).
+ */
+export function getImageGenerator(): ImageGenerator {
+  if (aiMode() === "simulada") return createMockImageGenerator();
+  const key = serverKeys().gpt?.trim();
+  if (key) return createOpenAiImageGenerator(key);
+  return {
+    generate: () =>
+      Promise.reject(
+        new ProviderError(`A chave do GPT não está configurada no servidor (${KEY_ENV_NAMES.gpt}).`, { retryable: false }),
+      ),
   };
 }

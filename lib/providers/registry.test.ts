@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createGetProvider, getProvider, getSimulatedProvider } from "./registry";
+import { createGetProvider, getImageGenerator, getProvider, getSimulatedProvider } from "./registry";
 import { ProviderError, type GenerateChunk, type GenerateRequest } from "./types";
 
 const request: GenerateRequest = {
@@ -92,5 +92,23 @@ describe("a IA da plataforma, conforme OCK_AI_MODE (F42)", () => {
       (error: unknown) => error,
     );
     expect((failure as Error).message).toContain("OCK_GEMINI_KEY");
+  });
+});
+
+describe("quem cria as imagens, conforme OCK_AI_MODE", () => {
+  it("simulada: o quadriculado da simulada", async () => {
+    vi.stubEnv("OCK_AI_MODE", "simulada");
+    expect((await getImageGenerator().generate("Um logo")).model).toBe("mock-gpt-image");
+  });
+
+  it("real sem a chave do GPT: falha sem chamar ninguém, dizendo qual variável falta", async () => {
+    vi.stubEnv("OCK_AI_MODE", "real");
+    vi.stubEnv("OCK_GPT_KEY", "");
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const error = await getImageGenerator().generate("Um logo").catch((caught: unknown) => caught);
+    expect(error).toMatchObject({ retryable: false });
+    expect((error as Error).message).toContain("OCK_GPT_KEY");
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

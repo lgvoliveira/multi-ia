@@ -95,6 +95,8 @@ export interface AiCallReport {
   /** Número da tentativa com esta IA nesta etapa (1 é a primeira). */
   attempt: number;
   durationMs: number;
+  /** O custo em dólar, quando ele não sai do preço por token do nível (a imagem criada tem preço próprio). */
+  costUsd?: number;
 }
 
 /**

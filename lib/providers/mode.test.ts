@@ -32,6 +32,7 @@ describe("interruptor OCK_AI_TOOLS", () => {
   it("lista separada por vírgula, sem diferença de maiúsculas e espaços", () => {
     expect(aiTools({ OCK_AI_TOOLS: "Pesquisa, codigo" })).toEqual(new Set(["pesquisa", "codigo"]));
     expect(aiTools({ OCK_AI_TOOLS: "codigo" })).toEqual(new Set(["codigo"]));
+    expect(aiTools({ OCK_AI_TOOLS: "imagem,pesquisa" })).toEqual(new Set(["imagem", "pesquisa"]));
   });
 
   it("nome que não dá para entender é erro", () => {

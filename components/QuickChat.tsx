@@ -400,7 +400,7 @@ function Answer({ task }: { task: ChatTask }) {
       {task.attachmentsCut && <p className={styles.notice}>{ATTACHMENTS_CUT_NOTICE}</p>}
       <p className={styles.answerText}>{task.answer}</p>
       {task.chart && (
-        // O gráfico vai dentro de uma imagem: assim, nada dele roda na nossa página.
+        // O gráfico (ou a imagem criada pela IA) vai dentro de uma imagem: assim, nada dele roda na nossa página.
         // eslint-disable-next-line @next/next/no-img-element
         <img className={styles.chart} src={task.chart} alt={task.answer ?? "Gráfico feito pela IA"} />
       )}

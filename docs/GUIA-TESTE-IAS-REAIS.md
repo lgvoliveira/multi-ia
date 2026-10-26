@@ -22,10 +22,10 @@ Este PR deixa o site pronto para usar as IAs de verdade (Claude, GPT e Gemini), 
 - **Os nomes dos modelos e os preços foram conferidos nas páginas oficiais** (F17). Vários estavam errados: o GPT mais
   forte cobraria da empresa menos do que custa, e o jeito de pedir o esforço baixo seria recusado pelo GPT (o Chefe do
   chat falharia em toda mensagem).
-- **Pesquisa na internet e contas com um programa** no chat, cada uma ligada por você numa linha nova, `OCK_AI_TOOLS`
-  (vazia: nenhuma). Quem pesquisa é o Claude, que cita as fontes no fim da resposta (US$ 0,01 por pesquisa, até 3 por
-  mensagem); quem roda o programa é o Gemini (sem custo a mais). Com a IA simulada, elas são fingidas, para você ver a
-  tela sem gastar.
+- **Pesquisa na internet, contas com um programa e imagens** no chat, cada uma ligada por você numa linha nova,
+  `OCK_AI_TOOLS` (vazia: nenhuma). Quem pesquisa é o Claude, que cita as fontes no fim da resposta (US$ 0,01 por
+  pesquisa, até 3 por mensagem); quem roda o programa é o Gemini (sem custo a mais); quem cria a imagem é o GPT (uns
+  R$ 0,29 por imagem). Com a IA simulada, elas são fingidas, para você ver a tela sem gastar.
 
 São duas sessões:
 - **Sessão 1 (uns 25 minutos, sem gastar nada):** Partes A, B, C e D. Pode fazer já.
@@ -54,7 +54,7 @@ cartão de crédito.
 2. Abra um **terminal novo** do VS Code (menu **Terminal → New Terminal**) e rode:
    ```
    git fetch
-   git checkout feat/pesquisa-e-codigo
+   git checkout feat/imagem
    git pull
    npm run dev
    ```
@@ -124,10 +124,10 @@ configurada no servidor (OCK_..._KEY)". Nenhuma tem modelo `mock-...`: a simulad
 6. **Volte para a simulada:** no `.env.local`, apague a linha `OCK_AI_MODE=real` (ou troque por
    `OCK_AI_MODE=simulada`) e salve.
 
-## Parte D: pesquisa e contas, fingidas pela IA simulada (5 min)
+## Parte D: pesquisa, contas e imagem, fingidas pela IA simulada (7 min)
 
 1. No `.env.local`, confira que **não** há `OCK_AI_MODE=real` (passo 6 acima). Numa linha nova, escreva
-   `OCK_AI_TOOLS=pesquisa,codigo` e salve.
+   `OCK_AI_TOOLS=pesquisa,codigo,imagem` e salve.
 2. Na janela anônima (Carla), aba **Chat**, clique em **+ Novo chat** e mande "Pesquise a cotação do dólar hoje".
 
 **Deu certo se:** a resposta diz **"Informação atual: o Claude pesquisa na internet e cita as fontes."**, vem do
@@ -140,14 +140,21 @@ fingida "custa" US$ 0,01, como a de verdade).
 **Deu certo se:** a resposta vem do **Gemini** e termina com **"A IA rodou um programa para fazer esta conta."**, sem
 aviso amarelo.
 
-4. Recarregue a página (**F5**) e abra a conversa de novo.
+4. Mande "Crie uma imagem de um banner para a Padaria Pão Dourado".
 
-**Deu certo se:** as duas respostas continuam com as fontes e a frase do programa, sem aviso amarelo.
+**Deu certo se:** a resposta diz **"Imagem: o GPT cria a imagem."** e **"Pronto! Criei a imagem…"**, mostra um
+**quadriculado azul** (a "imagem" da IA simulada) e o botão **Baixar imagem.png**. O custo fica perto de **R$ 0,30**
+(a imagem fingida "custa" o mesmo que uma de verdade). Na aba **Entregas**, aparece o `imagem.png`.
 
-5. Apague a linha `OCK_AI_TOOLS=pesquisa,codigo` (ou deixe vazia) e salve. Mande de novo "Pesquise a cotação do dólar
-   hoje".
+5. Recarregue a página (**F5**) e abra a conversa de novo.
 
-**Deu certo se:** volta o aviso amarelo **"Esta resposta não veio de uma pesquisa na internet…"**.
+**Deu certo se:** as três respostas continuam com as fontes, a frase do programa e a imagem, sem aviso amarelo.
+
+6. Apague a linha `OCK_AI_TOOLS=pesquisa,codigo,imagem` (ou deixe vazia) e salve. Mande de novo "Pesquise a cotação do
+   dólar hoje" e "Crie uma imagem de um banner".
+
+**Deu certo se:** volta o aviso amarelo **"Esta resposta não veio de uma pesquisa na internet…"**, e a imagem responde
+"Ainda não consigo criar imagens aqui. Isso chega em breve. Nada foi cobrado."
 
 **Fim da sessão 1.** Conte ao Claude Code como foi. Se tudo deu certo, os PRs podem entrar na `main` (o site continua
 com a IA simulada e as ferramentas desligadas até a sessão 2).
@@ -249,9 +256,9 @@ tem chave nem conteúdo de pedido).
 erros mais prováveis: chave colada com espaço ou aspas (erro 401), crédito ainda não liberado (erro 400 ou 429 com
 "credit"), verificação da organização na OpenAI (passo 6 da E2) ou um nome de modelo que a empresa trocou (erro 404).
 
-## Parte G: pesquisa e contas de verdade (5 min, uns centavos)
+## Parte G: pesquisa, contas e imagem de verdade (7 min, uns R$ 0,50)
 
-1. Com `OCK_AI_MODE=real`, escreva também `OCK_AI_TOOLS=pesquisa,codigo` e salve.
+1. Com `OCK_AI_MODE=real`, escreva também `OCK_AI_TOOLS=pesquisa,codigo,imagem` e salve.
 2. Na janela anônima (Carla), mande "Pesquise a cotação do dólar hoje".
 
 **Deu certo se:** o Claude responde com o valor de hoje e a lista **"Fontes consultadas:"** com páginas de verdade
@@ -262,10 +269,15 @@ erros mais prováveis: chave colada com espaço ou aspas (erro 401), crédito ai
 **Deu certo se:** o Gemini responde **R$ 1.126,83** (ou muito perto) e termina com "A IA rodou um programa para fazer
 esta conta."
 
-4. No SQL Editor, rode de novo a consulta da Parte F (passo 5).
+4. Mande "Crie uma imagem de um banner para a Padaria Pão Dourado, com pães na vitrine".
+
+**Deu certo se:** em até uns 2 minutos, aparece uma imagem de verdade, com "Baixar imagem.jpg", custando uns
+**R$ 0,30**. Pedidos com pessoas reais ou marcas podem ser barrados pela OpenAI: aí a resposta avisa e nada é cobrado.
+
+5. No SQL Editor, rode de novo a consulta da Parte F (passo 5).
 
 **Deu certo se:** a linha da pesquisa (`claude-sonnet-5-5`) tem `cost_usd` com pelo menos 0,01 a mais que os tokens
-(cada pesquisa é cobrada à parte).
+(cada pesquisa é cobrada à parte), e a da imagem (`gpt-image-2`) tem uns 0,053.
 
 **Se a pesquisa der erro 400 com "web search is not enabled":** na Anthropic, **Settings → Capabilities**, ligue a
 pesquisa na internet ("Web search") e tente de novo.
@@ -292,5 +304,7 @@ partes do site não gastam crédito de verdade. As chaves podem ficar no arquivo
   web), as pesquisas cobradas à parte, o programa rodado contado, e a resposta guardada com as fontes no fim. Pela tela,
   com três mensagens gravadas no banco de testes: as fontes uma por linha, o aviso só onde a IA não pesquisou, e nada
   rolando para o lado em 360 px.
+- A imagem: o pedido certo ao GPT Image (tamanho, qualidade, JPEG), o consumo e o preço próprios, o pedido barrado sem
+  nova tentativa e sem cobrança, a entrega guardada, e, pela tela, a imagem na conversa, para baixar e na aba Entregas.
 - Não deu para testar pela tela a resposta cobrada (as empresas de teste do Claude não têm crédito; só a sua tem), por
   isso as Partes B, C e D deste guia.

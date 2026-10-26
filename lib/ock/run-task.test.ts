@@ -1,14 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentMember } from "@/lib/auth/member";
+import { createMockImageGenerator } from "@/lib/providers/images";
 import { createMockProvider, MOCK_SOURCE } from "@/lib/providers/mock";
 import { createGetProvider } from "@/lib/providers/registry";
-import type { AiProvider, GenerateRequest, ProviderId } from "@/lib/providers/types";
+import { ProviderError, type AiProvider, type GenerateRequest, type ProviderId } from "@/lib/providers/types";
 import type { AiCallRow } from "@/lib/runs/store";
 import type { WalletRefusalReason } from "@/lib/runs/wallet";
 import type { ChatConversation } from "./chat";
 import type { FileRow } from "./files";
-import { AI_FAILED, CODE_RAN_NOTE, IMAGE_UNAVAILABLE, SOURCES_HEADING } from "./quick-task";
+import { AI_FAILED, CODE_RAN_NOTE, IMAGE_FAILED, IMAGE_READY, IMAGE_UNAVAILABLE, SOURCES_HEADING } from "./quick-task";
 import { runQuickTask, type QuickTaskOptions } from "./run-task";
 import type { TaskRow } from "./task-store";
 
@@ -333,6 +334,49 @@ describe("uma mensagem do chat", () => {
     expect(outcome.result.task.action).toBe("projeto");
     expect(db.stored[0]).toMatchObject({ name: "projeto.zip", mime: "application/zip" });
     expect(outcome.result.task.answer).toContain("index.html, estilo.css");
+  });
+
+  it("com a imagem ligada, o GPT cria a imagem: ela vira entrega, aparece na conversa e é cobrada pelo preço dela", async () => {
+    const ai = simulated();
+    const outcome = await runQuickTask(
+      CARLA,
+      SESSION,
+      { message: "Crie uma imagem de um bolo de chocolate", conversationId: null, fileIds: [] },
+      { ...ai.options, tools: new Set(["imagem"] as const), getImageGenerator: createMockImageGenerator },
+    );
+    if (!outcome.ok) throw new Error(outcome.problem);
+    const { task } = outcome.result;
+    expect(task).toMatchObject({ action: "imagem", status: "finished", answer: IMAGE_READY, provider: "gpt" });
+    expect(task.chart).toMatch(/^data:image\/png;base64,/);
+    expect(db.stored).toEqual([expect.objectContaining({ kind: "delivery", name: "imagem.png", mime: "image/png" })]);
+    expect(task.deliveries).toHaveLength(1);
+    // Nenhuma IA de texto respondeu: só o Chefe.
+    expect(ai.requests.map((item) => item.provider)).toEqual(["gpt"]);
+    const imageRow = db.aiCalls.find((row) => row.step_id === "answer");
+    expect(imageRow).toMatchObject({ model: "mock-gpt-image", provider: "gpt", charged: true, status: "ok" });
+    expect(imageRow?.cost_usd).toBeCloseTo(0.053, 2);
+    // Uma linha de gasto só, com o Chefe e a imagem, dentro da reserva.
+    expect(db.charges).toHaveLength(1);
+    expect(db.charges[0].amountCents).toBeLessThanOrEqual(db.holds[1].amountCents);
+  });
+
+  it("se a imagem falhar (ex.: barrada pelas regras de conteúdo), a mensagem avisa e nada é cobrado", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const blocked = () => ({
+      generate: () => Promise.reject(new ProviderError("moderation_blocked", { retryable: false, model: "gpt-image-2" })),
+    });
+    const outcome = await runQuickTask(
+      CARLA,
+      SESSION,
+      { message: "Crie uma imagem de um bolo de chocolate", conversationId: null, fileIds: [] },
+      { ...simulated().options, tools: new Set(["imagem"] as const), getImageGenerator: blocked },
+    );
+    if (!outcome.ok) throw new Error(outcome.problem);
+    expect(outcome.result.task).toMatchObject({ status: "failed", answer: IMAGE_FAILED, costCents: 0 });
+    expect(db.charges).toEqual([]);
+    expect(db.stored).toEqual([]);
+    expect(db.aiCalls.find((row) => row.step_id === "answer")).toMatchObject({ status: "error", charged: false, cost_usd: 0 });
+    expect(log).toHaveBeenCalled();
   });
 
   it("pedido de imagem: responde que chega em breve, sem chamar outra IA e sem cobrar", async () => {

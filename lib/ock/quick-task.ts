@@ -7,7 +7,8 @@
 // que a resposta pode custar, cobra o consumo real numa linha só e a tela mostra "Custou R$ X".
 
 import type { AiCallReport } from "@/lib/engine/types";
-import { costInUsd, usdToCents, USD_TO_BRL } from "@/lib/ock/pricing";
+import { costInUsd, imageCostInUsd, usdToCents, USD_TO_BRL } from "@/lib/ock/pricing";
+import { maxImageUsage } from "@/lib/providers/images";
 import { MAX_WEB_SEARCHES, maxInputTokens, outputTokenCap, toolInputTokens } from "@/lib/providers/limits";
 import type { ToolSwitch } from "@/lib/providers/mode";
 import type { AiTool, Effort, GenerateRequest, ModelTier, ProviderId, WebSource } from "@/lib/providers/types";
@@ -30,6 +31,9 @@ export const IMAGE_INPUT_TOKENS = 5000;
 
 /** As respostas que não vêm de uma IA. Toda falha diz que nada foi cobrado. */
 export const IMAGE_UNAVAILABLE = "Ainda não consigo criar imagens aqui. Isso chega em breve. Nada foi cobrado.";
+export const IMAGE_READY = "Pronto! Criei a imagem: ela está aqui embaixo, e dá para baixar.";
+export const IMAGE_FAILED =
+  "Não consegui criar a imagem agora. Nada foi cobrado. Se o pedido tiver algo que as regras de conteúdo da IA não permitem (pessoas reais, marcas, violência), mude o pedido e tente de novo.";
 export const AI_FAILED = "A IA não conseguiu responder agora. Nada foi cobrado. Tente de novo daqui a pouco.";
 export const CHART_FAILED =
   "Não consegui montar o gráfico. Diga quais são os rótulos e os valores que você quer ver. Nada foi cobrado.";
@@ -67,7 +71,7 @@ const TOOL_WORKERS = {
     reason: "Conta: o Gemini roda um programa para conferir o resultado.",
   },
 } as const satisfies Record<
-  ToolSwitch,
+  Exclude<ToolSwitch, "imagem">,
   { provider: ProviderId; tier: ModelTier; effort: Effort; tools: AiTool[]; reason: string }
 >;
 
@@ -99,10 +103,10 @@ function documentSystem(format: DocFormat): string {
 /** Como a IA trabalha em cada tipo de resposta. */
 export interface WorkPlan {
   /**
-   * answer: a resposta é o texto; document, chart e project: a OCK transforma o texto num arquivo;
-   * unavailable: nenhuma IA trabalha (por enquanto, só a imagem).
+   * answer: a resposta é o texto; document, chart e project: a OCK transforma o texto num arquivo; image: a IA cria uma
+   * imagem; unavailable: nenhuma IA trabalha (a imagem, com a ferramenta desligada).
    */
-  kind: "answer" | "document" | "chart" | "project" | "unavailable";
+  kind: "answer" | "document" | "chart" | "project" | "image" | "unavailable";
   action: ChatAction;
   provider: ProviderId;
   tier: ModelTier;
@@ -128,6 +132,11 @@ export function planWork(route: Route, message: string, tools: ReadonlySet<ToolS
   const base = { action: route.action, provider: route.provider, tier: route.tier, effort: route.effort };
   switch (route.action) {
     case "imagem":
+      if (tools.has("imagem")) {
+        // A imagem é do GPT (GPT Image); o pedido vai como foi escrito.
+        const reason = "Imagem: o GPT cria a imagem.";
+        return { ...base, provider: "gpt", tier: "padrao", kind: "image", maxOutputTokens: 0, systemPrompt: "", reason };
+      }
       return { ...base, kind: "unavailable", maxOutputTokens: 0, systemPrompt: "" };
     case "pesquisa":
       if (tools.has("pesquisa")) {
@@ -261,12 +270,13 @@ export function chiefMaxCents(request: GenerateRequest): number {
  * Como o consumo real nunca passa do máximo, a cobrança (taskChargeCents) nunca passa desta reserva.
  */
 export function answerHoldCents(chiefUsd: number, plan: WorkPlan, request: GenerateRequest): number {
+  if (plan.kind === "image") return usdToCents(chiefUsd + imageCostInUsd(maxImageUsage(request.input)));
   return usdToCents(chiefUsd + maxRequestUsd(plan.provider, request));
 }
 
-/** O custo real de uma chamada, em dólar. */
-export function callUsd(call: Pick<AiCallReport, "provider" | "tier" | "usage">): number {
-  return costInUsd(call.provider, call.tier, call.usage);
+/** O custo real de uma chamada, em dólar (a imagem criada já vem com o custo dela). */
+export function callUsd(call: Pick<AiCallReport, "provider" | "tier" | "usage" | "costUsd">): number {
+  return call.costUsd ?? costInUsd(call.provider, call.tier, call.usage);
 }
 
 /**

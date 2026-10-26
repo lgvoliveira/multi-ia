@@ -90,7 +90,7 @@ lib/engine/          motor: executa as etapas de um time e narra cada passo em e
                      Recebe as IAs prontas (getProvider), não as escolhe. O ESLint barra importar
                      telas, Next.js ou React aqui, em lib/providers/, lib/recipes/ e lib/runs/
 lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts): real.ts (as IAs de verdade) e
-                     mock.ts (a simulada). catalog.ts e models.ts (o modelo e o preço oficial de cada nível, o
+                     mock.ts (a simulada); images.ts cria as imagens (GPT Image e a simulada). catalog.ts e models.ts (o modelo e o preço oficial de cada nível, o
                      único lugar a mudar quando uma empresa trocar nome ou preço) são só dados e podem ir para a
                      tela; registry.ts entrega as IAs e é SÓ do servidor, escolhendo a simulada ou a de verdade pelo
                      interruptor OCK_AI_MODE (mode.ts); limits.ts é o teto de saída de cada IA (resposta +
