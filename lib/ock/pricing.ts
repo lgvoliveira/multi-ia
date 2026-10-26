@@ -23,7 +23,8 @@ const USAGE_MARGIN = 0;
 
 /**
  * Quanto a empresa da IA cobra da OCK, em DÓLAR, por um consumo, no preço que vale em `at` (agora, se não vier). A
- * entrada que veio do cache e a que foi gravada nele têm preços próprios. Só interno (tabela ai_calls).
+ * entrada que veio do cache e a que foi gravada nele têm preços próprios, e cada pesquisa na internet é cobrada à parte.
+ * Só interno (tabela ai_calls).
  */
 export function costInUsd(provider: ProviderId, tier: ModelTier, usage: Usage, at?: Date): number {
   const price = modelPrice(provider, tier, at);
@@ -32,7 +33,7 @@ export function costInUsd(provider: ProviderId, tier: ModelTier, usage: Usage, a
   const plainInput = Math.max(0, usage.inputTokens - cached - written);
   const microDollars =
     plainInput * price.input + cached * price.cachedInput + written * price.cacheWrite + usage.outputTokens * price.output;
-  return microDollars / 1_000_000;
+  return microDollars / 1_000_000 + (usage.webSearchRequests ?? 0) * (price.webSearch ?? 0);
 }
 
 /**

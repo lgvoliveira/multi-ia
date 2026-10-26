@@ -26,8 +26,13 @@ describe("uma mensagem guardada, do jeito que a tela mostra", () => {
       effort: "low",
       costCents: 2,
       reason: null,
-      notice: expect.stringContaining("pesquisa na internet ainda não está ligada"),
+      notice: expect.stringContaining("não veio de uma pesquisa na internet"),
     });
+  });
+
+  it("uma resposta pesquisada na internet (com as fontes no fim) não leva o aviso", () => {
+    const researched = { ...ROW, answer: "O dólar fechou em alta.\n\nFontes consultadas:\n- Jornal: https://example.com/a" };
+    expect(taskView(researched, EXTRAS).notice).toBeNull();
   });
 
   it("uma mensagem que ficou respondendo por mais de 6 minutos parou no meio: aparece como falha, sem cobrança", () => {

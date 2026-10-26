@@ -844,6 +844,31 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   oficiais (F52). **Para o Luis decidir:** o câmbio continua R$ 5,50, mas cada dólar pago com cartão sai por uns R$ 5,6
   a 5,7 (IOF de 3,5% e a margem do banco); com margem zero, a plataforma pagaria a diferença.
 
+**PR da pesquisa na internet e do código (madrugada de 26/10, Claude Code sozinho; branch `feat/pesquisa-e-codigo`,
+empilhado sobre o PR das IAs de verdade)**
+- **O que ficou pronto, desligado:** no chat, a **pesquisa na internet** e as **contas com um programa**, cada uma ligada
+  pelo interruptor novo `OCK_AI_TOOLS` ("pesquisa", "codigo"; vazio: nenhuma, o padrão). Com a IA simulada, as
+  ferramentas ligadas são fingidas (uma fonte de exemplo), para testar a tela sem gastar.
+- **Quem faz o quê (decisão provisória do Claude, Luis confirmar):** a pesquisa é a do **Claude** (Sonnet 5.5, até 3
+  pesquisas por mensagem, resultados do Brasil, US$ 0,01 por pesquisa além dos tokens). A do Gemini foi descartada pelos
+  termos do Google: o resultado só pode aparecer junto com um bloco de sugestões do Google, só para quem pediu e sem
+  misturar com outro conteúdo, o que não combina com PDFs e receitas feitos a partir da pesquisa. O **código** é do
+  **Gemini** (3.8 Flash, sem custo além dos tokens). O Chefe continua escolhendo a ação; com a ferramenta ligada, a
+  plataforma passa a pesquisa para o Claude e a conta para o Gemini, e o motivo na tela explica.
+- **Na resposta:** a pesquisa termina com "Fontes consultadas:" (até 8, sem repetir, só endereços da web); a conta, com
+  "A IA rodou um programa para fazer esta conta." Ficam escritos na resposta, sem migração, e o aviso amarelo só aparece
+  quando não houve pesquisa ou programa, com o texto novo: "Esta resposta não veio de uma pesquisa na internet…" (F45).
+  Limitação aceita: F53 (nova).
+- **Dinheiro:** a reserva da pesquisa cobre as 3 pesquisas e uma folga de 40 mil tokens de entrada por pesquisa (o que
+  as páginas trazem); a do código, 20 mil. A cobrança é o que a Anthropic e o Google informam.
+- **Como foi conferido:** lint, tipos, 476 testes (novos: o pedido de cada ferramenta, fontes e pesquisas no consumo,
+  programa rodado, simulada fingindo, plano e reserva do chat, as fontes no fim da resposta e no histórico, o
+  interruptor) e build. Ponta a ponta contra o projeto de testes: a fumaça com as ferramentas ligadas (11 conferências) e,
+  com três mensagens gravadas no banco, a conversa aberta pela tela (5: fontes uma por linha, aviso só onde não houve
+  pesquisa, frase do programa, nada rolando para o lado em 360 px).
+- **Guia:** `docs/GUIA-TESTE-IAS-REAIS.md` ganhou a Parte D (ferramentas fingidas, sessão 1) e a Parte G (de verdade,
+  sessão 2).
+
 ## Próximo passo
 
 1. **Luis:** conferir no Supabase de verdade a migração do PR #45 (passos em "3d testada pelo Luis e no ar", acima) e

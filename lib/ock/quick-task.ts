@@ -8,8 +8,9 @@
 
 import type { AiCallReport } from "@/lib/engine/types";
 import { costInUsd, usdToCents, USD_TO_BRL } from "@/lib/ock/pricing";
-import { maxInputTokens, outputTokenCap } from "@/lib/providers/limits";
-import type { Effort, GenerateRequest, ModelTier, ProviderId } from "@/lib/providers/types";
+import { MAX_WEB_SEARCHES, maxInputTokens, outputTokenCap, toolInputTokens } from "@/lib/providers/limits";
+import type { ToolSwitch } from "@/lib/providers/mode";
+import type { AiTool, Effort, GenerateRequest, ModelTier, ProviderId, WebSource } from "@/lib/providers/types";
 import { UNKNOWN_MODEL } from "@/lib/runs/billing";
 import type { AiCallRow } from "@/lib/runs/store";
 import { MAX_ATTACHMENT_TEXT_CHARS, type ChatAction } from "./chat";
@@ -38,10 +39,44 @@ export const PROJECT_FAILED =
 /** Instrução do trabalhador: um assistente de trabalho geral, em português. */
 const WORKER_SYSTEM = `Você é um assistente de trabalho de uma empresa brasileira. Responda em português do Brasil, de forma clara, direta e útil, fazendo exatamente o que o usuário pediu. Não invente dados; quando faltar informação, diga o que falta.`;
 
-// Pesquisa na internet e rodar código chegam com as IAs de verdade (decisão 2 da issue #39). Até lá, a IA responde com
-// o que sabe e diz isso: nunca esconde que não pesquisou nem rodou o código (F45).
+// Pesquisa na internet e rodar código só ligam com o interruptor OCK_AI_TOOLS (lib/providers/mode.ts). Desligados, a IA
+// responde com o que sabe e diz isso: nunca esconde que não pesquisou nem rodou o código (F45).
 const SEARCH_OFFLINE_SYSTEM = `${WORKER_SYSTEM} Você não tem acesso à internet nesta conversa: responda com o que já sabe e, se a informação puder ter mudado, diga isso em uma frase.`;
 const CODE_OFFLINE_SYSTEM = `${WORKER_SYSTEM} Você não pode rodar código nesta conversa. Resolva a conta ou a lógica passo a passo, mostre o resultado e diga que ele não foi conferido por um programa.`;
+const SEARCH_SYSTEM = `${WORKER_SYSTEM} Pesquise na internet quando a resposta depender de informação atual (notícias, preços, cotações, leis, dados recentes) e use as páginas encontradas, de preferência fontes confiáveis e brasileiras quando o assunto for do Brasil. Não invente fontes.`;
+const CODE_SYSTEM = `${WORKER_SYSTEM} Para contas, cálculos e análise de números, escreva e rode um programa e use o resultado. Na resposta, explique em português simples o que foi calculado e o resultado, sem mostrar o código, a menos que o funcionário peça.`;
+
+/**
+ * Qual IA tem cada ferramenta, e com que nível. A pesquisa é a do Claude: a do Gemini exige mostrar junto um bloco do
+ * Google e proíbe misturar o resultado com outro conteúdo (termos de uso do Google, conferidos em 26/10/2026), o que não
+ * combina com as entregas da plataforma. Rodar código é do Gemini, sem custo além dos tokens.
+ */
+const TOOL_WORKERS = {
+  pesquisa: {
+    provider: "claude",
+    tier: "padrao",
+    effort: "low",
+    tools: ["web_search"],
+    reason: "Informação atual: o Claude pesquisa na internet e cita as fontes.",
+  },
+  codigo: {
+    provider: "gemini",
+    tier: "padrao",
+    effort: "medium",
+    tools: ["code_execution"],
+    reason: "Conta: o Gemini roda um programa para conferir o resultado.",
+  },
+} as const satisfies Record<
+  ToolSwitch,
+  { provider: ProviderId; tier: ModelTier; effort: Effort; tools: AiTool[]; reason: string }
+>;
+
+/** O título da lista de fontes que vai no fim de uma resposta pesquisada na internet (e que o histórico reconhece). */
+export const SOURCES_HEADING = "Fontes consultadas:";
+/** A frase que vai no fim de uma resposta em que a IA rodou um programa (e que o histórico reconhece). */
+export const CODE_RAN_NOTE = "A IA rodou um programa para fazer esta conta.";
+/** No máximo quantas fontes aparecem no fim da resposta. */
+const MAX_SOURCES = 8;
 
 /** Instrução para quando a tarefa é montar um GRÁFICO: a IA devolve só o JSON dos dados. */
 const CHART_SYSTEM = `Você projeta um gráfico a partir do pedido e dos dados. Responda APENAS com um JSON, sem explicação, nesta forma:
@@ -79,17 +114,32 @@ export interface WorkPlan {
   format?: DocFormat;
   /** Resposta de exemplo, que só a IA simulada usa. */
   sampleResponse?: string;
+  /** As ferramentas que a IA pode usar (pesquisa, código). Sem valor: nenhuma. */
+  tools?: AiTool[];
+  /** Por que esta IA, quando não foi a que o Chefe escolheu (a ferramenta só existe nela). */
+  reason?: string;
 }
 
-/** O que a IA escolhida pelo Chefe faz em cada ação. */
-export function planWork(route: Route, message: string): WorkPlan {
+/**
+ * O que a IA escolhida pelo Chefe faz em cada ação. `tools` são as ferramentas ligadas (OCK_AI_TOOLS): com a pesquisa
+ * ou o código ligado, a pesquisa vai para o Claude e o código para o Gemini, que são as IAs que têm cada um.
+ */
+export function planWork(route: Route, message: string, tools: ReadonlySet<ToolSwitch> = new Set()): WorkPlan {
   const base = { action: route.action, provider: route.provider, tier: route.tier, effort: route.effort };
   switch (route.action) {
     case "imagem":
       return { ...base, kind: "unavailable", maxOutputTokens: 0, systemPrompt: "" };
     case "pesquisa":
+      if (tools.has("pesquisa")) {
+        const worker = TOOL_WORKERS.pesquisa;
+        return { ...base, ...worker, tools: [...worker.tools], kind: "answer", maxOutputTokens: 2000, systemPrompt: SEARCH_SYSTEM };
+      }
       return { ...base, kind: "answer", maxOutputTokens: 1500, systemPrompt: SEARCH_OFFLINE_SYSTEM };
     case "codigo":
+      if (tools.has("codigo")) {
+        const worker = TOOL_WORKERS.codigo;
+        return { ...base, ...worker, tools: [...worker.tools], kind: "answer", maxOutputTokens: 3000, systemPrompt: CODE_SYSTEM };
+      }
       return { ...base, kind: "answer", maxOutputTokens: 3000, systemPrompt: CODE_OFFLINE_SYSTEM };
     case "documento": {
       const format = pickFormat(message);
@@ -139,6 +189,7 @@ export function workRequest(
     tier: plan.tier,
     images: [...images],
     sampleResponse: plan.sampleResponse,
+    ...(plan.tools?.length ? { tools: [...plan.tools] } : {}),
   };
 }
 
@@ -157,15 +208,30 @@ export function chargeDescription(action: ChatAction): string {
   return `Tarefa rápida · ${ACTION_LABEL[action]}`;
 }
 
-/** O aviso fixo de cada tipo de resposta, mostrado junto dela (F45). */
-export function actionNotice(action: ChatAction): string | null {
-  if (action === "pesquisa") {
-    return "A pesquisa na internet ainda não está ligada: esta resposta vem do que a IA já sabe e pode estar desatualizada.";
+/**
+ * O aviso fixo de cada tipo de resposta, mostrado junto dela (F45). Quando a IA pesquisou ou rodou um programa, a própria
+ * resposta diz isso no fim (SOURCES_HEADING, CODE_RAN_NOTE) e não há aviso; senão, o aviso diz que ela não pesquisou ou
+ * não rodou o programa, esteja a ferramenta desligada ou a IA tenha preferido não usar.
+ */
+export function actionNotice(action: ChatAction, answer: string | null = null): string | null {
+  if (action === "pesquisa" && !answer?.includes(`\n\n${SOURCES_HEADING}\n`)) {
+    return "Esta resposta não veio de uma pesquisa na internet: a IA usou o que já sabia, e a informação pode estar desatualizada.";
   }
-  if (action === "codigo") {
-    return "Ainda não dá para rodar código aqui: a IA fez a conta sem executar um programa. Confira os números antes de usar.";
+  if (action === "codigo" && !answer?.endsWith(CODE_RAN_NOTE)) {
+    return "A IA fez esta conta sem rodar um programa. Confira os números antes de usar.";
   }
   return null;
+}
+
+/** O que vai no fim de uma resposta: as páginas que a IA citou e se ela rodou um programa. */
+export function toolNotes(answer: { sources: readonly WebSource[]; codeRuns: number }): string {
+  const parts: string[] = [];
+  if (answer.sources.length > 0) {
+    const lines = answer.sources.slice(0, MAX_SOURCES).map((source) => `- ${source.title}: ${source.url}`);
+    parts.push(`${SOURCES_HEADING}\n${lines.join("\n")}`);
+  }
+  if (answer.codeRuns > 0) parts.push(CODE_RAN_NOTE);
+  return parts.map((part) => `\n\n${part}`).join("");
 }
 
 /** O máximo que a entrada de um pedido pode pesar, em tokens: o texto (com a folga do português) e as imagens. */
@@ -174,12 +240,15 @@ export function requestInputTokens(request: GenerateRequest): number {
 }
 
 /**
- * O máximo, em dólar, que um pedido a uma IA pode custar: a entrada, que já se conhece, e o maior texto que ela pode
- * escrever, contando o "pensamento" (o mesmo teto que os conectores reais mandam, lib/providers/limits.ts).
+ * O máximo, em dólar, que um pedido a uma IA pode custar: a entrada, que já se conhece, o que as ferramentas podem somar
+ * a ela (e as pesquisas, cobradas à parte), e o maior texto que a IA pode escrever, contando o "pensamento" (o mesmo
+ * teto que os conectores reais mandam, lib/providers/limits.ts).
  */
 function maxRequestUsd(provider: ProviderId, request: GenerateRequest): number {
   const outputTokens = outputTokenCap(provider, request.maxOutputTokens, request.effort ?? "medium");
-  return costInUsd(provider, request.tier ?? "padrao", { inputTokens: requestInputTokens(request), outputTokens });
+  const inputTokens = requestInputTokens(request) + toolInputTokens(request.tools);
+  const webSearchRequests = request.tools?.includes("web_search") ? MAX_WEB_SEARCHES : 0;
+  return costInUsd(provider, request.tier ?? "padrao", { inputTokens, outputTokens, webSearchRequests });
 }
 
 /** O máximo que o Chefe pode gastar para decidir, em centavos: a primeira reserva, antes de qualquer IA. */

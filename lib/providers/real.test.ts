@@ -364,3 +364,93 @@ describe("conector do Gemini", () => {
     expect(error.usage).toEqual({ inputTokens: 10, outputTokens: 5000 });
   });
 });
+
+// ---------- Ferramentas ----------
+
+describe("pesquisa na internet (Claude)", () => {
+  it("pede a pesquisa com no máximo 3 buscas, resultados do Brasil e sem o conteúdo cru das páginas", async () => {
+    const { provider, sent } = setup("claude", sse([claudeStart, claudeText("Oi"), claudeEnd("end_turn", 5), { type: "message_stop" }]));
+
+    await collect(provider.generate({ ...request, tools: ["web_search"] }));
+
+    expect(sent().body.tools).toEqual([
+      {
+        type: "web_search_20260318",
+        name: "web_search",
+        max_uses: 3,
+        response_inclusion: "excluded",
+        user_location: { type: "approximate", country: "BR", timezone: "America/Sao_Paulo" },
+      },
+    ]);
+  });
+
+  it("sem a ferramenta, o pedido não leva tools", async () => {
+    const { provider, sent } = setup("claude", sse([claudeStart, claudeText("Oi"), claudeEnd("end_turn", 5), { type: "message_stop" }]));
+    await collect(provider.generate(request));
+    expect(sent().body.tools).toBeUndefined();
+  });
+
+  it("devolve as fontes citadas (sem repetir e só endereços da web) e conta as pesquisas no consumo", async () => {
+    const citation = (url: string, title: string) => ({
+      type: "content_block_delta",
+      index: 3,
+      delta: { type: "citations_delta", citation: { type: "web_search_result_location", url, title, cited_text: "..." } },
+    });
+    const { provider } = setup(
+      "claude",
+      sse([
+        claudeStart,
+        { type: "content_block_start", index: 1, content_block: { type: "server_tool_use", id: "srv_1", name: "web_search" } },
+        { type: "content_block_start", index: 2, content_block: { type: "web_search_tool_result", tool_use_id: "srv_1", content: [] } },
+        claudeText("O dólar fechou em R$ 5,20."),
+        citation("https://www.bcb.gov.br/cotacoes", "Banco Central"),
+        citation("https://www.bcb.gov.br/cotacoes", "Banco Central"),
+        citation("javascript:alert(1)", "Mal-intencionado"),
+        citation("https://example.com/jornal", ""),
+        { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 300, server_tool_use: { web_search_requests: 2 } } },
+        { type: "message_stop" },
+      ]),
+    );
+
+    const done = (await collect(provider.generate({ ...request, tools: ["web_search"] }))).at(-1);
+
+    expect(done).toMatchObject({
+      type: "done",
+      usage: { inputTokens: 1500, outputTokens: 300, webSearchRequests: 2 },
+      sources: [
+        { title: "Banco Central", url: "https://www.bcb.gov.br/cotacoes" },
+        { title: "https://example.com/jornal", url: "https://example.com/jornal" },
+      ],
+    });
+  });
+
+  it("turno pausado pela Anthropic (pesquisa longa) vale, mas marcado como possivelmente incompleto", async () => {
+    const { provider } = setup("claude", sse([claudeStart, claudeText("Parte"), claudeEnd("pause_turn", 50), { type: "message_stop" }]));
+    expect((await collect(provider.generate({ ...request, tools: ["web_search"] }))).at(-1)).toMatchObject({ truncated: true });
+  });
+});
+
+describe("rodar código (Gemini)", () => {
+  it("pede a execução de código e conta as vezes que o programa rodou (o código fica fora do texto)", async () => {
+    const { provider, sent } = setup(
+      "gemini",
+      sse([
+        geminiChunk([{ executableCode: { language: "PYTHON", code: "print(1000*1.01**12)" } }], { promptTokenCount: 50 }),
+        geminiChunk([{ codeExecutionResult: { outcome: "OUTCOME_OK", output: "1126.83" } }], { promptTokenCount: 50 }),
+        geminiChunk([{ text: "Dá R$ 1.126,83." }], { promptTokenCount: 50, toolUsePromptTokenCount: 30, candidatesTokenCount: 40 }, "STOP"),
+      ]),
+    );
+
+    const chunks = await collect(provider.generate({ ...request, tools: ["code_execution"] }));
+
+    expect(sent().body.tools).toEqual([{ code_execution: {} }]);
+    expect(textOf(chunks)).toBe("Dá R$ 1.126,83.");
+    expect(chunks.at(-1)).toMatchObject({ codeRuns: 1, usage: { inputTokens: 80, outputTokens: 40 } });
+  });
+
+  it("sem rodar nada, a resposta não leva codeRuns", async () => {
+    const { provider } = setup("gemini", sse([geminiChunk([{ text: "Dá 2." }], { promptTokenCount: 5, candidatesTokenCount: 2 }, "STOP")]));
+    const done = (await collect(provider.generate({ ...request, tools: ["code_execution"] }))).at(-1);
+    expect(done).not.toHaveProperty("codeRuns");
+  });
+});

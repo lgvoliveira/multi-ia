@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aiMode } from "./mode";
+import { aiMode, aiTools } from "./mode";
 
 describe("interruptor OCK_AI_MODE", () => {
   it("com o valor escrito, vale o que foi pedido, em qualquer lugar", () => {
@@ -20,5 +20,21 @@ describe("interruptor OCK_AI_MODE", () => {
 
   it("valor que não dá para entender é erro", () => {
     expect(() => aiMode({ OCK_AI_MODE: "verdade" })).toThrow(/OCK_AI_MODE/);
+  });
+});
+
+describe("interruptor OCK_AI_TOOLS", () => {
+  it("vazio: nenhuma ferramenta (o padrão)", () => {
+    expect(aiTools({})).toEqual(new Set());
+    expect(aiTools({ OCK_AI_TOOLS: " " })).toEqual(new Set());
+  });
+
+  it("lista separada por vírgula, sem diferença de maiúsculas e espaços", () => {
+    expect(aiTools({ OCK_AI_TOOLS: "Pesquisa, codigo" })).toEqual(new Set(["pesquisa", "codigo"]));
+    expect(aiTools({ OCK_AI_TOOLS: "codigo" })).toEqual(new Set(["codigo"]));
+  });
+
+  it("nome que não dá para entender é erro", () => {
+    expect(() => aiTools({ OCK_AI_TOOLS: "pesquisa,internet" })).toThrow(/OCK_AI_TOOLS/);
   });
 });

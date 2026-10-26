@@ -5,7 +5,14 @@
 import { RETRY_DELAYS_MS } from "@/lib/engine/run";
 import type { AiCallReport } from "@/lib/engine/types";
 import { estimateTokens } from "@/lib/providers/mock";
-import { DEFAULT_TIER, ProviderError, type AiProvider, type GenerateRequest, type Usage } from "@/lib/providers/types";
+import {
+  DEFAULT_TIER,
+  ProviderError,
+  type AiProvider,
+  type GenerateRequest,
+  type Usage,
+  type WebSource,
+} from "@/lib/providers/types";
 
 /** A resposta inteira de uma IA. */
 export interface AiAnswer {
@@ -14,6 +21,10 @@ export interface AiAnswer {
   model: string;
   /** true quando a resposta foi cortada por atingir o limite. */
   truncated: boolean;
+  /** As páginas que a IA citou, quando pesquisou na internet. */
+  sources: WebSource[];
+  /** Quantas vezes a IA rodou um programa. */
+  codeRuns: number;
 }
 
 export interface CallOptions {
@@ -62,7 +73,14 @@ async function attemptOnce(
         text += chunk.text;
         continue;
       }
-      answer = { text, usage: chunk.usage, model: chunk.model, truncated: chunk.truncated };
+      answer = {
+        text,
+        usage: chunk.usage,
+        model: chunk.model,
+        truncated: chunk.truncated,
+        sources: chunk.sources ?? [],
+        codeRuns: chunk.codeRuns ?? 0,
+      };
       return answer;
     }
     // A IA parou de mandar pedaços sem avisar que terminou: a resposta pode estar pela metade.

@@ -18,6 +18,11 @@ describe("preço de cada uso", () => {
     expect(costInUsd("gpt", "padrao", usage)).toBeCloseTo(0.5 * 2 + 0.4 * 0.1 + 0.1 * 2.5, 10);
   });
 
+  it("cada pesquisa na internet do Claude custa US$ 0,01, além dos tokens", () => {
+    expect(costInUsd("claude", "padrao", { inputTokens: 0, outputTokens: 0, webSearchRequests: 3 })).toBeCloseTo(0.03, 10);
+    expect(costInUsd("claude", "padrao", { inputTokens: 1_000_000, outputTokens: 0, webSearchRequests: 1 })).toBeCloseTo(2.01, 10);
+  });
+
   it("o preço muda sozinho na data anunciada pela empresa da IA", () => {
     // Gemini 4 Argon dobra em 01/12/2026; Gemini 3.8 Flash, em 01/01/2027 (meia-noite UTC).
     expect(costInUsd("gemini", "potente", million(1_000_000, 0), new Date("2026-11-30T23:59:59Z"))).toBe(2);

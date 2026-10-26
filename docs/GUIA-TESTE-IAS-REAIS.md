@@ -22,10 +22,15 @@ Este PR deixa o site pronto para usar as IAs de verdade (Claude, GPT e Gemini), 
 - **Os nomes dos modelos e os preços foram conferidos nas páginas oficiais** (F17). Vários estavam errados: o GPT mais
   forte cobraria da empresa menos do que custa, e o jeito de pedir o esforço baixo seria recusado pelo GPT (o Chefe do
   chat falharia em toda mensagem).
+- **Pesquisa na internet e contas com um programa** no chat, cada uma ligada por você numa linha nova, `OCK_AI_TOOLS`
+  (vazia: nenhuma). Quem pesquisa é o Claude, que cita as fontes no fim da resposta (US$ 0,01 por pesquisa, até 3 por
+  mensagem); quem roda o programa é o Gemini (sem custo a mais). Com a IA simulada, elas são fingidas, para você ver a
+  tela sem gastar.
 
 São duas sessões:
-- **Sessão 1 (uns 20 minutos, sem gastar nada):** Partes A, B e C. Pode fazer já.
-- **Sessão 2 (uns 45 minutos, com dinheiro de verdade):** Partes D, E e F. Só quando você decidir comprar os créditos.
+- **Sessão 1 (uns 25 minutos, sem gastar nada):** Partes A, B, C e D. Pode fazer já.
+- **Sessão 2 (uns 50 minutos, com dinheiro de verdade):** Partes E, F, G e H. Só quando você decidir comprar os
+  créditos.
 
 Ferramentas: o navegador, o terminal do VS Code, o painel do Supabase (projeto `multi-ia-teste`) e, na sessão 2, o
 cartão de crédito.
@@ -34,8 +39,8 @@ cartão de crédito.
 
 - Este PR **não muda o banco** (nenhuma migração nova) e **não traz biblioteca nova**: não precisa rodar o workflow
   "Banco de testes" nem `npm install`.
-- Ele está **empilhado** sobre o PR #46 (só documentos). Faça o merge do #46 primeiro (veja "Ordem dos merges" no
-  `PROGRESSO.md`).
+- Os PRs desta parte estão **empilhados** (um sobre o outro). Teste tudo de uma vez no branch do PR mais alto da pilha
+  (Parte A) e, se der certo, faça os merges na ordem do `PROGRESSO.md` ("Ordem de testar e fazer o merge").
 - Tenha à mão a sua senha de dono no projeto de testes e a da funcionária Carla Teste. A sua empresa de teste tem
   crédito de mentira (uns R$ 19), da recarga do guia anterior.
 
@@ -49,7 +54,7 @@ cartão de crédito.
 2. Abra um **terminal novo** do VS Code (menu **Terminal → New Terminal**) e rode:
    ```
    git fetch
-   git checkout feat/ias-reais
+   git checkout feat/pesquisa-e-codigo
    git pull
    npm run dev
    ```
@@ -119,8 +124,33 @@ configurada no servidor (OCK_..._KEY)". Nenhuma tem modelo `mock-...`: a simulad
 6. **Volte para a simulada:** no `.env.local`, apague a linha `OCK_AI_MODE=real` (ou troque por
    `OCK_AI_MODE=simulada`) e salve.
 
-**Fim da sessão 1.** Conte ao Claude Code como foi. Se tudo deu certo, o PR pode entrar na `main` (o site continua com a
-IA simulada até a sessão 2).
+## Parte D: pesquisa e contas, fingidas pela IA simulada (5 min)
+
+1. No `.env.local`, confira que **não** há `OCK_AI_MODE=real` (passo 6 acima). Numa linha nova, escreva
+   `OCK_AI_TOOLS=pesquisa,codigo` e salve.
+2. Na janela anônima (Carla), aba **Chat**, clique em **+ Novo chat** e mande "Pesquise a cotação do dólar hoje".
+
+**Deu certo se:** a resposta diz **"Informação atual: o Claude pesquisa na internet e cita as fontes."**, vem do
+**Claude**, termina com **"Fontes consultadas:"** e uma fonte de exemplo ("Fonte de exemplo (resposta simulada)") e
+**não** tem o aviso amarelo de que não pesquisou. O custo tem uns 6 centavos a mais que uma resposta comum (a pesquisa
+fingida "custa" US$ 0,01, como a de verdade).
+
+3. Mande "Calcule e rode os juros compostos de R$ 1.000 a 1% ao mês por 12 meses".
+
+**Deu certo se:** a resposta vem do **Gemini** e termina com **"A IA rodou um programa para fazer esta conta."**, sem
+aviso amarelo.
+
+4. Recarregue a página (**F5**) e abra a conversa de novo.
+
+**Deu certo se:** as duas respostas continuam com as fontes e a frase do programa, sem aviso amarelo.
+
+5. Apague a linha `OCK_AI_TOOLS=pesquisa,codigo` (ou deixe vazia) e salve. Mande de novo "Pesquise a cotação do dólar
+   hoje".
+
+**Deu certo se:** volta o aviso amarelo **"Esta resposta não veio de uma pesquisa na internet…"**.
+
+**Fim da sessão 1.** Conte ao Claude Code como foi. Se tudo deu certo, os PRs podem entrar na `main` (o site continua
+com a IA simulada e as ferramentas desligadas até a sessão 2).
 
 ---
 
@@ -137,9 +167,9 @@ Anthropic e US$ 5 na OpenAI. O Gemini começa no **plano grátis**.
   cole no chat, num e-mail, num print ou no WhatsApp. Se vazar, apague a chave no site da empresa e crie outra.
 - O nome da chave pode ser `computador-luis-teste`: quando o site for publicado, criaremos outras, separadas.
 
-## Parte D: comprar os créditos e criar as chaves (30 min)
+## Parte E: comprar os créditos e criar as chaves (30 min)
 
-### D1. Anthropic (Claude)
+### E1. Anthropic (Claude)
 
 1. Entre em **https://platform.claude.com** com o Gmail do projeto (o antigo console.anthropic.com leva para lá). Se for
    a primeira vez, ele pede para criar uma organização: use `multi-ia`.
@@ -152,7 +182,7 @@ Anthropic e US$ 5 na OpenAI. O Gemini começa no **plano grátis**.
 5. No VS Code, no `.env.local`, ache a linha `OCK_CLAUDE_KEY=` e cole a chave **depois do `=`**, sem espaços nem aspas.
    Salve.
 
-### D2. OpenAI (GPT)
+### E2. OpenAI (GPT)
 
 1. Entre em **https://platform.openai.com** com o Gmail do projeto.
 2. Engrenagem (**Settings**) → **Billing** → **Add payment details** (cartão) e depois **Add to credit balance**: o
@@ -163,11 +193,11 @@ Anthropic e US$ 5 na OpenAI. O Gemini começa no **plano grátis**.
    permissões: **All**. **Copie a chave** (começa com `sk-`).
 5. No `.env.local`, cole na linha `OCK_GPT_KEY=` e salve.
 6. **Talvez:** a OpenAI pode pedir a **verificação da organização** (foto de documento e selfie, por uma empresa
-   parceira) para os modelos mais novos responderem "ao vivo", que é como o site pede. Se, na Parte E, o terminal
+   parceira) para os modelos mais novos responderem "ao vivo", que é como o site pede. Se, na Parte F, o terminal
    mostrar um erro com "verify" ou "organization must be verified", faça a verificação em **Settings → Organization →
    General** e espere uns 15 minutos.
 
-### D3. Google (Gemini) — plano grátis
+### E3. Google (Gemini) — plano grátis
 
 1. Entre em **https://aistudio.google.com** com o Gmail do projeto.
 2. Clique em **Get API key** → **Create API key** (ele cria um projeto do Google Cloud para você; aceite o nome
@@ -181,7 +211,7 @@ Anthropic e US$ 5 na OpenAI. O Gemini começa no **plano grátis**.
 **Deu certo se:** o `.env.local` tem as três linhas preenchidas (`OCK_CLAUDE_KEY=sk-ant-…`, `OCK_GPT_KEY=sk-…`,
 `OCK_GEMINI_KEY=AIza…`). Não mostre o arquivo a ninguém.
 
-## Parte E: o primeiro teste com as IAs de verdade (10 min, uns R$ 1 a R$ 3)
+## Parte F: o primeiro teste com as IAs de verdade (10 min, uns R$ 1 a R$ 3)
 
 1. No `.env.local`, numa linha nova, escreva `OCK_AI_MODE=real` e salve. No terminal: "Reload env".
 2. Na janela anônima (Carla), aba **Chat**, mande: "Me dê 3 ideias de nome para uma padaria."
@@ -217,9 +247,30 @@ tem chave nem conteúdo de pedido).
 
 **Se algo der errado:** copie do terminal só a linha do erro (ela nunca mostra a chave) e mande ao Claude Code. Os
 erros mais prováveis: chave colada com espaço ou aspas (erro 401), crédito ainda não liberado (erro 400 ou 429 com
-"credit"), verificação da organização na OpenAI (passo 6 da D2) ou um nome de modelo que a empresa trocou (erro 404).
+"credit"), verificação da organização na OpenAI (passo 6 da E2) ou um nome de modelo que a empresa trocou (erro 404).
 
-## Parte F: voltar para a simulada (1 min)
+## Parte G: pesquisa e contas de verdade (5 min, uns centavos)
+
+1. Com `OCK_AI_MODE=real`, escreva também `OCK_AI_TOOLS=pesquisa,codigo` e salve.
+2. Na janela anônima (Carla), mande "Pesquise a cotação do dólar hoje".
+
+**Deu certo se:** o Claude responde com o valor de hoje e a lista **"Fontes consultadas:"** com páginas de verdade
+(abra uma delas para conferir). Custa uns centavos (R$ 0,05 a R$ 0,50).
+
+3. Mande "Calcule e rode os juros compostos de R$ 1.000 a 1% ao mês por 12 meses".
+
+**Deu certo se:** o Gemini responde **R$ 1.126,83** (ou muito perto) e termina com "A IA rodou um programa para fazer
+esta conta."
+
+4. No SQL Editor, rode de novo a consulta da Parte F (passo 5).
+
+**Deu certo se:** a linha da pesquisa (`claude-sonnet-5-5`) tem `cost_usd` com pelo menos 0,01 a mais que os tokens
+(cada pesquisa é cobrada à parte).
+
+**Se a pesquisa der erro 400 com "web search is not enabled":** na Anthropic, **Settings → Capabilities**, ligue a
+pesquisa na internet ("Web search") e tente de novo.
+
+## Parte H: voltar para a simulada (1 min)
 
 No `.env.local`, troque `OCK_AI_MODE=real` por `OCK_AI_MODE=simulada` e salve. Assim, os próximos testes de outras
 partes do site não gastam crédito de verdade. As chaves podem ficar no arquivo: com `simulada`, ninguém as usa.
@@ -237,5 +288,9 @@ partes do site não gastam crédito de verdade. As chaves podem ficar no arquivo
   registro interno.
 - De ponta a ponta, no projeto de testes, nos dois modos (simulada e "real" sem chave): as estimativas novas na tela
   (R$ 6,09 e R$ 4,30) e a recusa sem saldo antes de qualquer IA (22 conferências).
+- A pesquisa e o código: o pedido de cada ferramenta à empresa certa, as fontes citadas (sem repetir e só endereços da
+  web), as pesquisas cobradas à parte, o programa rodado contado, e a resposta guardada com as fontes no fim. Pela tela,
+  com três mensagens gravadas no banco de testes: as fontes uma por linha, o aviso só onde a IA não pesquisou, e nada
+  rolando para o lado em 360 px.
 - Não deu para testar pela tela a resposta cobrada (as empresas de teste do Claude não têm crédito; só a sua tem), por
-  isso as Partes B e C deste guia.
+  isso as Partes B, C e D deste guia.

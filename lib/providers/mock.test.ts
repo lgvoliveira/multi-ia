@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createMockProvider,
   estimateTokens,
+  MOCK_SOURCE,
   OVERSPEND_FACTOR,
   parseMockFailures,
   parseMockOverspend,
@@ -189,5 +190,23 @@ describe("splitIntoChunks", () => {
 
   it("texto vazio não gera pedaços", () => {
     expect(splitIntoChunks("")).toEqual([]);
+  });
+});
+
+describe("IA simulada com as ferramentas ligadas", () => {
+  it("finge que pesquisou (uma fonte de exemplo, uma pesquisa no consumo) e que rodou um programa", async () => {
+    const provider = createMockProvider({ id: "claude", chunkDelayMs: 0 });
+    const searched = (await collect(provider.generate({ ...baseRequest, tools: ["web_search"] }))).at(-1);
+    expect(searched).toMatchObject({ sources: [MOCK_SOURCE], usage: { webSearchRequests: 1 } });
+
+    const ran = (await collect(provider.generate({ ...baseRequest, tools: ["code_execution"] }))).at(-1);
+    expect(ran).toMatchObject({ codeRuns: 1 });
+    expect(ran).not.toHaveProperty("sources");
+  });
+
+  it("sem ferramentas, nada disso aparece", async () => {
+    const done = (await collect(createMockProvider({ id: "gpt", chunkDelayMs: 0 }).generate(baseRequest))).at(-1);
+    expect(done).not.toHaveProperty("sources");
+    expect(done).not.toHaveProperty("codeRuns");
   });
 });

@@ -43,6 +43,10 @@ describe("modelos e preços oficiais", () => {
     }
   });
 
+  it("a pesquisa na internet tem preço nos modelos do Claude (é a IA que pesquisa)", () => {
+    for (const tier of TIERS) expect(modelPrice("claude", tier).webSearch).toBe(0.01);
+  });
+
   it("as datas de troca de preço vêm em ordem, e só a primeira não tem data", () => {
     for (const { id } of PROVIDERS) {
       for (const tier of TIERS) {
