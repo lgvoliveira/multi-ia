@@ -64,7 +64,8 @@ describe("gasto do mês", () => {
         memberId: "pessoa-1",
         recipe: true,
         description: "Criar um site",
-        providers: ["claude", "gemini", "gpt"],
+        // Na ordem das IAs no site, não na alfabética que vem do banco.
+        providers: ["claude", "gpt", "gemini"],
         amountCents: -37,
         createdAt: "2026-10-25T12:00:00Z",
       },
@@ -94,6 +95,7 @@ describe("gasto do mês", () => {
         company_credit: [{ balance_cents: 9127, reserved_cents: 70, month_spent_cents: 73 }],
         company_month_by_provider: [
           { provider: "claude", spent_cents: 43 },
+          { provider: "gemini", spent_cents: 12 },
           { provider: "gpt", spent_cents: 22 },
           { provider: null, spent_cents: -4 },
         ],
@@ -107,6 +109,7 @@ describe("gasto do mês", () => {
       byProvider: [
         { provider: "claude", spentCents: 43 },
         { provider: "gpt", spentCents: 22 },
+        { provider: "gemini", spentCents: 12 },
         { provider: null, spentCents: -4 },
       ],
     });

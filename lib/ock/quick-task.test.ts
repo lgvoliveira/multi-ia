@@ -13,6 +13,7 @@ import {
   chargeDescription,
   chiefMaxCents,
   conversationTitle,
+  documentTitle,
   HISTORY_MAX_CHARS,
   historyText,
   IMAGE_INPUT_TOKENS,
@@ -199,5 +200,14 @@ describe("o texto que vai para a IA", () => {
     const long = conversationTitle("palavra ".repeat(30), []);
     expect(long.length).toBeLessThanOrEqual(80);
     expect(long.endsWith("…")).toBe(true);
+  });
+
+  it("o título do documento vem da primeira linha do que a IA escreveu, nunca do pedido (F49)", () => {
+    expect(documentTitle("\n## Resumo da semana:\nTexto", "pdf")).toBe("Resumo da semana");
+    expect(documentTitle("**Proposta comercial**\n...", "docx")).toBe("Proposta comercial");
+    expect(documentTitle("Mês,Vendas\nJaneiro,10", "xlsx")).toBe("Planilha");
+    expect(documentTitle("Mês,Vendas\nJaneiro,10", "csv")).toBe("Planilha");
+    expect(documentTitle("   \n  ", "pdf")).toBe("Documento");
+    expect(documentTitle("x".repeat(100), "txt")).toHaveLength(60);
   });
 });

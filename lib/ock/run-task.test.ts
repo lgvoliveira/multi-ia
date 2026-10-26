@@ -286,7 +286,8 @@ describe("uma mensagem do chat", () => {
     const { task } = outcome.result;
     expect(db.stored).toHaveLength(1);
     expect(db.stored[0]).toMatchObject({ kind: "delivery", mime: "application/pdf", taskId: task.id });
-    expect(db.stored[0].name).toMatch(/\.pdf$/);
+    // O nome vem do que a IA escreveu (a primeira linha), nunca do pedido: o dono vê as entregas (F49).
+    expect(db.stored[0].name).toBe("Resumo.pdf");
     expect(new TextDecoder().decode(db.stored[0].bytes.slice(0, 5))).toBe("%PDF-");
     expect(task.deliveries).toEqual([{ id: "arquivo-1", name: db.stored[0].name }]);
     expect(task.answer).toContain(`Gerei o arquivo ${db.stored[0].name}`);

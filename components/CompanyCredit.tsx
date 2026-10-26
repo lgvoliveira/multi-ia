@@ -24,6 +24,9 @@ function isProviderSlice(line: ProviderSpending): line is ProviderSlice {
 
 export function CompanyCredit({ credit }: { credit: Credit }) {
   const withoutCredit = credit.availableCents <= 0;
+  // O saldo pode ficar um pouco negativo (F29): aí não há nada disponível, e o saldo aparece com o sinal.
+  const available = Math.max(0, credit.availableCents);
+  const balance = credit.balanceCents < 0 ? signedBRL(credit.balanceCents) : formatBRL(credit.balanceCents);
   const slices = credit.byProvider.filter(isProviderSlice).filter((line) => line.spentCents > 0);
   const adjustments = credit.byProvider.find((line) => line.provider === null && line.spentCents !== 0);
   const barTotal = slices.reduce((total, line) => total + line.spentCents, 0);
@@ -37,10 +40,10 @@ export function CompanyCredit({ credit }: { credit: Credit }) {
       <div className={styles.figure}>
         <span className={styles.label}>Disponível para a equipe</span>
         <span className={withoutCredit ? `${styles.value} ${styles.valueEmpty}` : styles.value}>
-          {formatBRL(credit.availableCents)}
+          {formatBRL(available)}
         </span>
         <span className={styles.detail}>
-          Saldo {formatBRL(credit.balanceCents)}
+          Saldo {balance}
           {credit.reservedCents > 0 &&
             ` · ${formatBRL(credit.reservedCents)} separado agora para tarefas em andamento`}
         </span>

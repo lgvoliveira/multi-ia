@@ -297,8 +297,20 @@ export function conversationTitle(message: string, attachmentNames: readonly str
   return title.length > TITLE_MAX_CHARS ? `${title.slice(0, TITLE_MAX_CHARS - 1).trimEnd()}…` : title;
 }
 
-/** O título de um documento gerado, a partir do pedido. */
-export function documentTitle(message: string): string {
-  const text = message.replace(/\s+/g, " ").trim();
-  return text.length > 60 ? text.slice(0, 60) : text || "Documento";
+const DOCUMENT_TITLE_MAX_CHARS = 60;
+
+/**
+ * O título (e o nome do arquivo) de um documento gerado: a primeira linha do que a IA escreveu, sem marcas como "#".
+ * Nunca o pedido: o dono vê as entregas, mas não lê os pedidos (F05, F49). A planilha começa pelos nomes das colunas,
+ * então ela se chama só "Planilha".
+ */
+export function documentTitle(content: string, format: DocFormat): string {
+  if (format === "csv" || format === "xlsx") return "Planilha";
+  const firstLine = content.split("\n").find((line) => line.trim() !== "") ?? "";
+  const title = firstLine
+    .replace(/^[\s#*_>-]+/, "")
+    .replace(/[\s*_:]+$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return title.slice(0, DOCUMENT_TITLE_MAX_CHARS).trimEnd() || "Documento";
 }

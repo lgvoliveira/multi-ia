@@ -2,7 +2,7 @@
 // empresa. Só dados e textos, sem acesso ao banco: este arquivo vai também para o navegador. Quem lê do banco é
 // lib/ock/spending.ts; as contas em si são feitas dentro do banco (migração de 25/10/2026, F48).
 
-import { getProviderInfo, isProviderId } from "@/lib/providers/catalog";
+import { getProviderInfo, PROVIDERS } from "@/lib/providers/catalog";
 import type { ProviderId } from "@/lib/providers/types";
 import type { ChatDelivery } from "./chat";
 import { formatBRL } from "./pricing";
@@ -68,6 +68,14 @@ export interface CompanyCredit {
   byProvider: ProviderSpending[];
 }
 
+/** A ordem das IAs na tela, a mesma em todo o site. */
+const providerOrder: readonly ProviderId[] = PROVIDERS.map((provider) => provider.id);
+
+/** Para pôr uma lista na ordem das IAs; o que não tem IA (os ajustes) vai para o fim. */
+export function providerRank(provider: ProviderId | null): number {
+  return provider === null ? providerOrder.length : providerOrder.indexOf(provider);
+}
+
 /** Um número inteiro que veio do banco (bigint chega como número ou texto). */
 function toInteger(value: unknown, field: string): number {
   const number = typeof value === "string" ? Number(value) : value;
@@ -89,7 +97,9 @@ export function parseStatementRow(row: unknown): StatementLine {
   if (typeof r.description !== "string" || typeof r.created_at !== "string") {
     throw new Error("Linha do extrato incompleta.");
   }
-  const providers = Array.isArray(r.providers) ? r.providers.filter(isProviderId) : [];
+  const raw: unknown[] = Array.isArray(r.providers) ? r.providers : [];
+  // Na ordem de sempre das IAs (Claude, GPT, Gemini), não na alfabética do banco; IA desconhecida fica de fora.
+  const providers = providerOrder.filter((id) => raw.includes(id));
   return {
     id: toInteger(r.entry_id, "número"),
     kind: r.kind,

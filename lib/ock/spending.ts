@@ -12,6 +12,7 @@ import {
   emptyMonth,
   parseMemberMonthRow,
   parseStatementRow,
+  providerRank,
   STATEMENT_PAGE_SIZE,
   type CompanyCredit,
   type MemberMonth,
@@ -92,10 +93,12 @@ export async function loadCompanyCredit(session: SupabaseClient): Promise<Compan
     reservedCents,
     availableCents: balanceCents - reservedCents,
     monthSpentCents: Number(row.month_spent_cents),
-    byProvider: ((byProvider.data as Record<string, unknown>[] | null) ?? []).map((line) => ({
-      provider: isProviderId(line.provider) ? line.provider : null,
-      spentCents: Number(line.spent_cents),
-    })),
+    byProvider: ((byProvider.data as Record<string, unknown>[] | null) ?? [])
+      .map((line) => ({
+        provider: isProviderId(line.provider) ? line.provider : null,
+        spentCents: Number(line.spent_cents),
+      }))
+      .sort((a, b) => providerRank(a.provider) - providerRank(b.provider)),
   };
 }
 
