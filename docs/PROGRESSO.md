@@ -4,7 +4,7 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 26/10/2026, madrugada (o Claude trabalhou sozinho: PRs #46 a #50 abertos, empilhados, esperando o
+**Última atualização:** 26/10/2026, madrugada (o Claude trabalhou sozinho: PRs #46 a #51 abertos, empilhados, esperando o
 teste do Luis; resumo em "Resumo da madrugada de 26/10", antes do "Próximo passo")
 **Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite), o aviso de troca de login
 e o PR 3 inteiro (3a receitas com login, 3b receitas cobrando, 3c o chat, a aba Receitas e a 3d, painel do dono) no ar
@@ -911,6 +911,18 @@ código)**
   qualquer IA sem perder o texto já escrito, nada em `ai_calls` nem reserva, 360 px sem rolar para o lado).
 - **Guia:** Partes D e G do `docs/GUIA-TESTE-IAS-REAIS.md` ganharam a voz.
 
+**PR da planilha sem o pacote xlsx (madrugada de 26/10, Claude Code sozinho; branch `fix/planilha-sem-xlsx`, empilhado
+sobre o PR da voz)**
+- **Por quê:** item do FALHAS que não depende de ninguém (F15): o pacote `xlsx` tem duas falhas de segurança graves
+  conhecidas, sem correção no npm, e o chat o usava justamente para **ler** o CSV que a IA escreve.
+- **O que mudou:** a planilha Excel é montada por nós (`lib/ock/spreadsheet.ts`): um leitor de CSV pequeno (aceita
+  ponto e vírgula e vírgula decimal, comuns no Brasil) e o `.xlsx` montado com o `jszip`, que o projeto já usava. Os
+  nomes das colunas saem em negrito; números viram números; o resto é texto (um valor com "=" nunca vira fórmula). O
+  pacote saiu do `package.json`; sem biblioteca nova. `npm audit`: 0 vulnerabilidades.
+- **Como foi conferido:** antes de remover, o próprio `xlsx` leu a planilha nova com os valores certos (texto com
+  vírgula e aspas, número, "=SUM(A1)" como texto, ponto e vírgula com vírgula decimal). Lint, tipos, 517 testes (9
+  novos) e build; fumaça de ponta a ponta (11 conferências). Abrir no Excel ficou para o Luis (Parte B, passo 4 do guia).
+
 ## Resumo da madrugada de 26/10 (para o Luis ler primeiro)
 
 O Claude trabalhou sozinho, sem merge, sem o Supabase de verdade, sem chaves e sem créditos. Tudo com a IA simulada.
@@ -924,6 +936,7 @@ O Claude trabalhou sozinho, sem merge, sem o Supabase de verdade, sem chaves e s
 | #48 | Pesquisa na internet (Claude) e contas com um programa (Gemini) no chat, desligadas (`OCK_AI_TOOLS`) | #47 |
 | #49 | Imagens no chat com o GPT Image 2 (uns R$ 0,29 cada), desligadas (`OCK_AI_TOOLS`) | #48 |
 | #50 | Voz no chat: o botão Ditar, transcrito pelo gpt-transcribe (uns R$ 0,025 por minuto), desligado (`OCK_AI_TOOLS`) | #49 |
+| #51 | Planilha Excel montada pela plataforma, sem o pacote `xlsx` (F15, falha de segurança) | #50 |
 
 O PR #45 já estava na `main` quando a madrugada começou (merge às 23:39 de 25/10 pela conta `lgvoliveira`; **confirmar se
 foi você**). Por isso a pilha parte da `main`, não do branch do #45.
@@ -932,7 +945,7 @@ foi você**). Por isso a pilha parte da `main`, não do branch do #45.
 1. **Supabase de verdade:** conferir a migração do #45 (passos em "3d testada pelo Luis e no ar", acima).
 2. **Testar a pilha de uma vez:** a sessão 1 do `docs/GUIA-TESTE-IAS-REAIS.md` (Partes A a D, uns 30 minutos, sem gastar)
    no branch do PR mais alto (a Parte A diz qual).
-3. **Merge em ordem:** #46, #47, #48, #49 e #50. **Depois de cada merge, clique em "Delete branch"** no PR que entrou:
+3. **Merge em ordem:** #46, #47, #48, #49, #50 e #51. **Depois de cada merge, clique em "Delete branch"** no PR que entrou:
    só assim o GitHub troca a base do PR seguinte para a `main` (o repositório não apaga o branch sozinho). Antes de cada
    merge, confira que o alto do PR diz "into main" e que as checagens estão verdes. Se um PR falhar no teste, pare ali:
    os de baixo podem entrar, os de cima esperam a correção.

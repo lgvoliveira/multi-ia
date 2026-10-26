@@ -107,7 +107,7 @@ lib/auth/            o login (Supabase Auth): quem está vendo a página (viewer
                      member.ts, forms.ts e page-member.ts (confere que o login não mudou desde que a página
                      abriu, F34), que são dados e conferências puras
 lib/ock/             o workspace para empresas: a parte "Equipe" do painel do dono (team.ts e team-forms.ts), o
-                     Chefe que recomenda a IA (chief.ts), preços (pricing.ts), os arquivos gerados (document.ts,
+                     Chefe que recomenda a IA (chief.ts), preços (pricing.ts), os arquivos gerados (document.ts, spreadsheet.ts,
                      chart.ts, project.ts) e o chat da tarefa rápida: quem executa uma mensagem (run-task.ts), o que
                      cada tipo de resposta pede à IA e quanto pode custar (quick-task.ts), a chamada às IAs com novas
                      tentativas (ai-call.ts), conversas e mensagens (task-store.ts), arquivos na pasta fechada

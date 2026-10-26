@@ -32,7 +32,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F12 | Senha temporária guardada sem criptografia | Segurança | Média | Resolvida |
 | F13 | Só existe uma empresa, fixa no código ("demo") | Código | Alta | Resolvida |
 | F14 | As tabelas do banco (Supabase) não estão no repositório | Código | Alta | Resolvida |
-| F15 | Pacote `xlsx` com falhas de segurança conhecidas | Segurança | Média | Aberta |
+| F15 | Pacote `xlsx` com falhas de segurança conhecidas | Segurança | Média | Resolvida |
 | F16 | Rotas que gastam IA de verdade abertas para qualquer um | Segurança | Alta | Resolvida |
 | F17 | Preços das IAs e câmbio fixos no código | Código | Média | Aberta |
 | F18 | Prévia de site: o Chrome "aquece" uma conexão antes de bloquear | Segurança | Baixa | Aceita |
@@ -300,13 +300,18 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   No merge, o Supabase aplica as migrações sozinho no projeto novo.
 
 ### F15 — Pacote `xlsx` com falhas de segurança conhecidas
-- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 22/10/2026
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 22/10/2026
 - **O problema:** o PR #19 instalou o `xlsx` 0.18.5, a última versão publicada no npm, que tem falhas de segurança
   conhecidas. As versões corrigidas só são distribuídas pelo site do próprio projeto (SheetJS).
 - **O que fazer:** trocar por uma versão corrigida ou por outra biblioteca de Excel, antes de produção.
 - **Andamento (25/10/2026, PR 3c):** o chat voltou a usar o `xlsx` para transformar em Excel o CSV que a IA escreve. Como
   esse texto pode vir de uma IA influenciada por um texto colado (injeção de prompt), a troca continua necessária antes
   de produção.
+- **Resolvida (26/10/2026, PR da planilha):** o pacote `xlsx` saiu do projeto. A planilha é montada por nós
+  (`lib/ock/spreadsheet.ts`): um leitor de CSV pequeno e o `.xlsx` montado com o `jszip`, que o projeto já usava (um
+  `.xlsx` é um `.zip` de arquivos XML). Sem biblioteca nova. Tudo o que não é número entra como texto (um valor com
+  "=" nunca vira fórmula), e os sinais do XML são trocados. Antes de remover, o próprio `xlsx` leu a planilha nova com os
+  valores certos. O `npm audit` passou a dizer 0 vulnerabilidades.
 
 ### F16 — Rotas que gastam IA de verdade abertas para qualquer um
 - **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 09/10/2026 (no PROGRESSO), ampliada em 22/10/2026
