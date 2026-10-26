@@ -4,8 +4,8 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 25/10/2026, noite (etapa 5: a 3d, painel do dono, testada e no ar; começa o trabalho da
-madrugada no PR das IAs de verdade)
+**Última atualização:** 26/10/2026, madrugada (o Claude trabalhou sozinho: PRs #46 a #48 abertos, empilhados, esperando o
+teste do Luis; resumo em "Resumo da madrugada de 26/10", antes do "Próximo passo")
 **Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite), o aviso de troca de login
 e o PR 3 inteiro (3a receitas com login, 3b receitas cobrando, 3c o chat, a aba Receitas e a 3d, painel do dono) no ar
 e testados; agora, o PR das IAs de verdade
@@ -869,13 +869,59 @@ empilhado sobre o PR das IAs de verdade)**
 - **Guia:** `docs/GUIA-TESTE-IAS-REAIS.md` ganhou a Parte D (ferramentas fingidas, sessão 1) e a Parte G (de verdade,
   sessão 2).
 
+## Resumo da madrugada de 26/10 (para o Luis ler primeiro)
+
+O Claude trabalhou sozinho, sem merge, sem o Supabase de verdade, sem chaves e sem créditos. Tudo com a IA simulada.
+
+**O que ficou pronto (PRs abertos, empilhados um sobre o outro):**
+
+| PR | O que traz | Base |
+|----|-----------|------|
+| #46 | Só documentos: o teste do painel do dono (PR #45), o que conferir no Supabase de verdade e a Parte J do guia | `main` |
+| #47 | IAs de verdade prontas, sem gastar: consumo informado pelas empresas (F40), `OCK_AI_MODE` (F42), modelos e preços oficiais (F17), correções F50 e F51, guia `docs/GUIA-TESTE-IAS-REAIS.md` com a compra dos créditos | #46 |
+| #48 | Pesquisa na internet (Claude) e contas com um programa (Gemini) no chat, desligadas (`OCK_AI_TOOLS`) | #47 |
+
+O PR #45 já estava na `main` quando a madrugada começou (merge às 23:39 de 25/10 pela conta `lgvoliveira`; **confirmar se
+foi você**). Por isso a pilha parte da `main`, não do branch do #45.
+
+**Ordem de testar e fazer o merge:**
+1. **Supabase de verdade:** conferir a migração do #45 (passos em "3d testada pelo Luis e no ar", acima).
+2. **Testar a pilha de uma vez:** a sessão 1 do `docs/GUIA-TESTE-IAS-REAIS.md` (Partes A a D, uns 25 minutos, sem gastar)
+   no branch do PR mais alto (a Parte A diz qual).
+3. **Merge em ordem:** #46, depois #47, depois #48. **Depois de cada merge, clique em "Delete branch"** no PR que entrou:
+   só assim o GitHub troca a base do PR seguinte para a `main` (o repositório não apaga o branch sozinho). Antes de cada
+   merge, confira que o alto do PR diz "into main" e que as checagens estão verdes. Se um PR falhar no teste, pare ali:
+   os de baixo podem entrar, os de cima esperam a correção.
+4. **Quando decidir gastar:** a sessão 2 do guia (Partes E a H): comprar US$ 5 na Anthropic e na OpenAI com a recarga
+   automática desligada, criar as chaves e o primeiro teste com IA de verdade.
+
+**Decisões provisórias do Claude (confirmar ou mudar):**
+1. `OCK_AI_MODE` vazio continua simulado no computador (real no site publicado).
+2. Modelos de cada nível: Claude Haiku/Sonnet/Opus 5.5; GPT-6 Luna / 6.1 Sol / 6 Astra; Gemini 3.5 Flash-Lite / 3.8 Flash /
+   4 Argon.
+3. Folga para o "pensamento" de 2/8/16 mil tokens, 3 caracteres por token e imagens a 5.000 tokens na estimativa (rever
+   com as primeiras medições). Com isso, "Criar um site" fica em "até R$ 6,09".
+4. Sem o "fallback" da Anthropic (a nossa troca de IA já cuida de recusas).
+5. Chamadas diretas às APIs, sem as bibliotecas oficiais (F52: o AGENTS.md diz o contrário; recomendação do Claude:
+   manter e corrigir o AGENTS.md).
+6. Pesquisa na internet pelo Claude, não pelo Gemini (termos do Google); código pelo Gemini.
+7. Fontes e "programa rodado" escritos no fim da resposta, sem coluna nova no banco (F53, limitação aceita).
+
+**Para você decidir:**
+- **Câmbio:** continua R$ 5,50 (sua decisão de 25/10), mas cada dólar pago com cartão brasileiro sai por uns R$ 5,6 a
+  5,7 (dólar comercial de R$ 5,22 em 28/09, mais IOF de 3,5% e a margem do banco). Com margem zero, a plataforma paga a
+  diferença. Mudar é uma linha (`USD_TO_BRL` em `lib/ock/pricing.ts`).
+- **F52:** manter as chamadas diretas ou trocar pelas bibliotecas oficiais.
+
+**Não feito nesta madrugada:** a geração de imagem e a voz (ver o próximo passo).
+
 ## Próximo passo
 
-1. **Luis:** conferir no Supabase de verdade a migração do PR #45 (passos em "3d testada pelo Luis e no ar", acima) e
-   confirmar se foi ele quem fez o merge.
-2. **Luis:** testar o PR das IAs de verdade pela **sessão 1** do `docs/GUIA-TESTE-IAS-REAIS.md` (sem gastar nada) e,
-   quando decidir gastar, a **sessão 2** (comprar os créditos, criar as chaves e o primeiro teste com IA de verdade).
-   Decidir o câmbio e confirmar as decisões provisórias da madrugada de 26/10 (listadas na seção do PR, acima).
+1. **Luis:** seguir a "Ordem de testar e fazer o merge" do resumo da madrugada, acima, e decidir o câmbio e as
+   decisões provisórias.
+2. **Claude Code:** o que falta das IAs de verdade, desligado até as chaves: **criar imagens** no chat (GPT Image 2,
+   uns R$ 0,29 por imagem) e a **voz** (ditar a mensagem; conversar com o parceiro antes, porque o PR #36 dele mexe na
+   mesma tela). Depois, com as chaves, medir custo e tempo de verdade e rever as folgas da estimativa.
 3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.
