@@ -57,9 +57,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F37 | Cancelar não parava a IA no meio da fase | Código | Média | Resolvida |
 | F38 | "Concluído em" mostrava só o tempo da última fase | Produto / Código | Baixa | Resolvida |
 | F39 | A chamada interna ia para o endereço que vinha no pedido | Segurança | Média | Resolvida |
-| F40 | Os conectores das IAs de verdade medem o consumo pelo tamanho do texto | Código | Alta | Aberta |
+| F40 | Os conectores das IAs de verdade medem o consumo pelo tamanho do texto | Código | Alta | Resolvida |
 | F41 | "+ Adicionar agente" mostra o agente, mas ele nunca trabalha | Produto / Código | Baixa | Resolvida |
-| F42 | Sem a chave de uma IA, o site usa a IA simulada sem avisar | Código | Média | Aberta |
+| F42 | Sem a chave de uma IA, o site usa a IA simulada sem avisar | Código | Média | Resolvida |
 | F43 | Quedas raras do servidor na hora de cobrar | Código | Baixa | Aceita |
 | F44 | Anexos do chat: o texto vai inteiro para a IA, e o que ela não lê é aceito sem aviso | Código / Produto | Média | Resolvida |
 | F45 | Sem a pesquisa ou o código de verdade, a IA é instruída a esconder isso | Produto | Média | Resolvida |
@@ -67,6 +67,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F47 | O site feito pela receita não vira entrega | Produto | Média | Resolvida |
 | F48 | O "Gasto do mês" fica menor que o real depois de 1.000 gastos no mês | Código | Baixa | Resolvida |
 | F49 | O nome e o título dos documentos do chat saíam do pedido do funcionário | Segurança / LGPD | Média | Resolvida |
+| F50 | Os conectores das IAs de verdade mandariam pedidos que as APIs de hoje recusam | Código | Alta | Resolvida |
+| F51 | Resposta cortada no meio, ou recusada pela IA, era aceita como resposta completa | Código | Média | Resolvida |
+| F52 | O código fala com as IAs sem as bibliotecas oficiais, ao contrário do que diz o AGENTS.md | Processo | Baixa | Aberta |
 
 ## Negócio
 
@@ -317,6 +320,15 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Andamento (25/10/2026, PR 3b):** cada chamada às IAs das receitas guarda o custo em dólar e o câmbio usado
   (`ai_calls`), e o arredondamento para cima não ganha mais 1 centavo por resto de conta do computador. Os preços e o
   dólar continuam fixos; conferir os preços oficiais entra no PR das IAs de verdade.
+- **Andamento (26/10/2026, PR das IAs de verdade):** nomes e preços conferidos nas páginas oficiais da Anthropic, da
+  OpenAI e do Google, e guardados num lugar só, `lib/providers/models.ts` (o conector pede o modelo de lá e a conta
+  usa o preço de lá). Vários estavam errados: o Claude e o GPT econômicos custam bem menos que o anotado, o Opus, quase
+  4 vezes menos, e a saída do GPT potente custa US$ 50 por milhão, não 40 (a plataforma cobraria menos do que paga). O
+  Gemini usava apelidos que trocam de modelo sozinhos ("gemini-flash-latest"); agora são nomes fixos, e dois deles
+  dobram de preço em datas anunciadas (01/12/2026 e 01/01/2027): a conta troca sozinha na data. A entrada guardada no
+  cache das empresas tem preço próprio (na OpenAI, gravar no cache custa 1,25 vez a entrada). **Falta o câmbio:**
+  continua R$ 5,50 (decisão do Luis de 25/10), mas cada dólar pago com cartão brasileiro sai por uns R$ 5,6 a 5,7
+  (dólar comercial de R$ 5,22 em 28/09, mais o IOF de 3,5% e a margem do banco). A decidir com o Luis.
 
 ### F18 — Prévia de site: o Chrome "aquece" uma conexão antes de bloquear
 - **Gravidade:** Baixa · **Status:** Aceita · **Anotada:** etapa 4 (T7), trazida para cá em 22/10/2026
@@ -539,7 +551,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   acesso da Vercel deixa o site chamar a si mesmo por esse endereço.
 
 ### F40 — Os conectores das IAs de verdade medem o consumo pelo tamanho do texto
-- **Gravidade:** Alta · **Status:** Aberta · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar o PR 3b)
+- **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar o PR 3b)
 - **O problema:** `lib/providers/real.ts` conta os tokens (os pedacinhos de texto pelos quais as empresas de IA cobram)
   pelo tamanho do texto, 4 letras por token. Fica de fora o "pensamento", o raciocínio que a IA faz antes de responder,
   que as empresas também cobram e que pode ser bem maior que a resposta. Com as IAs de verdade, a plataforma cobraria da
@@ -547,14 +559,29 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O que fazer:** no PR das IAs de verdade, ler o consumo que cada API devolve no fim da resposta (com o pensamento) e
   usar esse número na cobrança e em `ai_calls`; revisar a conta da entrada na estimativa com o número de verdade (texto
   em português gasta mais tokens por letra).
+- **Resolvida (26/10/2026, PR das IAs de verdade):** cada conector lê o consumo que a empresa da IA informa no fim da
+  resposta: no Claude, a entrada do começo e a saída do fim (com o pensamento); no GPT, o pedaço de consumo do fim, que
+  agora é pedido (`stream_options.include_usage`); no Gemini, a resposta mais o pensamento. A entrada do cache e a
+  gravada nele entram com o preço próprio. Uma tentativa que cai no meio leva o consumo informado até ali para
+  `ai_calls`. Se a empresa não informar (não deveria acontecer), cobra o máximo da chamada, nunca menos. A estimativa
+  passou a contar 3 caracteres por token (antes, 4), e as imagens anexadas, 5.000 tokens (antes, 2.000). Testado com
+  respostas gravadas no formato da documentação de cada empresa. **Conferência final:** comparar com o painel de gastos
+  das empresas no primeiro dia de uso (Parte E do `docs/GUIA-TESTE-IAS-REAIS.md`).
 
 ### F42 — Sem a chave de uma IA, o site usa a IA simulada sem avisar
-- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar o PR 3b)
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar o PR 3b)
 - **O problema:** `createGetProvider` (`lib/providers/registry.ts`) usa a IA de verdade quando há a chave dela e, sem a
   chave, cai na IA simulada sem avisar ninguém. Com a cobrança ligada, uma chave apagada ou com nome errado no servidor
   faria a empresa pagar por um resultado de mentira.
 - **O que fazer:** no PR das IAs de verdade, faltar a chave vira erro (a etapa falha e o servidor registra o motivo), e
   a IA simulada só roda com um interruptor próprio, ligado de propósito no computador de testes.
+- **Resolvida (26/10/2026, PR das IAs de verdade):** o interruptor novo `OCK_AI_MODE` (`lib/providers/mode.ts`) diz
+  qual IA responde nas receitas e no chat: `simulada` ou `real`. Com `real`, a IA sem chave falha com um erro que não
+  adianta repetir (nas receitas, a IA reserva assume; no chat, a mensagem avisa que não deu), nada é cobrado e o
+  registro interno guarda o nome da variável que falta. Vazio, vale a simulada só no computador de desenvolvimento
+  (`npm run dev` e testes) e a real em qualquer outro lugar, para o site publicado nunca cair na simulada por
+  esquecimento. Decisão provisória do Claude (Luis confirmar): o vazio no computador continuar simulado evita mexer no
+  `.env.local` de quem já testa. Testado de ponta a ponta nos dois modos.
 
 ### F43 — Quedas raras do servidor na hora de cobrar
 - **Gravidade:** Baixa · **Status:** Aceita · **Anotada:** 25/10/2026 (achada pelo Claude no PR 3b)
@@ -605,6 +632,32 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   documento já pede um título no começo), sem marcas como "#"; a planilha se chama "Planilha"; sem título, "Documento".
   As entregas feitas antes desta parte continuam com o nome antigo (só existem no projeto de testes).
 
+### F50 — Os conectores das IAs de verdade mandariam pedidos que as APIs de hoje recusam
+- **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 26/10/2026 (achada pelo Claude ao conferir as APIs, no PR
+  das IAs de verdade)
+- **O problema:** o conector do PR #19 (`lib/providers/real.ts`) foi escrito para versões anteriores dos modelos. Com as
+  chaves ligadas: (1) o GPT recusaria todo pedido de esforço baixo, porque mandava `reasoning_effort: "minimal"`, que os
+  modelos GPT-6 não aceitam; o Chefe do chat usa justamente o GPT com esforço baixo, então falharia em toda mensagem (a
+  regra simples assumiria, sem ninguém perceber); (2) no esforço baixo, o Claude ia sem esforço nenhum, e aí o Sonnet 5.5
+  pensa no nível alto (mais caro e lento) e o Opus 5.5, no médio; (3) o Gemini pedia o pensamento por orçamento de
+  tokens (`thinkingBudget`), e os modelos novos usam níveis (`thinkingLevel`; o 3.8 Flash recusa "minimal"); (4) o
+  Gemini usava apelidos que trocam de modelo sozinhos. E o teto de saída não deixava folga para o pensamento no esforço
+  baixo, mas os modelos de hoje pensam um pouco mesmo assim: a resposta podia sair cortada ou vazia, e cobrada.
+- **Resolvida (26/10/2026, PR das IAs de verdade):** GPT com "low", Claude sempre com o esforço explícito
+  (`output_config`) e pensamento "adaptive", Gemini com `thinkingLevel` ("low", "medium", "high"), nomes fixos de
+  modelo (F17) e folga para o pensamento em todo esforço (`THINKING_ROOM` em `lib/providers/limits.ts`: 2 mil, 8 mil e
+  16 mil tokens; a rever com o consumo de verdade). Testes conferem o pedido mandado a cada empresa.
+
+### F51 — Resposta cortada no meio, ou recusada pela IA, era aceita como resposta completa
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 26/10/2026 (achada pelo Claude no PR das IAs de verdade)
+- **O problema:** no conector do PR #19, se a conexão com a IA fechasse no meio da resposta sem erro, o texto que tinha
+  chegado era entregue como resposta completa (e cobrado); e quando a IA recusava o pedido (Claude com
+  `stop_reason: "refusal"`, GPT com `content_filter`, Gemini com `SAFETY`), o pedaço escrito também virava resposta,
+  em vez de a troca de IA entrar (AGENTS.md, seção 5).
+- **Resolvida (26/10/2026, PR das IAs de verdade):** a resposta só vale com o aviso de fim de cada empresa; sem ele, é
+  uma falha que vale tentar de novo. Recusa é uma falha que não adianta repetir (a troca de IA entra). Um aviso de erro
+  no meio da resposta (ex.: Claude sobrecarregado) também vale nova tentativa. Testado com respostas gravadas.
+
 ## Processo
 
 ### F20 — Mudança grande de produto entrou num PR só, sem registro nos documentos
@@ -651,3 +704,12 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Resolvida (25/10/2026):** o Luis testou a `main` pelo guia (Partes A a H e J; a I, do teto, ficou para o teste da
   parte 3d, issue #43) e tudo deu o resultado esperado: não houve defeito para corrigir. A regra continua: PR com
   descrição antes de parar, e merge só depois do teste.
+### F52 — O código fala com as IAs sem as bibliotecas oficiais, ao contrário do que diz o AGENTS.md
+- **Gravidade:** Baixa · **Status:** Aberta · **Anotada:** 26/10/2026 (percebida pelo Claude no PR das IAs de verdade)
+- **O problema:** a decisão de 09/10 (AGENTS.md, seção 3) diz "SDKs oficiais de cada empresa". O conector do PR #19
+  chama as APIs direto pelo endereço delas (`fetch`), sem as bibliotecas oficiais, e o PR das IAs de verdade manteve
+  assim. A regra escrita e o código não batem. Na prática, o efeito é pequeno: o preço e o comportamento são os mesmos,
+  e não há biblioteca nova para manter; em troca, quando uma empresa muda o formato da resposta, somos nós que ajustamos
+  o conector (com as bibliotecas, viria numa atualização delas).
+- **O que fazer (Luis decidir):** (a) manter as chamadas diretas e corrigir o AGENTS.md (recomendação do Claude, por
+  ser o que está testado e não trazer dependência nova), ou (b) trocar pelas três bibliotecas oficiais num PR próprio.

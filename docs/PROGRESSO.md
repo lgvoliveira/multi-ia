@@ -805,14 +805,52 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
      `member_month_summary` e `month_statement`.
   3. Se alguma não aparecer, não crie nada à mão pelo painel (AGENTS.md, seção 8): avise o Claude.
 
+**PR das IAs de verdade, parte que não depende de chave nem de crédito (madrugada de 26/10, Claude Code sozinho; branch
+`feat/ias-reais`, empilhado sobre o PR #46)**
+- **Pedido do Luis (25/10, à noite):** trabalhar sozinho de madrugada, sem merge, sem o Supabase de verdade, sem chaves
+  nem créditos, com a IA simulada; decisões pela opção mais segura e fácil de desfazer, anotadas aqui para ele confirmar.
+- **Interruptor `OCK_AI_MODE` (F42):** `simulada` ou `real`. Com `real`, a IA sem chave falha (nas receitas, a IA
+  reserva assume; no chat, a mensagem avisa) e nada é cobrado; o servidor registra qual variável falta. Vazio: simulada
+  no computador (`npm run dev` e testes), real no site publicado. As receitas e o chat passam a usar o mesmo entregador
+  de IAs (`lib/providers/registry.ts`); antes, os dois usavam sempre a simulada.
+- **Consumo de verdade (F40):** cada conector lê o consumo que a empresa da IA informa no fim da resposta, com o
+  pensamento e o cache; uma tentativa que cai no meio leva o consumo até ali para `ai_calls`.
+- **Modelos e preços oficiais (F17), num lugar só (`lib/providers/models.ts`):** Claude Haiku/Sonnet/Opus 5.5 (US$ 0,10
+  / 2 / 4 por milhão de entrada e 0,50 / 10 / 20 de saída); GPT-6 Luna / 6.1 Sol / 6 Astra (0,10 / 2 / 10 e 0,50 / 10 /
+  50); Gemini 3.5 Flash-Lite / 3.8 Flash / 4 Argon (0,30 / 0,75 / 2 e 2,50 / 3,75 / 10; o 4 Argon dobra em 01/12/2026 e o
+  3.8 Flash em 01/01/2027, e a conta troca sozinha). O cache tem preço próprio.
+- **Pedidos que as APIs de hoje recusariam (F50, nova, resolvida):** o GPT recusa o esforço "minimal" (o Chefe do chat
+  falharia em toda mensagem); sem o esforço explícito, o Sonnet 5.5 pensa no nível alto; o Gemini novo usa níveis de
+  pensamento, não orçamento; e o Gemini usava apelidos que trocam de modelo. **Resposta cortada ou recusada aceita como
+  completa (F51, nova, resolvida).**
+- **Estimativa:** folga para o pensamento em todo esforço (2 mil, 8 mil e 16 mil tokens), a entrada contada a 3
+  caracteres por token (antes, 4) e as imagens a 5.000 tokens. Com os preços novos, "Criar um site" fica em **até
+  R$ 6,09** (antes R$ 5,31; R$ 4,30 com o Gemini no Front-end), e a receita simulada custa uns R$ 0,32.
+- **Guia novo:** `docs/GUIA-TESTE-IAS-REAIS.md`, em duas sessões: sem gastar (simulada com os preços novos; IAs de
+  verdade sem chave, falhando sem cobrar) e com dinheiro (comprar US$ 5 na Anthropic e na OpenAI com a recarga
+  automática desligada, a chave do Gemini no plano grátis, o primeiro teste e a conferência com o painel das empresas).
+- **Como foi conferido:** lint, tipos, 455 testes (novos: modelos e preços, interruptor, entregador das IAs, os três
+  conectores com respostas gravadas no formato oficial de cada empresa, falha sem chave no chat e na receita) e build;
+  nada de servidor no código do navegador. **Ponta a ponta** contra o projeto de testes, com o Chrome por roteiro e o
+  site rodando nos dois modos (simulada e real sem chave): 22 conferências certas (estimativas novas, recusa sem saldo
+  antes de qualquer IA, nada em `ai_calls`, `runs` ou no extrato). Não deu para testar pela tela a resposta cobrada:
+  as empresas de teste do Claude não têm crédito (Partes B e C do guia).
+- **Falhas:** F40 e F42 resolvidas; andamento na F17 (falta o câmbio); novas F50 e F51 (resolvidas) e F52 (o código
+  fala com as IAs sem as bibliotecas oficiais, ao contrário do AGENTS.md; Luis decidir).
+- **Decisões provisórias do Claude (Luis confirmar):** (1) `OCK_AI_MODE` vazio continua simulado no computador; (2)
+  modelos de cada nível acima; (3) folga de pensamento de 2/8/16 mil tokens e 3 caracteres por token na estimativa (rever
+  com as primeiras medições); (4) não ligar o "fallback" da Anthropic (outro modelo dela assumir quando o Claude recusa):
+  a nossa troca de IA já cuida disso e o preço fica exato; (5) manter as chamadas diretas às APIs, sem as bibliotecas
+  oficiais (F52). **Para o Luis decidir:** o câmbio continua R$ 5,50, mas cada dólar pago com cartão sai por uns R$ 5,6
+  a 5,7 (IOF de 3,5% e a margem do banco); com margem zero, a plataforma pagaria a diferença.
+
 ## Próximo passo
 
 1. **Luis:** conferir no Supabase de verdade a migração do PR #45 (passos em "3d testada pelo Luis e no ar", acima) e
    confirmar se foi ele quem fez o merge.
-2. **Claude Code:** **PR das IAs de verdade**, nas receitas e no chat, antes de comprar créditos: ler o consumo que cada
-   API devolve (F40), faltar a chave vira erro em vez de cair na simulada (F42), conferir os nomes dos modelos e os preços
-   oficiais (F17), e ligar imagem, pesquisa, código e voz com preço e limite conferidos. Depois, o Claude guia a compra de
-   créditos (valor mínimo, recarga automática desligada) e o primeiro teste com IA de verdade.
+2. **Luis:** testar o PR das IAs de verdade pela **sessão 1** do `docs/GUIA-TESTE-IAS-REAIS.md` (sem gastar nada) e,
+   quando decidir gastar, a **sessão 2** (comprar os créditos, criar as chaves e o primeiro teste com IA de verdade).
+   Decidir o câmbio e confirmar as decisões provisórias da madrugada de 26/10 (listadas na seção do PR, acima).
 3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.

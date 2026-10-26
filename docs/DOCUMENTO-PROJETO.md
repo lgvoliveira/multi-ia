@@ -182,6 +182,16 @@ chave. **O "Traga sua chave" fica fora do produto para empresas** (decisão do L
 dos diferenciais, e guardar chaves é a parte mais sensível de um banco. A página "Minhas chaves" saiu do código
 em 24/10 (PR 3a). Se a ideia voltar, entra numa mudança própria.
 
+**IA simulada ou de verdade:** um interruptor do servidor (`OCK_AI_MODE`) diz qual responde. No site publicado, sempre
+a de verdade; a simulada (respostas de mentira, cobradas como as de verdade) serve para testar no computador sem gastar.
+Com as IAs de verdade ligadas, uma IA sem chave falha (e a troca de IA entra), nunca vira a simulada sem avisar (F42).
+
+**Modelos de cada nível** (econômico / padrão / potente), conferidos nas páginas oficiais em 26/10/2026: Claude Haiku,
+Sonnet e Opus 5.5; GPT-6 Luna, GPT-6.1 Sol e GPT-6 Astra; Gemini 3.5 Flash-Lite, 3.8 Flash e 4 Argon. Nomes e preços
+ficam num lugar só (`lib/providers/models.ts`); o consumo cobrado é o que cada empresa informa, com o "pensamento" da
+IA (F40). A escolha é provisória (PR das IAs de verdade) e deve ser revista com as primeiras medições de custo e
+qualidade.
+
 **Banco de dados:** desenho, regras de acesso e carteira em `docs/BANCO-DE-DADOS.md`; as tabelas vivem no repositório,
 como migrações (`supabase/migrations/`).
 

@@ -8,8 +8,7 @@
 
 import type { AiCallReport } from "@/lib/engine/types";
 import { costInUsd, usdToCents, USD_TO_BRL } from "@/lib/ock/pricing";
-import { outputTokenCap } from "@/lib/providers/limits";
-import { estimateTokens } from "@/lib/providers/mock";
+import { maxInputTokens, outputTokenCap } from "@/lib/providers/limits";
 import type { Effort, GenerateRequest, ModelTier, ProviderId } from "@/lib/providers/types";
 import { UNKNOWN_MODEL } from "@/lib/runs/billing";
 import type { AiCallRow } from "@/lib/runs/store";
@@ -22,8 +21,11 @@ import { CHART_SAMPLE, DOCUMENT_SAMPLE, PROJECT_SAMPLE, SHEET_SAMPLE } from "./q
 export const HISTORY_TURNS = 6;
 export const HISTORY_MAX_CHARS = 4000;
 
-/** O máximo que uma imagem anexada pesa na entrada da IA, em tokens (as IAs reduzem as imagens grandes). */
-export const IMAGE_INPUT_TOKENS = 2000;
+/**
+ * O máximo que uma imagem anexada pesa na entrada da IA, em tokens. As IAs reduzem as imagens grandes, mas os modelos
+ * novos do Claude aceitam imagens maiores (uns 4.800 tokens numa imagem grande), então a conta usa 5.000.
+ */
+export const IMAGE_INPUT_TOKENS = 5000;
 
 /** As respostas que não vêm de uma IA. Toda falha diz que nada foi cobrado. */
 export const IMAGE_UNAVAILABLE = "Ainda não consigo criar imagens aqui. Isso chega em breve. Nada foi cobrado.";
@@ -166,9 +168,9 @@ export function actionNotice(action: ChatAction): string | null {
   return null;
 }
 
-/** Quanto a entrada de um pedido pesa, em tokens: o texto e as imagens. */
+/** O máximo que a entrada de um pedido pode pesar, em tokens: o texto (com a folga do português) e as imagens. */
 export function requestInputTokens(request: GenerateRequest): number {
-  return estimateTokens(request.systemPrompt + request.input) + (request.images?.length ?? 0) * IMAGE_INPUT_TOKENS;
+  return maxInputTokens(request.systemPrompt + request.input) + (request.images?.length ?? 0) * IMAGE_INPUT_TOKENS;
 }
 
 /**
@@ -177,7 +179,7 @@ export function requestInputTokens(request: GenerateRequest): number {
  */
 function maxRequestUsd(provider: ProviderId, request: GenerateRequest): number {
   const outputTokens = outputTokenCap(provider, request.maxOutputTokens, request.effort ?? "medium");
-  return costInUsd(provider, request.tier ?? "padrao", requestInputTokens(request), outputTokens);
+  return costInUsd(provider, request.tier ?? "padrao", { inputTokens: requestInputTokens(request), outputTokens });
 }
 
 /** O máximo que o Chefe pode gastar para decidir, em centavos: a primeira reserva, antes de qualquer IA. */
@@ -195,7 +197,7 @@ export function answerHoldCents(chiefUsd: number, plan: WorkPlan, request: Gener
 
 /** O custo real de uma chamada, em dólar. */
 export function callUsd(call: Pick<AiCallReport, "provider" | "tier" | "usage">): number {
-  return costInUsd(call.provider, call.tier, call.usage.inputTokens, call.usage.outputTokens);
+  return costInUsd(call.provider, call.tier, call.usage);
 }
 
 /**

@@ -15,7 +15,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentMember } from "@/lib/auth/member";
 import type { AiCallReport } from "@/lib/engine/types";
-import { getProvider as simulatedProvider } from "@/lib/providers/registry";
+import { getProvider as platformProvider } from "@/lib/providers/registry";
 import { ProviderError, type AiProvider, type GenerateRequest, type ProviderId } from "@/lib/providers/types";
 import { recordAiCalls } from "@/lib/runs/store";
 import {
@@ -89,7 +89,7 @@ export interface QuickTaskRequest {
 export type QuickTaskResult = { ok: true; result: SendResult } | { ok: false; status: 402 | 404; problem: string };
 
 export interface QuickTaskOptions {
-  /** Quem entrega as IAs. Por enquanto, sempre a IA simulada, como nas receitas (as de verdade vêm num PR próprio). */
+  /** Quem entrega as IAs. Sem valor, o mesmo das receitas: a simulada ou a de verdade, conforme OCK_AI_MODE. */
   getProvider?: (id: ProviderId) => AiProvider;
   /** Os testes trocam a espera entre as tentativas. */
   wait?: (ms: number) => Promise<void>;
@@ -129,7 +129,7 @@ async function answerMessage(
   taskId: string,
   ledger: Ledger,
 ): Promise<QuickTaskResult> {
-  const getProvider = options.getProvider ?? simulatedProvider;
+  const getProvider = options.getProvider ?? platformProvider;
   const onCall = (report: AiCallReport) => ledger.calls.push(report);
   const isOwner = me.role === "owner";
 

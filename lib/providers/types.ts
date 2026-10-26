@@ -49,8 +49,14 @@ export interface GenerateRequest {
 
 /** Consumo da IA numa etapa, em tokens. É a base do custo. */
 export interface Usage {
+  /** Toda a entrada, contando a que veio do cache e a que foi gravada nele. */
   inputTokens: number;
+  /** Toda a saída, contando o "pensamento" (as empresas cobram os dois). */
   outputTokens: number;
+  /** Quanto da entrada veio do cache da empresa da IA (sai mais barato). Sem valor: nada. */
+  cachedInputTokens?: number;
+  /** Quanto da entrada foi gravado no cache nesta chamada (na OpenAI, sai mais caro). Sem valor: nada. */
+  cacheWriteTokens?: number;
 }
 
 /** Cada pedaço que a IA devolve enquanto escreve. */
@@ -73,16 +79,19 @@ export interface AiProvider {
 
 /**
  * Erro de uma IA. `retryable` diz se vale a pena tentar de novo (ex.: IA sobrecarregada).
- * `model`, quando o conector sabe, é o modelo exato que falhou: vai para o registro interno do custo (F26).
+ * `model`, quando o conector sabe, é o modelo exato que falhou, e `usage`, o consumo que a empresa da IA informou antes
+ * de a resposta cair: vão para o registro interno do custo (F26), que sem eles conta pelo tamanho do texto.
  */
 export class ProviderError extends Error {
   readonly retryable: boolean;
   readonly model?: string;
+  readonly usage?: Usage;
 
-  constructor(message: string, options: { retryable: boolean; model?: string }) {
+  constructor(message: string, options: { retryable: boolean; model?: string; usage?: Usage }) {
     super(message);
     this.name = "ProviderError";
     this.retryable = options.retryable;
     this.model = options.model;
+    this.usage = options.usage;
   }
 }

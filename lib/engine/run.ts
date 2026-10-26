@@ -505,11 +505,13 @@ async function* runAttempt(
       provider: provider.id,
       model: result?.model ?? (failure instanceof ProviderError ? failure.model : undefined) ?? null,
       tier: DEFAULT_TIER,
-      // Sem a conta da IA (ela não terminou), conta pelo tamanho do que foi enviado e do que ela escreveu.
-      usage: result?.usage ?? {
-        inputTokens: estimateTokens(systemPrompt + input),
-        outputTokens: estimateTokens(output),
-      },
+      // Sem a conta da IA (ela não terminou e não informou o consumo), conta pelo tamanho do que foi enviado e do que
+      // ela escreveu.
+      usage: result?.usage ??
+        (failure instanceof ProviderError ? failure.usage : undefined) ?? {
+          inputTokens: estimateTokens(systemPrompt + input),
+          outputTokens: estimateTokens(output),
+        },
       ok: result !== null,
       ...(result ? {} : { errorMessage: failureMessage(failure, options.signal) }),
       attempt,

@@ -1,29 +1,35 @@
 // Quanto cada IA pode escrever numa chamada, contando o "pensamento". É o mesmo teto que os conectores reais mandam
-// para a API de cada empresa (real.ts) e a base da estimativa de custo (lib/runs/estimate.ts): mudou aqui, muda nos
-// dois lugares, e a estimativa continua sendo o máximo que a IA consegue gastar.
+// para a API de cada empresa (real.ts) e a base da estimativa de custo (lib/runs/estimate.ts e a reserva do chat):
+// mudou aqui, muda nos dois lugares, e a estimativa continua sendo o máximo que a IA consegue gastar.
 
 import type { Effort, ProviderId } from "./types";
 
-/** Orçamento de "pensamento" (em tokens) por esforço. Usado pelo Claude e pelo Gemini; "low" = sem pensar. */
-export const THINKING_TOKENS: Record<Effort, number> = { low: 0, medium: 2000, high: 6000 };
+/**
+ * Folga para o pensamento, em tokens, além do limite da resposta, por esforço. Nos modelos de hoje, as três IAs pensam
+ * até no esforço baixo (o Claude Opus 5.5 nem deixa desligar), e o pensamento gasta do mesmo teto que a resposta: sem
+ * folga, a IA pode gastar o teto pensando e devolver a resposta cortada ou vazia (que é cobrada mesmo assim).
+ * Decisão provisória do Claude (25/10/2026): rever com o consumo de verdade das primeiras execuções.
+ */
+export const THINKING_ROOM: Record<Effort, number> = { low: 2000, medium: 8000, high: 16000 };
 
-/** Folga para o pensamento do Claude caber junto com a resposta quando o esforço é médio ou alto. */
-const CLAUDE_THINKING_ROOM = 8000;
+/**
+ * Quantos caracteres de texto contam como 1 token na hora de estimar a entrada. O consumo de verdade vem da empresa da
+ * IA (F40); para estimar o máximo antes, o texto em português gasta mais tokens por letra que o inglês (uns 3 a 4
+ * caracteres por token, contra 4 ou mais), então a conta usa 3.
+ */
+export const ESTIMATE_CHARS_PER_TOKEN = 3;
 
-/** Folga a mais do GPT: o raciocínio dele também gasta do mesmo limite. */
-const GPT_EXTRA_ROOM = 1000;
+/** A entrada que um texto pode gastar, em tokens, para estimar o máximo. */
+export function maxInputTokens(text: string): number {
+  return Math.ceil(text.length / ESTIMATE_CHARS_PER_TOKEN);
+}
 
 /**
  * O teto de tokens de saída (resposta + pensamento) que a IA recebe para uma etapa com este limite de resposta e este
- * esforço. A empresa da IA cobra no máximo isso de saída.
+ * esforço. A empresa da IA cobra no máximo isso de saída. Hoje é igual para as três IAs; o `id` fica para quando uma
+ * delas precisar de outra folga.
  */
 export function outputTokenCap(id: ProviderId, maxOutputTokens: number, effort: Effort): number {
-  switch (id) {
-    case "claude":
-      return effort === "low" ? maxOutputTokens : maxOutputTokens + CLAUDE_THINKING_ROOM;
-    case "gpt":
-      return maxOutputTokens + THINKING_TOKENS[effort] + GPT_EXTRA_ROOM;
-    case "gemini":
-      return maxOutputTokens + THINKING_TOKENS[effort];
-  }
+  void id;
+  return maxOutputTokens + THINKING_ROOM[effort];
 }

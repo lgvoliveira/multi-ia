@@ -39,7 +39,9 @@ afterEach(() => {
 
 describe("a conta de uma execução", () => {
   it("cobra o consumo real de cada etapa, com no mínimo 1 centavo", () => {
-    expect(stepChargeCents(result("brief", "claude", 2000, 1000))).toBe(costInCents("claude", "padrao", 2000, 1000));
+    expect(stepChargeCents(result("brief", "claude", 2000, 1000))).toBe(
+      costInCents("claude", "padrao", { inputTokens: 2000, outputTokens: 1000 }),
+    );
     expect(stepChargeCents(result("research", "gemini", 1, 1))).toBe(1);
   });
 
@@ -100,7 +102,7 @@ describe("a conta de uma execução", () => {
       tier: "padrao",
       input_tokens: 1000,
       output_tokens: 500,
-      cost_usd: Number(costInUsd("gpt", "padrao", 1000, 500).toFixed(6)),
+      cost_usd: Number(costInUsd("gpt", "padrao", { inputTokens: 1000, outputTokens: 500 }).toFixed(6)),
       usd_brl: USD_TO_BRL,
       charged: false,
       status: "error",

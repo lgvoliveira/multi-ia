@@ -89,9 +89,12 @@ components/          pedaços de tela reutilizáveis (cada um com seu .module.cs
 lib/engine/          motor: executa as etapas de um time e narra cada passo em eventos (types.ts).
                      Recebe as IAs prontas (getProvider), não as escolhe. O ESLint barra importar
                      telas, Next.js ou React aqui, em lib/providers/, lib/recipes/ e lib/runs/
-lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts). catalog.ts é só
-                     dados e pode ir para a tela; registry.ts entrega as IAs e é SÓ do servidor; limits.ts é o
-                     teto de saída de cada IA (resposta + pensamento), usado pelos conectores e pela estimativa
+lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts): real.ts (as IAs de verdade) e
+                     mock.ts (a simulada). catalog.ts e models.ts (o modelo e o preço oficial de cada nível, o
+                     único lugar a mudar quando uma empresa trocar nome ou preço) são só dados e podem ir para a
+                     tela; registry.ts entrega as IAs e é SÓ do servidor, escolhendo a simulada ou a de verdade pelo
+                     interruptor OCK_AI_MODE (mode.ts); limits.ts é o teto de saída de cada IA (resposta +
+                     pensamento), usado pelos conectores e pela estimativa
 lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema, etapas);
                      validate.ts confere toda receita nos testes; screen.ts é o que a tela de uma receita recebe
                      (nunca as instruções das IAs)

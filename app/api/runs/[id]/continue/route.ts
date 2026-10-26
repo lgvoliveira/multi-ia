@@ -6,8 +6,8 @@
 // senão, volta para a fila e dispara a próxima.
 // Enquanto a fase roda, renova a reserva de quem roda a cada poucos segundos e, se a pessoa cancelou, para a IA no meio.
 // Se algo estourar no meio, a reserva de quem roda vence logo e a próxima busca da tela retoma a execução.
-// As receitas rodam com a IA simulada, que custa o mesmo que a IA de verdade equivalente (as reais entram num PR
-// próprio, antes da compra de créditos).
+// As IAs são as de verdade ou as simuladas, conforme o interruptor OCK_AI_MODE (lib/providers/mode.ts); a simulada
+// custa o mesmo que a de verdade equivalente.
 
 import { runSegment } from "@/lib/engine/segment";
 import type { AiCallReport, RunEvent, RunSnapshot } from "@/lib/engine/types";
