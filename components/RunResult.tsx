@@ -5,9 +5,9 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { formatBRL } from "@/lib/ock/pricing";
+import { siteFileName } from "@/lib/ock/site-file";
 import { getProviderInfo } from "@/lib/providers/catalog";
 import { AiDot } from "./AiDot";
-import { siteFileName } from "./generated-site";
 import { formatDuration, type RunState } from "./run-state";
 import { SitePreview } from "./SitePreview";
 import { StepCard } from "./StepCard";

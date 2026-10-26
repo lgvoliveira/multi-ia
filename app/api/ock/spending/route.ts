@@ -1,5 +1,5 @@
-// GET /api/ock/spending: o gasto do mês de quem está logado, o teto e as linhas do extrato do mês, para a aba
-// "Meus gastos". Lido com a sessão da pessoa: só os gastos dela.
+// GET /api/ock/spending: o gasto do mês de quem está logado, o teto e o extrato do mês (cada receita numa linha só),
+// para a aba "Meus gastos". Lido com a sessão da pessoa: só os gastos dela.
 
 import { chatCaller, chatProblem, SERVER_PROBLEM } from "@/lib/ock/chat-request";
 import { loadMonthSpending } from "@/lib/ock/spending";

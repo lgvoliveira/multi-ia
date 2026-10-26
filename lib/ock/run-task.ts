@@ -57,7 +57,7 @@ import {
   type AttachmentText,
   type WorkPlan,
 } from "./quick-task";
-import { loadMonthSpending } from "./spending";
+import { loadMonth } from "./spending";
 import {
   createOwnConversation,
   createTask,
@@ -380,7 +380,7 @@ async function done(
   task: ChatTask,
 ): Promise<QuickTaskResult> {
   await touchConversation(conversation.id);
-  const { month } = await loadMonthSpending(session, me.id);
+  const month = await loadMonth(session, me.id);
   return { ok: true, result: { conversation: { ...conversation, updatedAt: now() }, task, month } };
 }
 

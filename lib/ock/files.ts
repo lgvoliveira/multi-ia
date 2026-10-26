@@ -38,6 +38,8 @@ export interface NewFile {
   mime: string;
   bytes: Uint8Array;
   taskId?: string | null;
+  /** A execução de receita que fez a entrega (o site da "Criar um site", F47). */
+  runId?: string | null;
 }
 
 /** Guarda um arquivo na pasta da pessoa e registra na tabela. Devolve o id e o nome. */
@@ -60,6 +62,7 @@ export async function storeFile(file: NewFile): Promise<ChatFile> {
       mime_type: file.mime.slice(0, 255),
       size_bytes: file.bytes.byteLength,
       task_id: file.taskId ?? null,
+      run_id: file.runId ?? null,
     })
     .select("id, name")
     .single();
@@ -113,24 +116,40 @@ export async function loadTaskFiles(
 }
 
 /** As entregas da própria pessoa (o que as IAs fizeram para ela), das mais novas para as mais antigas. */
-export async function listOwnDeliveries(
+export function listOwnDeliveries(session: SupabaseClient, memberId: string, limit = 200): Promise<ChatDelivery[]> {
+  return listMemberDeliveries(session, memberId, { limit });
+}
+
+/**
+ * As entregas de uma pessoa, das mais novas para as mais antigas, desde `since` (sem ele, todas). Pela sessão: o dono
+ * enxerga as entregas da equipe; o funcionário, só as dele (as de outra pessoa não voltam).
+ */
+export async function listMemberDeliveries(
   session: SupabaseClient,
   memberId: string,
-  limit = 200,
+  options: { since?: Date; limit?: number } = {},
 ): Promise<ChatDelivery[]> {
-  const { data, error } = await session
-    .from(FILES)
-    .select("id, name, created_at")
-    .eq("member_id", memberId)
-    .eq("kind", "delivery")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  let query = session.from(FILES).select("id, name, created_at").eq("member_id", memberId).eq("kind", "delivery");
+  if (options.since) query = query.gte("created_at", options.since.toISOString());
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(options.limit ?? 200);
   if (error) throw error;
   return ((data as { id: string; name: string; created_at: string }[] | null) ?? []).map((row) => ({
     id: row.id,
     name: row.name,
     createdAt: row.created_at,
   }));
+}
+
+/** Se a execução de receita já guardou a entrega dela (para não guardar o mesmo site duas vezes). */
+export async function hasRunDelivery(runId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin()
+    .from(FILES)
+    .select("id")
+    .eq("run_id", runId)
+    .eq("kind", "delivery")
+    .limit(1);
+  if (error) throw error;
+  return (data ?? []).length > 0;
 }
 
 /** Um arquivo que a pessoa pode ver (os dela e, para o dono, as entregas da empresa), ou null. */

@@ -5,23 +5,32 @@
 //   quanto custou. Com o chat vazio, sugere as receitas prontas.
 // - "Receitas": as receitas prontas em cartões; a escolhida abre ali mesmo (components/WorkspaceRecipes.tsx).
 // - "Entregas": os arquivos que as IAs fizeram para a pessoa (PDF, planilha, gráfico, projeto...), para baixar.
-// - "Meus gastos": o gasto do mês, em reais, o teto e as linhas do extrato da própria pessoa (decisão 4 da issue #39).
+// - "Meus gastos": o gasto do mês, em reais, o teto e o extrato do mês da própria pessoa, com cada receita numa linha só
+//   (decisão 4 da issue #39 e decisão 2 da issue #43).
+// Nas duas últimas, o funcionário lê o que o dono da empresa vê do trabalho dele (F05).
 // A aba e a receita aberta ficam no endereço (components/workspace-view.ts): recarregar volta para o mesmo lugar.
 
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { QuickChat } from "@/components/QuickChat";
-import type { ChatConversation, ChatDelivery, MonthSpending, SpendingEntry } from "@/lib/ock/chat";
+import type { ChatConversation, ChatDelivery, MonthSpending } from "@/lib/ock/chat";
 import { fileUrl, loadDeliveries, loadSpending } from "@/lib/ock/chat-client";
 import { formatBRL } from "@/lib/ock/pricing";
-import { getProviderInfo } from "@/lib/providers/catalog";
+import { formatDateTime, STATEMENT_PAGE_SIZE, type StatementLine } from "@/lib/ock/statement";
 import type { RecipeSummary } from "@/lib/recipes/types";
+import { BudgetBar } from "./BudgetBar";
+import { StatementList } from "./StatementList";
 import { WORKSPACE_TABS as TABS, workspaceSearch, type WorkspaceTab, type WorkspaceView } from "./workspace-view";
 import { WorkspaceRecipes, type WorkspaceRecipe } from "./WorkspaceRecipes";
 import styles from "./OckWorkspace.module.css";
 
+/** O que o funcionário lê nas abas Entregas e Meus gastos (o dono, que é quem vê, não precisa do aviso). */
+const OWNER_SEES = "O dono da empresa vê suas entregas e quanto cada tarefa custou. Suas conversas, não.";
+
 interface OckWorkspaceProps {
   pageMemberId: string;
   firstName: string;
+  /** Se quem está na página é o dono (para ele, o aviso do que o dono vê não aparece). */
+  isOwner: boolean;
   initialConversations: ChatConversation[];
   initialMonth: MonthSpending;
   /** Os cartões da aba Receitas: as prontas e as que estão "Em breve". */
@@ -35,6 +44,7 @@ interface OckWorkspaceProps {
 export function OckWorkspace({
   pageMemberId,
   firstName,
+  isOwner,
   initialConversations,
   initialMonth,
   recipeCards,
@@ -141,7 +151,7 @@ export function OckWorkspace({
         hidden={tab !== "deliveries"}
       >
         {/* Montadas só quando abertas: cada vez que a aba abre, a lista vem atualizada. */}
-        {tab === "deliveries" && <DeliveriesPanel />}
+        {tab === "deliveries" && <DeliveriesPanel isOwner={isOwner} />}
       </div>
       <div
         role="tabpanel"
@@ -149,7 +159,7 @@ export function OckWorkspace({
         aria-labelledby={`${ids}-tab-spending`}
         hidden={tab !== "spending"}
       >
-        {tab === "spending" && <SpendingPanel onMonthChange={setMonth} />}
+        {tab === "spending" && <SpendingPanel isOwner={isOwner} onMonthChange={setMonth} />}
       </div>
     </main>
   );
@@ -157,7 +167,7 @@ export function OckWorkspace({
 
 type Loaded<T> = { state: "loading" } | { state: "ready"; data: T } | { state: "error"; problem: string };
 
-function DeliveriesPanel() {
+function DeliveriesPanel({ isOwner }: { isOwner: boolean }) {
   const [deliveries, setDeliveries] = useState<Loaded<ChatDelivery[]>>({ state: "loading" });
 
   useEffect(() => {
@@ -174,8 +184,9 @@ function DeliveriesPanel() {
   return (
     <section className={styles.panel} aria-label="Entregas">
       <p className={styles.panelLead}>
-        Tudo o que as IAs fizeram para você: PDF, planilha, Word, gráfico e projeto em .zip.
+        Tudo o que as IAs fizeram para você: o site das receitas, PDF, planilha, Word, gráfico e projeto em .zip.
       </p>
+      {!isOwner && <p className={styles.muted}>{OWNER_SEES}</p>}
       {deliveries.state === "loading" && <p className={styles.muted}>Carregando…</p>}
       {deliveries.state === "error" && (
         <p className={styles.problem} role="alert">
@@ -184,7 +195,9 @@ function DeliveriesPanel() {
       )}
       {deliveries.state === "ready" &&
         (deliveries.data.length === 0 ? (
-          <p className={styles.muted}>Nenhuma entrega ainda. Peça um arquivo no chat (ex.: &ldquo;gere um PDF&rdquo;).</p>
+          <p className={styles.muted}>
+            Nenhuma entrega ainda. Peça um arquivo no chat (ex.: &ldquo;gere um PDF&rdquo;) ou use uma receita.
+          </p>
         ) : (
           <ul className={styles.rows}>
             {deliveries.data.map((delivery) => (
@@ -202,8 +215,13 @@ function DeliveriesPanel() {
   );
 }
 
-function SpendingPanel({ onMonthChange }: { onMonthChange: (month: MonthSpending) => void }) {
-  const [spending, setSpending] = useState<Loaded<{ month: MonthSpending; entries: SpendingEntry[] }>>({
+interface SpendingPanelProps {
+  isOwner: boolean;
+  onMonthChange: (month: MonthSpending) => void;
+}
+
+function SpendingPanel({ isOwner, onMonthChange }: SpendingPanelProps) {
+  const [spending, setSpending] = useState<Loaded<{ month: MonthSpending; lines: StatementLine[]; more: boolean }>>({
     state: "loading",
   });
 
@@ -228,8 +246,7 @@ function SpendingPanel({ onMonthChange }: { onMonthChange: (month: MonthSpending
     );
   }
 
-  const { month, entries } = spending.data;
-  const share = month.budgetCents ? Math.min(100, (month.spentCents / month.budgetCents) * 100) : null;
+  const { month, lines, more } = spending.data;
   return (
     <section className={styles.panel} aria-label="Meus gastos">
       <div className={styles.usage}>
@@ -245,51 +262,25 @@ function SpendingPanel({ onMonthChange }: { onMonthChange: (month: MonthSpending
             </span>
           </div>
         </div>
-        {share !== null && (
-          <div
-            className={styles.track}
-            role="progressbar"
-            aria-label="Quanto do teto do mês já foi usado"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(share)}
-          >
-            {/* A largura da barra vem da conta, não de um token. */}
-            <div className={styles.fill} style={{ width: `${share}%` }} />
-          </div>
+        {month.budgetCents !== null && (
+          <BudgetBar
+            spentCents={month.spentCents}
+            budgetCents={month.budgetCents}
+            label="Quanto do teto do mês já foi usado"
+          />
         )}
         <p className={styles.muted}>O mês conta do dia 1º, à meia-noite de Brasília. O teto é definido pelo dono da empresa.</p>
       </div>
+      {!isOwner && <p className={styles.muted}>{OWNER_SEES}</p>}
 
-      {entries.length === 0 ? (
+      {lines.length === 0 ? (
         <p className={styles.muted}>Nenhum gasto neste mês.</p>
       ) : (
-        <ul className={styles.rows} aria-label="Gastos do mês">
-          {entries.map((entry) => (
-            <li key={entry.id} className={styles.row}>
-              <span className={styles.rowName}>
-                {entry.description}
-                {entry.provider && <span className={styles.muted}> · {getProviderInfo(entry.provider).name}</span>}
-              </span>
-              <span className={styles.rowDate}>{formatDateTime(entry.createdAt)}</span>
-              <span className={styles.rowValue}>{formatBRL(entry.amountCents)}</span>
-            </li>
-          ))}
-        </ul>
+        <StatementList lines={lines} label="Gastos do mês" />
       )}
+      {more && <p className={styles.muted}>Mostrando os {STATEMENT_PAGE_SIZE} gastos mais recentes.</p>}
     </section>
   );
-}
-
-/** Dia e hora no horário de Brasília: "25/10, 14:30". */
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function nextTabIndex(key: string, current: number, count: number): number | null {

@@ -4,7 +4,7 @@ import { readWorkspaceView } from "@/components/workspace-view";
 import { firstName } from "@/lib/auth/member";
 import { signedInSession } from "@/lib/auth/session";
 import { requireMember } from "@/lib/auth/viewer";
-import { loadMonthSpending } from "@/lib/ock/spending";
+import { loadMonth } from "@/lib/ock/spending";
 import { listOwnConversations } from "@/lib/ock/task-store";
 import { listRecipeSummaries, RECIPES } from "@/lib/recipes/catalog";
 import { recipeScreen } from "@/lib/recipes/screen";
@@ -22,9 +22,9 @@ export default async function TrabalhoPage(props: PageProps<"/trabalho">) {
   const me = await requireMember();
   const session = await signedInSession();
   if (!session) throw new Error("O login sumiu entre conferir a pessoa e ler as conversas.");
-  const [conversations, spending, search] = await Promise.all([
+  const [conversations, month, search] = await Promise.all([
     listOwnConversations(session),
-    loadMonthSpending(session, me.id),
+    loadMonth(session, me.id),
     props.searchParams,
   ]);
 
@@ -40,8 +40,9 @@ export default async function TrabalhoPage(props: PageProps<"/trabalho">) {
     <OckWorkspace
       pageMemberId={me.id}
       firstName={firstName(me.name)}
+      isOwner={me.role === "owner"}
       initialConversations={conversations}
-      initialMonth={spending.month}
+      initialMonth={month}
       recipeCards={listRecipeSummaries()}
       recipes={recipes}
       initialView={view}

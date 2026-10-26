@@ -97,16 +97,6 @@ export interface MonthSpending {
   budgetCents: number | null;
 }
 
-/** Uma linha do extrato da própria pessoa, para a aba "Meus gastos". */
-export interface SpendingEntry {
-  id: number;
-  createdAt: string;
-  description: string;
-  provider: ProviderId | null;
-  /** Positivo: quanto foi gasto. Um ajuste que devolveu dinheiro vem negativo. */
-  amountCents: number;
-}
-
 export interface ChatDelivery extends ChatFile {
   createdAt: string;
 }

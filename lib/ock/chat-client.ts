@@ -13,8 +13,8 @@ import {
   type ChatTask,
   type MonthSpending,
   type SendResult,
-  type SpendingEntry,
 } from "./chat";
+import type { MemberMonthDetails, StatementLine } from "./statement";
 
 export const OFFLINE_PROBLEM = "Não conseguimos falar com o servidor. Confira sua internet e tente de novo.";
 export const SERVER_PROBLEM = "Algo deu errado do nosso lado. Tente de novo daqui a pouco.";
@@ -78,8 +78,13 @@ export async function loadDeliveries(send: typeof fetch = fetch): Promise<Fetche
 
 export function loadSpending(
   send: typeof fetch = fetch,
-): Promise<Fetched<{ month: MonthSpending; entries: SpendingEntry[] }>> {
+): Promise<Fetched<{ month: MonthSpending; lines: StatementLine[]; more: boolean }>> {
   return request("/api/ock/spending", {}, send);
+}
+
+/** Para o painel do dono: o que uma pessoa da equipe fez no mês (as linhas do extrato e as entregas). */
+export function loadMemberMonth(memberId: string, send: typeof fetch = fetch): Promise<Fetched<MemberMonthDetails>> {
+  return request(`/api/ock/team/${encodeURIComponent(memberId)}`, {}, send);
 }
 
 /** O endereço para baixar um arquivo (o servidor confere quem pede e manda para um link que só baixa). */

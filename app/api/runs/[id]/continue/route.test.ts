@@ -97,6 +97,8 @@ const releaseRun = vi.hoisted(() =>
   }),
 );
 const triggerContinue = vi.hoisted(() => vi.fn());
+// O site pronto vai para as entregas da pessoa (F47); aqui só se anota o que seria guardado.
+const saveSiteDelivery = vi.hoisted(() => vi.fn<(run: { id: string }, html: string) => Promise<void>>(async () => {}));
 
 vi.mock("@/lib/runs/store", () => ({
   claimRun,
@@ -148,6 +150,11 @@ vi.mock("@/lib/runs/wallet", async (importOriginal) => {
 });
 
 vi.mock("@/lib/runs/trigger", () => ({ triggerContinue }));
+
+vi.mock("@/lib/runs/site-delivery", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/runs/site-delivery")>()),
+  saveSiteDelivery,
+}));
 
 const RUN_ID = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const COMPANY_ID = "c0000000-0000-4000-8000-000000000000";
@@ -279,6 +286,32 @@ describe("rota interna POST /api/runs/[id]/continue", () => {
     expect(pauses()).toHaveLength(0);
   });
 
+  it("o site pronto vai para as entregas de quem pediu, uma vez, antes de a execução aparecer como terminada (F47)", async () => {
+    let statusWhenSaved = "";
+    saveSiteDelivery.mockImplementationOnce(async () => {
+      statusWhenSaved = db.row.status;
+    });
+    await runToEnd();
+
+    expect(statusWhenSaved).toBe("running");
+
+    expect(saveSiteDelivery).toHaveBeenCalledTimes(1);
+    expect(saveSiteDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({ id: RUN_ID, company_id: COMPANY_ID, member_id: MEMBER_ID }),
+      SAMPLE_FINAL_SITE,
+    );
+  });
+
+  it("se não der para guardar o site nas entregas, a execução termina assim mesmo", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    saveSiteDelivery.mockRejectedValueOnce(new Error("pasta fora do ar"));
+    await runToEnd();
+
+    expect(db.row.status).toBe("finished");
+    expect(db.row.result).toBe(SAMPLE_FINAL_SITE);
+    expect(wallet.holds[0].open).toBe(false);
+  });
+
   it("o tempo do fim é o que a pessoa esperou desde que pediu, não só o da última fase", async () => {
     await runToEnd();
 
@@ -383,6 +416,8 @@ describe("rota interna POST /api/runs/[id]/continue", () => {
     ]);
     expect(wallet.charges).toHaveLength(0);
     expect(wallet.holds[0].open).toBe(false);
+    // Sem site pronto, nada vai para as entregas.
+    expect(saveSiteDelivery).not.toHaveBeenCalled();
   });
 
   it("se a pessoa cancelou entre duas fases, cobra a fase que terminou, não encadeia e fecha a reserva", async () => {
@@ -464,6 +499,8 @@ describe("rota interna POST /api/runs/[id]/continue", () => {
     expect(wallet.holds[0].open).toBe(false);
     // Nenhuma IA foi chamada de novo.
     expect(db.aiCalls).toHaveLength(calls);
+    // O site vai para as entregas também por aqui (quem guarda confere se já não estava lá).
+    expect(saveSiteDelivery).toHaveBeenLastCalledWith(expect.objectContaining({ id: RUN_ID }), SAMPLE_FINAL_SITE);
   });
 
   it("grava a narração aos poucos, enquanto a fase ainda roda (F35)", async () => {

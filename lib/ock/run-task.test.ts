@@ -53,7 +53,7 @@ vi.mock("@/lib/runs/wallet", async (importOriginal) => {
 });
 vi.mock("@/lib/runs/store", () => ({ recordAiCalls: async (rows: AiCallRow[]) => void db.aiCalls.push(...rows) }));
 vi.mock("@/lib/ock/spending", () => ({
-  loadMonthSpending: async () => ({ month: { spentCents: 42, budgetCents: 5000 }, entries: [] }),
+  loadMonth: async () => ({ spentCents: 42, budgetCents: 5000 }),
 }));
 vi.mock("@/lib/ock/task-store", () => ({
   loadOwnConversation: async (_session: unknown, id: string) => db.conversations.find((c) => c.id === id) && {
