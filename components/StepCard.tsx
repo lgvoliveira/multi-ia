@@ -32,10 +32,10 @@ interface StepCardProps {
   /** A caixa de texto acompanha o fim enquanto a IA escreve. Desligado, ela abre no começo, para ler. */
   followText?: boolean;
   /** Nível do título do cartão, para seguir a ordem dos títulos da página. */
-  headingLevel?: "h2" | "h3";
+  headingLevel?: "h3" | "h4";
 }
 
-export function StepCard({ step, followText = true, headingLevel: Heading = "h2" }: StepCardProps) {
+export function StepCard({ step, followText = true, headingLevel: Heading = "h3" }: StepCardProps) {
   const providerName = getProviderInfo(step.provider).name;
   const hasOutput = step.status === "working" || step.text.length > 0;
   const label =

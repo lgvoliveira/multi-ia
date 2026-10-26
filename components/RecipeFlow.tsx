@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProviderId } from "@/lib/providers/types";
-import type { StageKind, Step } from "@/lib/recipes/types";
+import type { ScreenStage } from "@/lib/recipes/screen";
 import { forgetActiveRun, recallActiveRun, rememberActiveRun } from "@/lib/runs/active-run";
 import { cancelRun, readProblems, resumeRun, startRun, SERVER_PROBLEM } from "@/lib/runs/client";
 import type { StepCost } from "@/lib/runs/estimate";
@@ -33,17 +33,8 @@ import { RunResult } from "./RunResult";
 import { TeamBuilder, type Team, type TeamRole } from "./TeamBuilder";
 import styles from "./RecipeFlow.module.css";
 
-/** O que a tela precisa de cada etapa. As instruções das IAs ficam no servidor. */
-export type FlowStep = Pick<Step, "id" | "roleId" | "name" | "summary" | "doneSummary" | "format"> & {
-  stageId: string;
-};
-
-/** Uma fase agrupando as suas etapas, do jeito que a tela recebe. */
-export interface FlowStage {
-  id: string;
-  kind: StageKind;
-  steps: FlowStep[];
-}
+/** Uma fase agrupando as suas etapas, do jeito que a tela recebe (lib/recipes/screen.ts). */
+type FlowStage = ScreenStage;
 
 /** O resumo que GET /api/runs/[id] devolve: o pedido, status, plano, o custo e, se terminou, o resultado. */
 interface RunInfo {
@@ -74,6 +65,8 @@ interface RecipeFlowProps {
   /** O custo máximo de cada etapa com cada IA, calculado no servidor, para a estimativa da tela de montar o time. */
   stepCosts: StepCost[];
   requestPlaceholder: string;
+  /** Avisado quando o gasto da execução acompanhada muda: o espaço de trabalho atualiza o "Gasto do mês". */
+  onSpendingChange?: () => void;
 }
 
 /** O que a tela diz quando não dá mais para acompanhar a execução. O time continua no servidor de qualquer jeito. */
@@ -94,6 +87,7 @@ export function RecipeFlow({
   stages,
   stepCosts,
   requestPlaceholder,
+  onSpendingChange,
 }: RecipeFlowProps) {
   const [team, setTeam] = useState<Team>(() =>
     Object.fromEntries(roles.map((role) => [role.id, role.suggestedProvider])),
@@ -110,6 +104,17 @@ export function RecipeFlow({
   const unsubscribeRef = useRef<(() => void) | null>(null);
   // Marca qual execução a tela acompanha agora: callbacks de uma execução antiga são ignorados.
   const trackingRef = useRef<symbol | null>(null);
+  // Guardado numa ref: quem avisa pode trocar de função sem reiniciar o acompanhamento.
+  const onSpendingChangeRef = useRef(onSpendingChange);
+
+  useEffect(() => {
+    onSpendingChangeRef.current = onSpendingChange;
+  });
+
+  // O time cobrou mais uma etapa (ou a execução parou): o gasto do mês mudou.
+  useEffect(() => {
+    if (cost.chargedCents !== null) onSpendingChangeRef.current?.();
+  }, [cost.chargedCents]);
 
   // Começa a acompanhar uma execução pelo id: busca o plano e o status, e escuta os eventos ao vivo.
   // A mudança de tela (setState) só acontece DEPOIS da busca, nunca de forma síncrona (evita renders em cascata).
@@ -288,7 +293,7 @@ export function RecipeFlow({
   return (
     <div className={styles.flow}>
       <section className={styles.intro}>
-        <h1 className={styles.title}>{recipeName}</h1>
+        <h2 className={styles.title}>{recipeName}</h2>
         <p className={styles.lead}>
           Este é o time que recomendamos. Cada IA tem um papel; troque qualquer uma se preferir.
         </p>

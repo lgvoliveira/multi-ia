@@ -1,49 +1,70 @@
 "use client";
 
-// O espaço de trabalho de quem é da empresa (funcionário ou dono), em três abas:
+// O espaço de trabalho de quem é da empresa (funcionário ou dono), em quatro abas:
 // - "Chat": a tarefa rápida (components/QuickChat.tsx). A pessoa pede, o Chefe escolhe a IA e cada resposta mostra
-//   quanto custou.
+//   quanto custou. Com o chat vazio, sugere as receitas prontas.
+// - "Receitas": as receitas prontas em cartões; a escolhida abre ali mesmo (components/WorkspaceRecipes.tsx).
 // - "Entregas": os arquivos que as IAs fizeram para a pessoa (PDF, planilha, gráfico, projeto...), para baixar.
 // - "Meus gastos": o gasto do mês, em reais, o teto e as linhas do extrato da própria pessoa (decisão 4 da issue #39).
-// No alto, o gasto do mês e os atalhos: a receita "Criar um site" (as receitas entram no workspace na etapa 6) e, para
-// o dono, o painel dele.
+// A aba e a receita aberta ficam no endereço (components/workspace-view.ts): recarregar volta para o mesmo lugar.
 
-import Link from "next/link";
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { QuickChat } from "@/components/QuickChat";
 import type { ChatConversation, ChatDelivery, MonthSpending, SpendingEntry } from "@/lib/ock/chat";
 import { fileUrl, loadDeliveries, loadSpending } from "@/lib/ock/chat-client";
 import { formatBRL } from "@/lib/ock/pricing";
 import { getProviderInfo } from "@/lib/providers/catalog";
+import type { RecipeSummary } from "@/lib/recipes/types";
+import { WORKSPACE_TABS as TABS, workspaceSearch, type WorkspaceTab, type WorkspaceView } from "./workspace-view";
+import { WorkspaceRecipes, type WorkspaceRecipe } from "./WorkspaceRecipes";
 import styles from "./OckWorkspace.module.css";
 
 interface OckWorkspaceProps {
   pageMemberId: string;
   firstName: string;
-  isOwner: boolean;
   initialConversations: ChatConversation[];
   initialMonth: MonthSpending;
+  /** Os cartões da aba Receitas: as prontas e as que estão "Em breve". */
+  recipeCards: RecipeSummary[];
+  /** As receitas prontas, com o que a tela de cada uma precisa. */
+  recipes: WorkspaceRecipe[];
+  /** A aba e a receita com que a página abre, lidas do endereço. */
+  initialView: WorkspaceView;
 }
-
-const TABS = [
-  { id: "chat", label: "Chat" },
-  { id: "deliveries", label: "Entregas" },
-  { id: "spending", label: "Meus gastos" },
-] as const;
-
-type TabId = (typeof TABS)[number]["id"];
 
 export function OckWorkspace({
   pageMemberId,
   firstName,
-  isOwner,
   initialConversations,
   initialMonth,
+  recipeCards,
+  recipes,
+  initialView,
 }: OckWorkspaceProps) {
   const ids = useId();
-  const [tab, setTab] = useState<TabId>("chat");
+  const [view, setView] = useState(initialView);
   const [month, setMonth] = useState(initialMonth);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const tab = view.tab;
+  const suggestions = recipeCards.filter((card) => card.available);
+
+  // Troca o que está aberto e escreve no endereço, sem recarregar a página nem criar um passo no "Voltar".
+  function changeView(next: WorkspaceView) {
+    setView(next);
+    const search = workspaceSearch(window.location.search, next);
+    window.history.replaceState(null, "", `${window.location.pathname}${search}`);
+  }
+
+  function selectTab(next: WorkspaceTab) {
+    changeView({ ...view, tab: next });
+  }
+
+  // A receita cobrou uma etapa: busca o gasto do mês de novo, para o alto da página acompanhar.
+  const refreshMonth = useCallback(() => {
+    void loadSpending().then((result) => {
+      if (result.ok) setMonth(result.data.month);
+    });
+  }, []);
 
   // Setas, Home e End trocam de aba, como o leitor de tela anuncia que funciona.
   function handleTabKey(event: KeyboardEvent<HTMLDivElement>) {
@@ -51,7 +72,7 @@ export function OckWorkspace({
     const next = nextTabIndex(event.key, current, TABS.length);
     if (next === null) return;
     event.preventDefault();
-    setTab(TABS[next].id);
+    selectTab(TABS[next].id);
     tabRefs.current[next]?.focus();
   }
 
@@ -67,16 +88,6 @@ export function OckWorkspace({
             Gasto do mês: <strong>{formatBRL(month.spentCents)}</strong>
             {month.budgetCents === null ? " (sem teto)" : ` de ${formatBRL(month.budgetCents)}`}
           </p>
-          <nav className={styles.links} aria-label="Atalhos">
-            <Link href="/recipes/create-site" className={styles.link}>
-              Receita &ldquo;Criar um site&rdquo;
-            </Link>
-            {isOwner && (
-              <Link href="/dono" className={styles.link}>
-                Painel do dono
-              </Link>
-            )}
-          </nav>
         </div>
       </header>
 
@@ -94,7 +105,7 @@ export function OckWorkspace({
             aria-controls={`${ids}-panel-${item.id}`}
             tabIndex={tab === item.id ? 0 : -1}
             className={styles.tab}
-            onClick={() => setTab(item.id)}
+            onClick={() => selectTab(item.id)}
           >
             {item.label}
           </button>
@@ -103,7 +114,25 @@ export function OckWorkspace({
 
       {/* O chat fica montado nas outras abas: a conversa aberta e o que foi escrito continuam lá. */}
       <div role="tabpanel" id={`${ids}-panel-chat`} aria-labelledby={`${ids}-tab-chat`} hidden={tab !== "chat"}>
-        <QuickChat pageMemberId={pageMemberId} initialConversations={initialConversations} onMonthChange={setMonth} />
+        <QuickChat
+          pageMemberId={pageMemberId}
+          initialConversations={initialConversations}
+          onMonthChange={setMonth}
+          recipeSuggestions={suggestions}
+          onOpenRecipe={(recipeId) => changeView({ tab: "recipes", recipeId })}
+        />
+      </div>
+      {/* A receita aberta também fica montada nas outras abas: o acompanhamento do time continua. */}
+      <div role="tabpanel" id={`${ids}-panel-recipes`} aria-labelledby={`${ids}-tab-recipes`} hidden={tab !== "recipes"}>
+        <WorkspaceRecipes
+          pageMemberId={pageMemberId}
+          cards={recipeCards}
+          recipes={recipes}
+          openRecipeId={view.recipeId}
+          onOpen={(recipeId) => changeView({ tab: "recipes", recipeId })}
+          onClose={() => changeView({ tab: "recipes", recipeId: null })}
+          onSpendingChange={refreshMonth}
+        />
       </div>
       <div
         role="tabpanel"

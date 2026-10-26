@@ -39,7 +39,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F19 | Testado só no Chrome | Código | Baixa | Aberta |
 | F20 | Mudança grande de produto entrou num PR só, sem registro nos documentos | Processo | Média | Decidida |
 | F21 | O parceiro usa a conta do GitHub do Luis | Processo / Segurança | Média | Aberta |
-| F22 | O OCK nunca rodou no computador do Luis | Processo | Média | Aberta |
+| F22 | O OCK nunca rodou no computador do Luis | Processo | Média | Resolvida |
 | F23 | Apagar um funcionário devolve o gasto dele ao crédito da empresa | Código | Alta | Resolvida |
 | F24 | Gasto e teto falham com pedidos ao mesmo tempo | Código | Média | Resolvida |
 | F25 | O próprio dono define o crédito da empresa | Negócio / Segurança | Alta | Resolvida |
@@ -63,7 +63,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F43 | Quedas raras do servidor na hora de cobrar | Código | Baixa | Aceita |
 | F44 | Anexos do chat: o texto vai inteiro para a IA, e o que ela não lê é aceito sem aviso | Código / Produto | Média | Resolvida |
 | F45 | Sem a pesquisa ou o código de verdade, a IA é instruída a esconder isso | Produto | Média | Resolvida |
-| F46 | O PR #40 entrou na `main` sem descrição e antes do teste pelo guia | Processo | Baixa | Aberta |
+| F46 | O PR #40 entrou na `main` sem descrição e antes do teste pelo guia | Processo | Baixa | Resolvida |
+| F47 | O site feito pela receita não vira entrega | Produto | Média | Decidida |
+| F48 | O "Gasto do mês" fica menor que o real depois de 1.000 gastos no mês | Código | Baixa | Decidida |
 
 ## Negócio
 
@@ -142,6 +144,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   do funcionário. Falta trazê-la para dentro do workspace (hoje ela abre por um link em `/trabalho`).
 - **Andamento (25/10/2026, PR 3c):** o espaço de trabalho (`/trabalho`) voltou com o chat (a tarefa rápida) e um atalho
   para a receita "Criar um site". Trazer as receitas para dentro dele é da etapa 6.
+- **Andamento (25/10/2026, issue #42):** a pedido do Luis, a receita pronta entrou no espaço de trabalho antes da etapa
+  6: a aba Receitas mostra as receitas em cartões, e a escolhida abre ali mesmo. Falta a receita própria (etapa 6).
 
 ### F09 — Resultado que um leigo não sabe usar
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 09/10/2026 (no PROGRESSO), trazida para cá em 22/10/2026
@@ -193,6 +197,15 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Resolvida (25/10/2026, PR 3c):** saíram as instruções que mandavam esconder. Enquanto a pesquisa e o código de
   verdade não chegam, a IA é instruída a dizer que não pesquisou nem rodou o código, e a resposta vem com um aviso fixo,
   escrito por nós ("A pesquisa na internet ainda não está ligada..."), que não depende de a IA obedecer.
+
+### F47 — O site feito pela receita não vira entrega
+- **Gravidade:** Média · **Status:** Decidida · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar a parte 3d)
+- **O problema:** o site pronto da receita "Criar um site" fica só na execução (`runs`), que o dono não pode ler
+  (decisão da F05). Ele não vira um arquivo em `files`, então não aparece na aba Entregas do funcionário nem chegaria ao
+  painel do dono. Justo a entrega mais importante ficaria de fora do "o dono vê o que cada um entregou".
+- **O que fazer:** issue #43 (parte 3d), aprovada pelo Luis: quando o site fica pronto, o servidor guarda o `.html` na
+  pasta fechada como entrega da pessoa, ligado à execução. Sempre baixa como arquivo, nunca abre como página (AGENTS.md,
+  seção 6). Só os sites novos.
 
 ## Código e segurança
 
@@ -558,6 +571,16 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   hora, na tela e no servidor, que olha a extensão do nome (o tipo informado pelo navegador pode vir inventado). Ler Word
   e Excel fica para depois.
 
+### F48 — O "Gasto do mês" fica menor que o real depois de 1.000 gastos no mês
+- **Gravidade:** Baixa · **Status:** Decidida · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar a parte 3d)
+- **O problema:** o banco devolve no máximo 1.000 linhas por pedido (`max_rows` do Supabase). O "Gasto do mês" do
+  `/trabalho` e da aba Meus gastos (`lib/ock/spending.ts`) soma, no nosso servidor, as linhas que chegam: depois de 1.000
+  gastos da pessoa no mês (uns 45 por dia útil), o número mostrado fica menor que o real, sem aviso. O teto em si está
+  certo, porque é conferido dentro do banco (`private.member_month_used_cents`). O painel do dono, que somaria o extrato
+  da empresa inteira, esbarraria nisso muito antes.
+- **O que fazer:** issue #43 (parte 3d), aprovada pelo Luis: as somas (saldo, reservado, gasto do mês por pessoa e por
+  IA) passam a ser feitas dentro do banco, numa migração com testes, e a lista mostra só as linhas mais recentes.
+
 ## Processo
 
 ### F20 — Mudança grande de produto entrou num PR só, sem registro nos documentos
@@ -576,7 +599,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   própria conta. Depois, o Luis pode trocar a senha.
 
 ### F22 — O OCK nunca rodou no computador do Luis
-- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 22/10/2026
+- **Gravidade:** Média · **Status:** Resolvida · **Anotada:** 22/10/2026
 - **O problema:** falta o Supabase e as chaves no `.env.local`. As checagens (lint, testes, build) do PR #19 também não
   foram conferidas pelo Luis.
 - **O que fazer:** primeira tarefa da etapa 5.
@@ -587,9 +610,11 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 
 - **Andamento (25/10/2026, PR 3c):** o chat voltou, no banco novo (com a IA simulada). Resolvida quando o Luis testar o
   chat com o guia (`docs/GUIA-TESTE-CHAT.md`).
+- **Resolvida (25/10/2026):** o Luis seguiu o `GUIA-TESTE-CHAT.md` no computador dele, ligado ao projeto de testes, e
+  tudo deu o resultado esperado. Login, convite, receitas (3a e 3b) e chat (3c) já rodaram ali.
 
 ### F46 — O PR #40 entrou na `main` sem descrição e antes do teste pelo guia
-- **Gravidade:** Baixa · **Status:** Aberta · **Anotada:** 25/10/2026 (percebida pelo Claude)
+- **Gravidade:** Baixa · **Status:** Resolvida · **Anotada:** 25/10/2026 (percebida pelo Claude)
 - **O problema:** o PR da parte 3c foi aberto e mergeado pela conta do Luis (`lgvoliveira`) em oito segundos, sem
   descrição (o que mudou, por quê, como testar; AGENTS.md, seção 8) e antes do teste pelo `GUIA-TESTE-CHAT.md`. Até
   aqui, cada parte foi testada pelo Luis antes do merge. Parte da causa foi do Claude: ele parou no limite de uso antes
@@ -599,3 +624,6 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **O que fazer:** testar agora na `main` e corrigir num PR novo o que falhar. Daqui para a frente, o Claude abre o PR
   com a descrição antes de parar, e o merge espera o teste pelo guia. Se foi o parceiro, com a conta do Luis, é mais um
   motivo para a F21.
+- **Resolvida (25/10/2026):** o Luis testou a `main` pelo guia (Partes A a H e J; a I, do teto, ficou para o teste da
+  parte 3d, issue #43) e tudo deu o resultado esperado: não houve defeito para corrigir. A regra continua: PR com
+  descrição antes de parar, e merge só depois do teste.

@@ -4,10 +4,11 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 25/10/2026 (etapa 5: parte 3c, o chat, na `main` pelo PR #40; falta o teste do Luis pelo guia)
+**Última atualização:** 25/10/2026 (etapa 5: chat testado pelo Luis; PR de telas da issue #42 aberto; a 3d, issue #43, depois)
 **Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite) e o aviso de troca de
 login no ar; PR 3 (trocar o código do parceiro) em 4 partes: 3a (receitas com login), 3b (receitas cobrando) e 3c (o
-chat, PR #40) no ar, a 3c ainda sem o teste do Luis; depois, o PR das IAs de verdade e a 3d (painel do dono)
+chat) no ar e testadas; agora, o PR de telas (aba Receitas, issue #42), depois a 3d (painel do dono, issue #43) e o PR
+das IAs de verdade
 
 ---
 
@@ -117,7 +118,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite), PR 3a (receitas com login), 3b (receitas cobrando) e 3c (o chat) no ar; falta o teste da 3c | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite), PR 3a (receitas com login), 3b (receitas cobrando) e 3c (o chat) no ar e testados; falta a aba Receitas (#42) e a 3d (#43) | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -667,15 +668,73 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   antes do teste pelo guia (o Claude tinha parado no limite de uso antes de abrir o PR). As checagens do GitHub passaram
   na `main`, e a issue #39 fechou. A descrição foi escrita depois, para o histórico. Falha de processo anotada (F46).
 
+**3c testada pelo Luis (25/10, com o chat do Claude e o guia, na `main`)**
+- Partes A a H e J do `GUIA-TESTE-CHAT.md` deram o resultado esperado:
+  - **Entrada (A):** "Gasto do mês" com R$ 4,94 e as abas Chat, Entregas e Meus gastos.
+  - **Mensagem (B):** "Me dê 3 ideias": o Chefe escolheu o Claude (econômico, esforço baixo), "Tarefa simples", e a
+    resposta mostrou "Custou R$ 0,01"; o gasto foi para R$ 4,95.
+  - **Banco (C):** uma linha "Tarefa rápida · Resposta" de -1 com o `task_id`; duas reservas `closed` com o mesmo
+    `task_id`; em `ai_calls`, answer/claude/economico e chief/gpt/economico, as duas ok e cobradas.
+  - **Arquivos, anexos, imagem, pesquisa, conversas e gastos (D a H):** PDF, gráfico, Excel e .zip baixaram e apareceram
+    em Entregas; o anexo .txt foi junto e o .docx foi recusado; a imagem respondeu "Sem custo"; a pesquisa veio do Gemini
+    com o aviso amarelo; as conversas voltaram depois do F5; Meus gastos bateu com o alto da página.
+  - **Privacidade (J):** o dono, em `/trabalho`, não vê nenhuma conversa da funcionária.
+  - **Teto (I):** pulada. O chat confere o teto pela mesma função do banco já testada nas receitas (3b, Parte G); entra
+    no teste da 3d.
+- Falhas: F22 (o OCK nunca rodou no computador do Luis) e F46 (o PR #40 entrou antes do teste) resolvidas.
+
+**Pedidos do Luis depois do teste (25/10) e as duas issues aprovadas**
+- **Issue #42 — telas (PR pequeno):** aba **Receitas** no `/trabalho` (Chat · Receitas · Entregas · Meus gastos), com
+  as receitas em cartões; a receita abre ali mesmo, sem sair da área de trabalho; o chat vazio sugere as receitas
+  prontas; o endereço antigo `/recipes/create-site` leva para a aba; e, para o dono, atalhos "Painel do dono" e
+  "Trabalho" no topo do site (no `/dono` não havia caminho para o `/trabalho`). As outras 3 receitas do MVP aparecem
+  apagadas, com "Em breve". Traz para agora parte da etapa 6 (F08).
+- **Issue #43 — parte 3d (painel do dono):** o crédito da empresa (disponível, saldo, reservado, gasto do mês por IA,
+  aviso sem crédito), o gasto do mês de cada pessoa com o teto, "Ver o que fez" (as linhas do mês, sem pedido nem
+  resposta) e as entregas, o extrato do mês com as recargas, e uma frase para o funcionário dizendo o que o dono vê
+  (F05). Decisões aceitas: as somas passam a ser feitas no banco (migração, F48), uma receita vira uma linha só (no
+  painel e em Meus gastos), o site da receita vira entrega (F47) e só o mês atual por enquanto.
+- **Ordem nova (Luis, 25/10):** PR de telas → 3d → IAs de verdade. A 3d não depende das IAs de verdade, e assim o
+  produto inteiro fica visível com a IA simulada antes de comprar créditos.
+- **Falhas novas, achadas ao planejar a 3d:** F47 (o site feito pela receita não vira entrega; Média) e F48 (o "Gasto do
+  mês" soma as linhas no nosso servidor e fica menor que o real depois de 1.000 gastos no mês, o limite de linhas do
+  banco; o teto em si está certo; Baixa). As duas entram na 3d.
+
+**PR de telas — aba Receitas e atalhos do dono (25/10, Claude Code; issue #42, branch `feat/aba-receitas`)**
+- **O que a pessoa vê:** no `/trabalho`, as abas Chat · Receitas · Entregas · Meus gastos. A aba Receitas mostra
+  "Receitas prontas" em cartões ("Criar um site" e as outras 3 do MVP apagadas, "Em breve"); "Usar receita" abre a
+  receita ali mesmo, com "← Todas as receitas" no alto, igual a antes (time, "até R$ X", começar, ao vivo, site pronto).
+  O chat vazio mostra "Ou use uma receita pronta:" com a receita pronta. A aba e a receita aberta ficam no endereço
+  (`/trabalho?aba=receitas&receita=create-site`, mais o `?run=` da execução): recarregar volta para o mesmo lugar, e
+  trocar de aba no meio não para o acompanhamento. O endereço antigo `/recipes/create-site` leva para a aba. Para o
+  dono, atalhos "Painel do dono" e "Trabalho" no topo do site (no celular, numa linha embaixo do logo); saíram os dois
+  links soltos do canto do `/trabalho`.
+- **Por dentro:** `components/WorkspaceRecipes.tsx` (cartões e receita aberta), `components/workspace-view.ts` (a aba e
+  a receita no endereço), `components/OwnerNav.tsx` (atalhos do dono) e `lib/recipes/screen.ts` (o que a tela da
+  receita recebe, sem as instruções das IAs; antes isso ficava na página da receita). O cartão (`RecipeCard`, sem uso
+  desde que a receita saiu da página inicial) voltou. Os títulos da receita desceram um nível (a página já tem o "Olá"). Se a receita termina com a
+  pessoa em outra aba, a página não pula para o alto. O "Gasto do mês" no alto acompanha o que a receita cobra, sem
+  recarregar (antes a receita ficava noutra página, e voltar recarregava o número). Sem migração e sem biblioteca nova.
+- **Achados e corrigidos no teste:** com uma receita aberta, voltar ao Chat e recarregar abria a aba Receitas (o Chat
+  não ia para o endereço); no celular, o começo do chat vazio sumia (a lista rolava para o fim mesmo sem mensagens) e as
+  4 abas quebravam em duas linhas em 360 px.
+- **Como foi conferido:** lint, tipos, 396 testes (14 novos: aba e receita no endereço; o que a tela da receita recebe
+  não leva as instruções das IAs) e build; o código que vai para o navegador não tem as instruções. **Teste de ponta a
+  ponta** contra o projeto de testes, com um roteiro no Chrome (empresa nova "Loja das Abas", dona e funcionária): 55
+  conferências, todas certas — sugestão no chat vazio abre a receita, cartões, foco, teclado nas abas, estimativa e
+  recusa por falta de crédito dentro da aba, execução pausada e site pronto (montados no banco) acompanhados na aba,
+  trocar de aba e recarregar, endereço antigo, o gasto do mês subindo com uma cobrança da receita, atalhos do dono nas duas direções, telas em 320 e 360 px. Os únicos
+  avisos do navegador foram o `favicon.ico` que o site ainda não tem e a recusa por falta de crédito, de propósito.
+  Ficou para o teste do Luis rodar a receita inteira com crédito, dentro da aba.
+
 ## Próximo passo
 
-1. **Luis, no chat do Claude:** seguir o `docs/GUIA-TESTE-CHAT.md` na `main` (o código já está lá). Se algum passo
-   falhar, a correção vem num PR novo.
+1. **Luis:** testar o PR de telas (issue #42) pelos passos da descrição do PR e fazer o merge. Depois, **Claude Code:**
+   a **3d** (issue #43).
 2. **Claude Code:** **PR das IAs de verdade**, nas receitas e no chat, antes de comprar créditos: ler o consumo que cada
    API devolve (F40), faltar a chave vira erro em vez de cair na simulada (F42), conferir os nomes dos modelos e os preços
    oficiais (F17), e ligar imagem, pesquisa, código e voz com preço e limite conferidos. Depois, o Claude guia a compra de
-   créditos (valor mínimo, recarga automática desligada) e o primeiro teste com IA de verdade. Em seguida, a 3d (painel
-   do dono).
+   créditos (valor mínimo, recarga automática desligada) e o primeiro teste com IA de verdade.
 3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.

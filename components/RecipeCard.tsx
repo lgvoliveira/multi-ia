@@ -1,11 +1,11 @@
-import Link from "next/link";
 import { getProviderInfo } from "@/lib/providers/catalog";
 import type { RecipeSummary } from "@/lib/recipes/types";
 import { AiDot } from "./AiDot";
 import styles from "./RecipeCard.module.css";
 
-// Cartão de uma receita na página inicial. Receita que ainda não está pronta aparece apagada e sem botão.
-export function RecipeCard({ recipe }: { recipe: RecipeSummary }) {
+// Cartão de uma receita na aba Receitas do espaço de trabalho. "Usar receita" abre a receita ali mesmo (onUse).
+// Receita que ainda não está pronta aparece apagada e sem botão.
+export function RecipeCard({ recipe, onUse }: { recipe: RecipeSummary; onUse: () => void }) {
   return (
     <article className={recipe.available ? styles.card : `${styles.card} ${styles.comingSoon}`}>
       <h3 className={styles.title}>{recipe.name}</h3>
@@ -21,13 +21,9 @@ export function RecipeCard({ recipe }: { recipe: RecipeSummary }) {
       </ul>
 
       {recipe.available ? (
-        <Link
-          href={`/recipes/${recipe.id}`}
-          className={styles.action}
-          aria-label={`Usar receita ${recipe.name}`}
-        >
+        <button type="button" className={styles.action} aria-label={`Usar receita ${recipe.name}`} onClick={onUse}>
           Usar receita
-        </Link>
+        </button>
       ) : (
         <p className={styles.badge}>Em breve</p>
       )}

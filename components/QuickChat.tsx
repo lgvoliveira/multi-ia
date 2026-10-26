@@ -3,7 +3,8 @@
 // O chat da tarefa rápida: as conversas ao lado, as mensagens e a caixa de escrever, com anexos. A pessoa pede, o
 // Chefe escolhe a IA, e cada resposta mostra quem fez e quanto custou (no chat não há estimativa antes de mandar,
 // decisão do Luis de 25/10/2026, issue #39). Mandar e anexar levam o id de quem abriu a página: se o login do navegador
-// mudou em outra aba, o servidor não faz nada e a tela mostra o aviso (F34).
+// mudou em outra aba, o servidor não faz nada e a tela mostra o aviso (F34). Com o chat vazio, as receitas prontas
+// aparecem como sugestão: escolher uma abre a receita na aba Receitas.
 
 import { useEffect, useId, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { AiDot } from "@/components/AiDot";
@@ -23,6 +24,7 @@ import {
 import { fileUrl, loadConversation, sendMessage, uploadAttachment } from "@/lib/ock/chat-client";
 import { formatBRL } from "@/lib/ock/pricing";
 import { getProviderInfo } from "@/lib/providers/catalog";
+import type { RecipeSummary } from "@/lib/recipes/types";
 import styles from "./QuickChat.module.css";
 
 interface QuickChatProps {
@@ -30,6 +32,9 @@ interface QuickChatProps {
   initialConversations: ChatConversation[];
   /** Avisado quando o gasto do mês muda (depois de cada resposta). */
   onMonthChange: (month: MonthSpending) => void;
+  /** As receitas prontas, sugeridas com o chat vazio. */
+  recipeSuggestions: RecipeSummary[];
+  onOpenRecipe: (recipeId: string) => void;
 }
 
 /** Uma mensagem na tela: já respondida, ou esperando a resposta. */
@@ -37,7 +42,13 @@ type Entry =
   | { kind: "task"; task: ChatTask }
   | { kind: "pending"; id: number; prompt: string; attachments: ChatFile[] };
 
-export function QuickChat({ pageMemberId, initialConversations, onMonthChange }: QuickChatProps) {
+export function QuickChat({
+  pageMemberId,
+  initialConversations,
+  onMonthChange,
+  recipeSuggestions,
+  onOpenRecipe,
+}: QuickChatProps) {
   const ids = useId();
   const [conversations, setConversations] = useState(initialConversations);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -56,10 +67,10 @@ export function QuickChat({ pageMemberId, initialConversations, onMonthChange }:
   const openTicket = useRef(0);
   const pendingCounter = useRef(0);
 
-  // A lista acompanha a mensagem mais nova.
+  // A lista acompanha a mensagem mais nova. Sem mensagens, fica no alto: o começo do chat vazio não some.
   useEffect(() => {
     const list = listRef.current;
-    if (list) list.scrollTop = list.scrollHeight;
+    if (list) list.scrollTop = entries.length > 0 ? list.scrollHeight : 0;
   }, [entries, sending]);
 
   async function openConversation(id: string) {
@@ -194,7 +205,9 @@ export function QuickChat({ pageMemberId, initialConversations, onMonthChange }:
 
       <section className={styles.main} aria-label="Conversa">
         <div className={styles.messages} ref={listRef} tabIndex={0} aria-label="Mensagens da conversa">
-          {entries.length === 0 && !opening && <EmptyChat />}
+          {entries.length === 0 && !opening && (
+            <EmptyChat suggestions={recipeSuggestions} onOpenRecipe={onOpenRecipe} />
+          )}
           {opening && <p className={styles.status}>Abrindo a conversa…</p>}
           <ol className={styles.turns}>
             {entries.map((entry) =>
@@ -294,7 +307,17 @@ export function QuickChat({ pageMemberId, initialConversations, onMonthChange }:
   );
 }
 
-function EmptyChat() {
+/** Quantas receitas o chat vazio sugere, no máximo. */
+const MAX_SUGGESTIONS = 3;
+
+function EmptyChat({
+  suggestions,
+  onOpenRecipe,
+}: {
+  suggestions: RecipeSummary[];
+  onOpenRecipe: (recipeId: string) => void;
+}) {
+  const shown = suggestions.slice(0, MAX_SUGGESTIONS);
   return (
     <div className={styles.empty}>
       <h2 className={styles.emptyTitle}>Descreva a tarefa. O Chefe cuida do resto.</h2>
@@ -302,6 +325,27 @@ function EmptyChat() {
         Peça em português normal: o Chefe escolhe a IA que resolve melhor pelo menor custo, e cada resposta mostra quanto
         custou. Dá para anexar um arquivo e pedir um PDF, uma planilha, um gráfico ou um projeto em .zip.
       </p>
+      {shown.length > 0 && (
+        <div className={styles.suggestions}>
+          <h3 className={styles.suggestionsTitle}>Ou use uma receita pronta:</h3>
+          <ul className={styles.suggestionList}>
+            {shown.map((recipe) => (
+              <li key={recipe.id}>
+                <button type="button" className={styles.suggestion} onClick={() => onOpenRecipe(recipe.id)}>
+                  <span className={styles.suggestionName}>{recipe.name}</span>
+                  <span className={styles.suggestionText}>{recipe.description}</span>
+                  {/* As cores do time são enfeite: o time aparece escrito ao abrir a receita. */}
+                  <span className={styles.suggestionTeam}>
+                    {recipe.team.map((member) => (
+                      <AiDot key={member.roleName} provider={member.provider} />
+                    ))}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
