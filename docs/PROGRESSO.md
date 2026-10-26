@@ -4,12 +4,11 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 25/10/2026 (etapa 5: PR de telas testado e no ar; a 3d, painel do dono, no PR #45, esperando o
-teste do Luis)
-**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite) e o aviso de troca de
-login no ar; PR 3 (trocar o código do parceiro) em 4 partes: 3a (receitas com login), 3b (receitas cobrando) e 3c (o
-chat) no ar e testadas, mais o PR de telas (aba Receitas, issue #42); a 3d (painel do dono, issue #43) no PR #45; depois,
-o PR das IAs de verdade
+**Última atualização:** 25/10/2026, noite (etapa 5: a 3d, painel do dono, testada e no ar; começa o trabalho da
+madrugada no PR das IAs de verdade)
+**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite), o aviso de troca de login
+e o PR 3 inteiro (3a receitas com login, 3b receitas cobrando, 3c o chat, a aba Receitas e a 3d, painel do dono) no ar
+e testados; agora, o PR das IAs de verdade
 
 ---
 
@@ -119,7 +118,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite), PR 3a (receitas com login), 3b (receitas cobrando) e 3c (o chat) no ar e testados, mais a aba Receitas (#42); a 3d (#43) no PR #45, esperando o teste | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite) e o PR 3 inteiro (3a, 3b, 3c, aba Receitas e 3d, painel do dono) no ar e testados; falta o PR das IAs de verdade | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -779,10 +778,37 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
 - **Guia do teste:** `docs/GUIA-TESTE-PAINEL.md`, para o Luis seguir com o chat do Claude. A migração já foi para o
   projeto de testes (workflow "Banco de testes" rodado no branch do PR).
 
+**3d testada pelo Luis e no ar (25/10, com o chat do Claude e o guia)**
+- Todas as partes do `GUIA-TESTE-PAINEL.md` deram o resultado esperado:
+  - **Crédito (B):** "Disponível para a equipe" R$ 14,61, Saldo R$ 14,61, "Gasto da empresa neste mês" R$ 5,39 (Claude
+    R$ 4,69, GPT R$ 0,66, Gemini R$ 0,04), sem o aviso de sem crédito.
+  - **Banco (C):** saldo 1461, reservado 0 e gasto do mês 539.
+  - **Equipe (D):** Carla com "R$ 5,39 · sem teto" e "7 tarefas rápidas, 5 receitas, 4 entregas"; "Ver o que fez" com
+    cada receita numa linha só, as mensagens como "Tarefa rápida · …", as entregas com Baixar e nenhum pedido. O SQL por
+    pessoa bateu (Carla 539, os outros 0).
+  - **Funcionário (E):** a frase do que o dono vê em Meus gastos e em Entregas; o site da receita nova virou entrega
+    (.html, baixa como arquivo), custou uns R$ 0,37 numa linha só, e no painel o gasto da Carla, o resumo, "Ver o que
+    fez" e o Extrato do mês atualizaram.
+  - **Nome do PDF (F):** saiu como `Resumo.pdf`, também no painel (F49).
+  - **Teto (G):** com teto de R$ 1,00, a barra vermelha cheia e o "Oi" recusado no chat (era a Parte I do guia do
+    chat, que tinha ficado para cá); depois, sem teto de novo.
+  - **Recarga (H):** R$ 5,00 subiram o Disponível e o Saldo e apareceram no extrato como "+ R$ 5,00", em verde.
+  - **Privacidade (I):** a Carla não abre o `/dono`; o Meus gastos do dono não tem a frase e não mostra conversas da Carla.
+  - **Celular (J):** em 360 px tudo coube e "Ver o que fez" funcionou. No Opera GX, o F12 e o Ctrl + Shift + I não
+    abriram as ferramentas; pelo botão direito → Inspecionar, sim. O guia passou a dizer isso.
+- **Merge do PR #45:** aparece feito às 23:39 de 25/10, pela conta `lgvoliveira`, minutos depois da mensagem em que o
+  Luis dizia que faria o merge de manhã. **Luis confirmar se foi ele** (se foi o parceiro, com a conta do Luis, é mais um
+  motivo para a F21). Com o merge, o Supabase aplica a migração nova no projeto de verdade sozinho.
+- **Conferir no Supabase de verdade** (projeto `multi-ia`, não o `multi-ia-teste`), uma vez:
+  1. Menu da esquerda → **Database** → **Migrations**: a última linha é `20261025200001` (`month_summaries`).
+  2. **Database** → **Functions**, esquema `public`: aparecem `company_credit`, `company_month_by_provider`,
+     `member_month_summary` e `month_statement`.
+  3. Se alguma não aparecer, não crie nada à mão pelo painel (AGENTS.md, seção 8): avise o Claude.
+
 ## Próximo passo
 
-1. **Luis:** testar o PR #45 (parte 3d, painel do dono) pelo `docs/GUIA-TESTE-PAINEL.md`, com o chat do Claude, e voltar
-   ao Claude Code contando como foi. O merge só depois do teste.
+1. **Luis:** conferir no Supabase de verdade a migração do PR #45 (passos em "3d testada pelo Luis e no ar", acima) e
+   confirmar se foi ele quem fez o merge.
 2. **Claude Code:** **PR das IAs de verdade**, nas receitas e no chat, antes de comprar créditos: ler o consumo que cada
    API devolve (F40), faltar a chave vira erro em vez de cair na simulada (F42), conferir os nomes dos modelos e os preços
    oficiais (F17), e ligar imagem, pesquisa, código e voz com preço e limite conferidos. Depois, o Claude guia a compra de
