@@ -55,7 +55,7 @@ cartão de crédito.
 2. Abra um **terminal novo** do VS Code (menu **Terminal → New Terminal**) e rode:
    ```
    git fetch
-   git checkout feat/voz
+   git checkout fix/planilha-sem-xlsx
    git pull
    npm run dev
    ```
@@ -84,6 +84,13 @@ O seu `.env.local` ainda não tem a linha `OCK_AI_MODE`. Vazia, o seu computador
 3. Vá à aba **Chat** e mande "Me dê 3 ideias de nome para uma padaria".
 
 **Deu certo se:** a resposta simulada aparece com **"Custou R$ 0,01"** embaixo.
+
+4. Mande "Gere uma planilha Excel com 3 produtos e preços". Baixe o `Planilha.xlsx` e abra no Excel (ou arraste para o
+   Google Planilhas, em sheets.google.com).
+
+**Deu certo se:** a planilha abre sem aviso de arquivo com problema, com a tabela de exemplo da IA simulada (Mês,
+Vendas, Clientes), os nomes das colunas em **negrito** e os números como números (dá para somar). A planilha agora é montada pela própria plataforma: o pacote antigo, com falhas de
+segurança, saiu (F15).
 
 ## Parte C: IAs de verdade ligadas, mas sem chave: falha sem cobrar (8 min)
 
@@ -320,6 +327,7 @@ partes do site não gastam crédito de verdade. As chaves podem ficar no arquivo
   rolando para o lado em 360 px.
 - A imagem: o pedido certo ao GPT Image (tamanho, qualidade, JPEG), o consumo e o preço próprios, o pedido barrado sem
   nova tentativa e sem cobrança, a entrega guardada, e, pela tela, a imagem na conversa, para baixar e na aba Entregas.
+- A planilha sem o pacote antigo: o próprio pacote antigo leu a planilha nova com os valores certos, antes de sair.
 - A voz: o envio do áudio ao gpt-transcribe, os segundos cobrados (sem eles, o máximo), a falha e o áudio sem fala sem
   cobrança, e, pela tela com um microfone falso do Chrome, gravar, parar, o relógio, o Enviar desligado durante a
   gravação e a recusa por falta de saldo antes de qualquer IA, sem perder o que já estava escrito (11 conferências).

@@ -1,10 +1,11 @@
 // Geração de ARQUIVO a partir do conteúdo que a IA monta. É a "mão" que faltava: a IA (API) devolve
 // texto; aqui a OCK transforma esse texto num arquivo de verdade (PDF, CSV ou TXT) para baixar.
-// PDF é renderizado com pdf-lib (JS puro, roda no servidor). Só o servidor usa.
+// PDF é renderizado com pdf-lib (JS puro, roda no servidor); a planilha, por nós mesmos (spreadsheet.ts). Só o
+// servidor usa.
 
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import { PDFDocument, StandardFonts, type PDFFont } from "pdf-lib";
-import * as XLSX from "xlsx";
+import { csvToXlsx } from "./spreadsheet";
 
 export type DocFormat = "pdf" | "csv" | "txt" | "xlsx" | "docx";
 
@@ -38,19 +39,12 @@ export async function generateDocument(title: string, content: string, format: D
     return { name: `${base}.txt`, mime: "text/plain", bytes: new TextEncoder().encode(content) };
   }
   if (format === "xlsx") {
-    return { name: `${base}.xlsx`, mime: XLSX_MIME, bytes: renderXlsx(content) };
+    return { name: `${base}.xlsx`, mime: XLSX_MIME, bytes: await csvToXlsx(content) };
   }
   if (format === "docx") {
     return { name: `${base}.docx`, mime: DOCX_MIME, bytes: await renderDocx(title, content) };
   }
   return { name: `${base}.pdf`, mime: "application/pdf", bytes: await renderPdf(title, content) };
-}
-
-/** Converte o CSV que a IA montou numa planilha Excel (.xlsx) de verdade. */
-function renderXlsx(csv: string): Uint8Array {
-  const wb = XLSX.read(csv, { type: "string", raw: false });
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
-  return new Uint8Array(buf);
 }
 
 /** Converte o texto que a IA montou num documento Word (.docx). */
