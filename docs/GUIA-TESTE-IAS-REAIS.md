@@ -55,7 +55,7 @@ cartão de crédito.
 2. Abra um **terminal novo** do VS Code (menu **Terminal → New Terminal**) e rode:
    ```
    git fetch
-   git checkout fix/planilha-sem-xlsx
+   git checkout fix/site-sem-crases
    git pull
    npm run dev
    ```
@@ -250,7 +250,8 @@ com **"Custou R$ 0,01"** ou perto disso.
    cardápio, horário e WhatsApp"). Agora demora mais: uns 2 a 5 minutos, porque as IAs escrevem de verdade.
 
 **Deu certo se:** o texto aparece aos poucos em cada etapa, o site fica pronto na prévia e o fim mostra "Custou R$ X",
-**abaixo dos R$ 6,09** reservados. Anote o valor e o tempo: são os primeiros números de verdade do projeto.
+**abaixo dos R$ 6,09** reservados. Anote o valor, o tempo total e quanto demorou a fase mais longa (o Front-end): são
+os primeiros números de verdade do projeto, e o tempo de cada fase importa para a publicação (F54).
 
 5. Confira o registro interno (SQL Editor do `multi-ia-teste`):
    ```sql

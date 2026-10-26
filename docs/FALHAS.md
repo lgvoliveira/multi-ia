@@ -71,6 +71,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F51 | Resposta cortada no meio, ou recusada pela IA, era aceita como resposta completa | Código | Média | Resolvida |
 | F52 | O código fala com as IAs sem as bibliotecas oficiais, ao contrário do que diz o AGENTS.md | Processo | Baixa | Aberta |
 | F53 | O aviso de "não pesquisou" depende do texto no fim da resposta | Produto / Código | Baixa | Aceita |
+| F54 | Uma fase com IA de verdade pode passar do tempo máximo da função na Vercel | Código | Média | Aberta |
 
 ## Negócio
 
@@ -576,6 +577,17 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Resolvida (24/10/2026, PR 3a):** o endereço vem só da configuração (`VERCEL_URL`, o endereço configurado do site ou o
   próprio computador), nunca do pedido (`lib/runs/trigger.ts`, com teste). Na publicação, conferir se a proteção de
   acesso da Vercel deixa o site chamar a si mesmo por esse endereço.
+
+### F54 — Uma fase com IA de verdade pode passar do tempo máximo da função na Vercel
+- **Gravidade:** Média · **Status:** Aberta · **Anotada:** 26/10/2026 (percebida pelo Claude no PR das IAs de verdade)
+- **O problema:** cada fase de uma receita roda numa chamada que o servidor faz a si mesmo (`/api/runs/[id]/continue`),
+  com `maxDuration = 300` (5 minutos). Com as IAs de verdade, a fase do Front-end (até 6 mil tokens de site e, no esforço
+  alto, até 16 mil de "pensamento") pode levar alguns minutos; se passar do limite no site publicado, a Vercel corta a
+  função, a reserva de quem roda vence e a fase é retomada do zero (F36): a plataforma paga a fase duas vezes e a
+  pessoa espera em dobro. No computador (`npm run dev`) não há esse limite, então os testes do Luis não pegam isso.
+- **O que fazer:** medir o tempo de cada fase nos primeiros testes com as IAs de verdade (Parte F do
+  `docs/GUIA-TESTE-IAS-REAIS.md`) e, antes de publicar: conferir o limite do plano da Vercel (o tempo máximo depende do
+  plano), dividir as etapas longas (cada etapa numa chamada, não a fase inteira) ou baixar o esforço do Front-end.
 
 ### F40 — Os conectores das IAs de verdade medem o consumo pelo tamanho do texto
 - **Gravidade:** Alta · **Status:** Resolvida · **Anotada:** 25/10/2026 (achada pelo Claude ao planejar o PR 3b)

@@ -4,7 +4,7 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 26/10/2026, madrugada (o Claude trabalhou sozinho: PRs #46 a #51 abertos, empilhados, esperando o
+**Última atualização:** 26/10/2026, madrugada (o Claude trabalhou sozinho: PRs #46 a #52 abertos, empilhados, esperando o
 teste do Luis; resumo em "Resumo da madrugada de 26/10", antes do "Próximo passo")
 **Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite), o aviso de troca de login
 e o PR 3 inteiro (3a receitas com login, 3b receitas cobrando, 3c o chat, a aba Receitas e a 3d, painel do dono) no ar
@@ -320,11 +320,12 @@ sem login deixaria qualquer um gastar nossos créditos; a publicação entra jun
 
 **Anotado para as próximas tarefas**
 - Falta o ícone da aba do navegador (favicon). Pequeno; entra quando definirmos nome e marca.
-- T9: IAs reais às vezes cercam o HTML com marcas de código (` ```html `); limpar antes da prévia.
+- T9: IAs reais às vezes cercam o HTML com marcas de código (` ```html `); limpar antes da prévia. **Feito em 26/10**
+  (PR do site sem as marcas de código, `lib/engine/output.ts`).
 - T9: nos adaptadores reais, separar bem os erros: sobrecarga, limite de uso e conexão caída são "passageiros"
   (`retryable: true`); chave errada ou faltando e pedido recusado não são. Chave faltando deve ser um `ProviderError`
   (assim a troca de IA entra); um `Error` comum é tratado como defeito nosso e para na hora. Se a IA disser quanto
-  esperar (cabeçalho `retry-after`), considerar.
+  esperar (cabeçalho `retry-after`), considerar. **Feito em 26/10 (PR #47)**, menos o `retry-after`.
 - Etapa 5 (créditos): uma tentativa que caiu no meio já consumiu tokens, que pagamos mas não cobramos do usuário
   (regra "etapa que falhou não é cobrada"). Registrar esse custo no histórico interno.
 - Antes de ligar IAs reais fora do computador do Luis: a rota `/api/runs` está aberta (sem login). Com a IA simulada
@@ -923,6 +924,17 @@ sobre o PR da voz)**
   vírgula e aspas, número, "=SUM(A1)" como texto, ponto e vírgula com vírgula decimal). Lint, tipos, 517 testes (9
   novos) e build; fumaça de ponta a ponta (11 conferências). Abrir no Excel ficou para o Luis (Parte B, passo 4 do guia).
 
+**PR do site sem as marcas de código (madrugada de 26/10, Claude Code sozinho; branch `fix/site-sem-crases`, empilhado
+sobre o PR da planilha)**
+- **Por quê:** anotação antiga da etapa 4 (T9) que fica importante com as IAs de verdade: elas às vezes cercam o site com
+  as marcas de código do Markdown (```html … ```), às vezes com uma frase antes ("Aqui está o site:") ou depois. Na prévia,
+  no arquivo baixado, na entrega e na etapa seguinte, isso quebraria o site.
+- **O que mudou:** o motor arruma o texto final de toda etapa que escreve um site (`lib/engine/output.ts`): tira a cerca
+  e as frases em volta; com mais de um bloco, fica o que tem cara de página. Sem cerca, o texto passa exatamente como
+  veio. A narração ao vivo continua mostrando o que a IA escreveu. O texto comum (plano, revisão) não muda.
+- **Como foi conferido:** lint, tipos, 524 testes (7 novos: a limpeza e uma receita inteira com as IAs cercando o site)
+  e build; fumaça de ponta a ponta (11 conferências). Com a IA simulada nada muda (ela não cerca o site).
+
 ## Resumo da madrugada de 26/10 (para o Luis ler primeiro)
 
 O Claude trabalhou sozinho, sem merge, sem o Supabase de verdade, sem chaves e sem créditos. Tudo com a IA simulada.
@@ -937,6 +949,7 @@ O Claude trabalhou sozinho, sem merge, sem o Supabase de verdade, sem chaves e s
 | #49 | Imagens no chat com o GPT Image 2 (uns R$ 0,29 cada), desligadas (`OCK_AI_TOOLS`) | #48 |
 | #50 | Voz no chat: o botão Ditar, transcrito pelo gpt-transcribe (uns R$ 0,025 por minuto), desligado (`OCK_AI_TOOLS`) | #49 |
 | #51 | Planilha Excel montada pela plataforma, sem o pacote `xlsx` (F15, falha de segurança) | #50 |
+| #52 | O site das IAs de verdade sem as marcas de código (```html) em volta | #51 |
 
 O PR #45 já estava na `main` quando a madrugada começou (merge às 23:39 de 25/10 pela conta `lgvoliveira`; **confirmar se
 foi você**). Por isso a pilha parte da `main`, não do branch do #45.
@@ -945,7 +958,7 @@ foi você**). Por isso a pilha parte da `main`, não do branch do #45.
 1. **Supabase de verdade:** conferir a migração do #45 (passos em "3d testada pelo Luis e no ar", acima).
 2. **Testar a pilha de uma vez:** a sessão 1 do `docs/GUIA-TESTE-IAS-REAIS.md` (Partes A a D, uns 30 minutos, sem gastar)
    no branch do PR mais alto (a Parte A diz qual).
-3. **Merge em ordem:** #46, #47, #48, #49, #50 e #51. **Depois de cada merge, clique em "Delete branch"** no PR que entrou:
+3. **Merge em ordem:** #46, #47, #48, #49, #50, #51 e #52. **Depois de cada merge, clique em "Delete branch"** no PR que entrou:
    só assim o GitHub troca a base do PR seguinte para a `main` (o repositório não apaga o branch sozinho). Antes de cada
    merge, confira que o alto do PR diz "into main" e que as checagens estão verdes. Se um PR falhar no teste, pare ali:
    os de baixo podem entrar, os de cima esperam a correção.
@@ -972,6 +985,11 @@ foi você**). Por isso a pilha parte da `main`, não do branch do #45.
   diferença. Mudar é uma linha (`USD_TO_BRL` em `lib/ock/pricing.ts`).
 - **F52:** manter as chamadas diretas ou trocar pelas bibliotecas oficiais.
 
+**Falhas (`docs/FALHAS.md`):** resolvidas F15 (pacote `xlsx`), F40 (consumo de verdade) e F42 (chave faltando);
+andamento na F17 (falta o câmbio) e na F45. Novas: F50 e F51 (achadas e resolvidas), F52 (decidir: bibliotecas oficiais),
+F53 (aceita: o aviso de "não pesquisou" depende do fim da resposta) e **F54** (para a publicação: uma fase longa com IA
+de verdade pode passar dos 5 minutos da função na Vercel; medir o tempo na Parte F do guia).
+
 **Tudo o que foi pedido para a madrugada ficou pronto**, desligado até as chaves: consumo de verdade (F40), chave
 faltando vira erro (F42), modelos e preços oficiais (F17), pesquisa, código, imagem e voz, e o guia com a compra dos
 créditos.
@@ -991,7 +1009,8 @@ créditos.
 - Nome e marca (OCK é provisório)
 - Formato do preço (por empresa, por funcionário, pelo consumo), margem e plano de teste (F04)
 - Se e quando nichar (F02)
-- Modelo de cada papel e de cada nível (econômico, padrão, potente)
+- Modelo de cada papel e de cada nível (econômico, padrão, potente): escolha provisória do Claude desde 26/10 (resumo da
+  madrugada), a confirmar e a rever com as primeiras medições
 - Cronograma
 
 ## Como retomar em uma conversa nova
