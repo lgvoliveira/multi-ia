@@ -95,3 +95,18 @@ export function modelPrice(provider: ProviderId, tier: ModelTier, at: Date = new
   }
   return current;
 }
+
+/**
+ * O modelo que cria imagens (é do GPT) e o preço dele, em dólar por milhão de tokens: o texto do pedido, as imagens de
+ * referência (não usamos) e a imagem criada. Conferido na página oficial em 26/10/2026.
+ */
+export const IMAGE_MODEL = {
+  id: "gpt-image-2",
+  size: "1024x1024",
+  quality: "medium",
+  prices: { textInput: 5, imageInput: 8, output: 30 },
+  // Uma imagem quadrada de qualidade média custa US$ 0,053 na tabela da OpenAI: uns 1.770 tokens de saída.
+  typicalOutputTokens: 1770,
+  // A reserva conta uma folga de uns 25% sobre isso (o número exato varia um pouco de imagem para imagem).
+  maxOutputTokens: 2200,
+} as const;

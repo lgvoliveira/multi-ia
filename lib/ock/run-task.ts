@@ -16,7 +16,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentMember } from "@/lib/auth/member";
 import type { AiCallReport } from "@/lib/engine/types";
 import { aiTools, type ToolSwitch } from "@/lib/providers/mode";
-import { getProvider as platformProvider } from "@/lib/providers/registry";
+import type { ImageGenerator } from "@/lib/providers/images";
+import { getImageGenerator, getProvider as platformProvider } from "@/lib/providers/registry";
 import { ProviderError, type AiProvider, type GenerateRequest, type ProviderId } from "@/lib/providers/types";
 import { recordAiCalls } from "@/lib/runs/store";
 import {
@@ -27,12 +28,12 @@ import {
   WalletRefusedError,
   type WalletRefusalReason,
 } from "@/lib/runs/wallet";
-import { callAi } from "./ai-call";
+import { callAi, callImage } from "./ai-call";
 import { readAttachment } from "./attachments";
 import { parseChartSpec, renderChart } from "./chart";
 import { ATTACHMENTS_ONLY_PROMPT, type ChatConversation, type ChatFile, type ChatTask, type SendResult } from "./chat";
 import { heuristicRoute, parseRoute, ROUTER, routerRequest, type Route } from "./chief";
-import { CHART_MIME, chartDataUrl } from "./conversation-view";
+import { CHART_MIME, previewDataUrl } from "./conversation-view";
 import { generateDocument } from "./document";
 import { linkUploadsToTask, loadOwnUploads, readStoredFile, storeFile, type FileRow } from "./files";
 import { generateZip, parseProjectFiles } from "./project";
@@ -49,6 +50,8 @@ import {
   conversationTitle,
   documentTitle,
   historyText,
+  IMAGE_FAILED,
+  IMAGE_READY,
   IMAGE_UNAVAILABLE,
   planWork,
   PROJECT_FAILED,
@@ -93,8 +96,10 @@ export type QuickTaskResult = { ok: true; result: SendResult } | { ok: false; st
 export interface QuickTaskOptions {
   /** Quem entrega as IAs. Sem valor, o mesmo das receitas: a simulada ou a de verdade, conforme OCK_AI_MODE. */
   getProvider?: (id: ProviderId) => AiProvider;
-  /** As ferramentas ligadas (pesquisa, código). Sem valor, as do interruptor OCK_AI_TOOLS. */
+  /** As ferramentas ligadas (pesquisa, código, imagem). Sem valor, as do interruptor OCK_AI_TOOLS. */
   tools?: ReadonlySet<ToolSwitch>;
+  /** Quem cria as imagens. Sem valor, o mesmo das IAs: o simulado ou o GPT Image de verdade, conforme OCK_AI_MODE. */
+  getImageGenerator?: () => ImageGenerator;
   /** Os testes trocam a espera entre as tentativas. */
   wait?: (ms: number) => Promise<void>;
 }
@@ -203,7 +208,11 @@ async function answerMessage(
   }
 
   // 3. A reserva da resposta: o que o Chefe gastou e o máximo da IA que vai responder.
-  const work = workRequest(plan, buildWorkerInput(history, attachments.text, prompt), attachments.images);
+  // A imagem é criada só a partir do pedido; as outras respostas leem a conversa e os anexos.
+  const work =
+    plan.kind === "image"
+      ? workRequest(plan, prompt)
+      : workRequest(plan, buildWorkerInput(history, attachments.text, prompt), attachments.images);
   const chiefUsd = ledger.calls.filter((call) => call.ok).reduce((total, call) => total + callUsd(call), 0);
   const holdCents = answerHoldCents(chiefUsd, plan, work);
   const answerHold = await reserve(me.id, taskId, holdCents);
@@ -216,7 +225,14 @@ async function answerMessage(
 
   // 4. A IA responde. A resposta é gravada antes da cobrança: se o servidor cair entre as duas, ninguém paga por uma
   // resposta perdida.
-  const outcome = await produce(plan, work, prompt, { me, taskId, getProvider, onCall, wait: options.wait });
+  const outcome = await produce(plan, work, prompt, {
+    me,
+    taskId,
+    getProvider,
+    getImageGenerator: options.getImageGenerator ?? getImageGenerator,
+    onCall,
+    wait: options.wait,
+  });
   await finishTask(taskId, outcome.status, outcome.answer);
 
   let costCents = 0;
@@ -245,12 +261,14 @@ interface ProduceContext {
   me: CurrentMember;
   taskId: string;
   getProvider: (id: ProviderId) => AiProvider;
+  getImageGenerator: () => ImageGenerator;
   onCall: (report: AiCallReport) => void;
   wait?: (ms: number) => Promise<void>;
 }
 
 /** A IA responde e, quando foi pedido um arquivo, a OCK o monta e guarda na pasta da pessoa. */
 async function produce(plan: WorkPlan, work: GenerateRequest, prompt: string, context: ProduceContext): Promise<Outcome> {
+  if (plan.kind === "image") return makeImage(work.input, context);
   let text: string;
   let notes: string;
   try {
@@ -273,6 +291,38 @@ async function produce(plan: WorkPlan, work: GenerateRequest, prompt: string, co
     return await makeDelivery(plan, text, context);
   } catch (error) {
     console.error(`[chat] Não consegui montar o arquivo da mensagem ${context.taskId}:`, error);
+    return failed(FILE_FAILED);
+  }
+}
+
+/** A IA cria a imagem, e a OCK a guarda como entrega da pessoa e a mostra na conversa. */
+async function makeImage(prompt: string, context: ProduceContext): Promise<Outcome> {
+  let image;
+  try {
+    image = await callImage(context.getImageGenerator(), prompt, {
+      stepId: ANSWER_STEP,
+      onCall: context.onCall,
+      wait: context.wait,
+    });
+  } catch (error) {
+    if (!(error instanceof ProviderError)) throw error;
+    console.error(`[chat] Não consegui criar a imagem da mensagem ${context.taskId}:`, error.message);
+    return failed(IMAGE_FAILED);
+  }
+  try {
+    const name = image.mime === "image/png" ? "imagem.png" : "imagem.jpg";
+    const file = await storeFile({
+      companyId: context.me.companyId,
+      memberId: context.me.id,
+      kind: "delivery",
+      name,
+      mime: image.mime,
+      bytes: image.bytes,
+      taskId: context.taskId,
+    });
+    return finished(IMAGE_READY, [file], previewDataUrl(image.bytes, image.mime));
+  } catch (error) {
+    console.error(`[chat] Não consegui guardar a imagem da mensagem ${context.taskId}:`, error);
     return failed(FILE_FAILED);
   }
 }
@@ -301,7 +351,7 @@ async function makeDelivery(plan: WorkPlan, text: string, context: ProduceContex
     if (!spec) return failed(CHART_FAILED);
     const svg = new TextEncoder().encode(renderChart(spec));
     const file = await deliver("grafico.svg", CHART_MIME, svg);
-    return finished(`Gráfico pronto: ${spec.title}`, [file], chartDataUrl(svg));
+    return finished(`Gráfico pronto: ${spec.title}`, [file], previewDataUrl(svg, CHART_MIME));
   }
   const files = parseProjectFiles(text);
   if (files.length === 0) return failed(PROJECT_FAILED);

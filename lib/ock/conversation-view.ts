@@ -13,6 +13,10 @@ export const CHART_MIME = "image/svg+xml";
 /** Gráfico maior que isto não é mostrado na conversa (só fica para baixar). Os nossos têm poucos KB. */
 const MAX_CHART_BYTES = 200_000;
 
+/** As imagens criadas pela IA que aparecem na conversa, e o tamanho máximo (uma imagem média tem uns 200 KB). */
+const IMAGE_MIMES = new Set(["image/jpeg", "image/png"]);
+const MAX_IMAGE_BYTES = 2_000_000;
+
 /**
  * Uma mensagem que ficou "respondendo" por mais tempo que isto parou no meio (o servidor caiu): a tela avisa. Nada foi
  * cobrado, porque a resposta é gravada antes da cobrança.
@@ -21,9 +25,12 @@ const STALE_TASK_MS = 6 * 60 * 1000;
 
 export const STALE_TASK_ANSWER = "Esta resposta não chegou: o servidor parou no meio. Nada foi cobrado. Tente de novo.";
 
-/** O gráfico desenhado, para mostrar dentro de uma imagem (assim, nada dele roda na nossa página). */
-export function chartDataUrl(svg: Uint8Array): string {
-  return `data:${CHART_MIME};base64,${Buffer.from(svg).toString("base64")}`;
+/**
+ * O gráfico desenhado (ou a imagem criada pela IA), para mostrar dentro de uma imagem (assim, nada dele roda na nossa
+ * página).
+ */
+export function previewDataUrl(bytes: Uint8Array, mime: string): string {
+  return `data:${mime};base64,${Buffer.from(bytes).toString("base64")}`;
 }
 
 export interface ConversationView {
@@ -94,19 +101,23 @@ function toChatFile(file: FileRow): ChatFile {
   return { id: file.id, name: file.name };
 }
 
-/** Os gráficos das mensagens, já prontos para mostrar, por id do arquivo. */
+/** Os gráficos e as imagens criadas das mensagens, já prontos para mostrar, por id do arquivo. */
 async function chartPreviews(files: readonly FileRow[]): Promise<Map<string, string>> {
-  const charts = files.filter(
-    (file) => file.kind === "delivery" && file.mime_type === CHART_MIME && (file.size_bytes ?? 0) <= MAX_CHART_BYTES,
-  );
+  const shown = files.filter((file) => file.kind === "delivery" && previewable(file));
   const previews = new Map<string, string>();
-  for (const file of charts) {
+  for (const file of shown) {
     try {
-      previews.set(file.id, chartDataUrl(await readStoredFile(file.storage_path)));
+      previews.set(file.id, previewDataUrl(await readStoredFile(file.storage_path), file.mime_type ?? CHART_MIME));
     } catch (error) {
-      // Sem a prévia, o gráfico continua para baixar.
-      console.error(`[chat] Não consegui ler o gráfico ${file.id}:`, error);
+      // Sem a prévia, o arquivo continua para baixar.
+      console.error(`[chat] Não consegui ler a prévia ${file.id}:`, error);
     }
   }
   return previews;
+}
+
+function previewable(file: FileRow): boolean {
+  const size = file.size_bytes ?? 0;
+  if (file.mime_type === CHART_MIME) return size <= MAX_CHART_BYTES;
+  return file.mime_type !== null && IMAGE_MIMES.has(file.mime_type) && size <= MAX_IMAGE_BYTES;
 }

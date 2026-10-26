@@ -4,6 +4,8 @@
 
 import { RETRY_DELAYS_MS } from "@/lib/engine/run";
 import type { AiCallReport } from "@/lib/engine/types";
+import { imageCostInUsd } from "@/lib/ock/pricing";
+import type { GeneratedImage, ImageGenerator } from "@/lib/providers/images";
 import { estimateTokens } from "@/lib/providers/mock";
 import {
   DEFAULT_TIER,
@@ -105,6 +107,47 @@ async function attemptOnce(
       attempt,
       durationMs: now() - startedAt,
     });
+  }
+}
+
+/**
+ * Pede uma imagem, com as mesmas novas tentativas das IAs de texto, e avisa cada tentativa para o registro interno, com
+ * o custo da imagem (que tem preço próprio). A empresa da IA não cobra a tentativa que falhou.
+ */
+export async function callImage(generator: ImageGenerator, prompt: string, options: CallOptions): Promise<GeneratedImage> {
+  const delays = options.retryDelaysMs ?? RETRY_DELAYS_MS;
+  const wait = options.wait ?? sleep;
+  const now = options.now ?? Date.now;
+  for (let attempt = 1; ; attempt++) {
+    const startedAt = now();
+    const report = { stepId: options.stepId, provider: "gpt", tier: DEFAULT_TIER, attempt } as const;
+    try {
+      const image = await generator.generate(prompt);
+      const { textInputTokens, imageInputTokens, outputTokens } = image.usage;
+      options.onCall({
+        ...report,
+        model: image.model,
+        usage: { inputTokens: textInputTokens + imageInputTokens, outputTokens },
+        costUsd: imageCostInUsd(image.usage),
+        ok: true,
+        durationMs: now() - startedAt,
+      });
+      return image;
+    } catch (error) {
+      options.onCall({
+        ...report,
+        model: error instanceof ProviderError ? (error.model ?? null) : null,
+        usage: { inputTokens: 0, outputTokens: 0 },
+        costUsd: 0,
+        ok: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        durationMs: now() - startedAt,
+      });
+      const delayMs = delays[attempt - 1];
+      const retryable = error instanceof ProviderError && error.retryable;
+      if (!retryable || delayMs === undefined) throw error;
+      await wait(delayMs);
+    }
   }
 }
 

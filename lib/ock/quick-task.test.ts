@@ -10,6 +10,7 @@ import {
   answerHoldCents,
   attachmentContext,
   buildWorkerInput,
+  callUsd,
   chargeDescription,
   chiefMaxCents,
   CODE_RAN_NOTE,
@@ -68,8 +69,21 @@ describe("o que cada tipo de resposta pede à IA", () => {
     expect(JSON.parse(project.sampleResponse ?? "").arquivos.length).toBeGreaterThan(0);
   });
 
-  it("imagem ainda não existe: nenhuma IA trabalha", () => {
+  it("imagem com a ferramenta desligada: nenhuma IA trabalha", () => {
     expect(planWork(route("imagem"), "Crie um logo").kind).toBe("unavailable");
+  });
+
+  it("imagem com a ferramenta ligada: o GPT cria, e a reserva é o máximo de uma imagem (uns R$ 0,40)", () => {
+    const plan = planWork(route("imagem", { provider: "claude" }), "Crie um logo", new Set(["imagem"] as const));
+    expect(plan).toMatchObject({ kind: "image", provider: "gpt", tier: "padrao" });
+    expect(plan.reason).toContain("GPT cria a imagem");
+    const hold = answerHoldCents(0, plan, workRequest(plan, "Crie um logo"));
+    expect(hold).toBeGreaterThanOrEqual(30);
+    expect(hold).toBeLessThanOrEqual(45);
+  });
+
+  it("o custo de uma chamada que já vem calculado (a imagem) não é refeito pelo preço por token", () => {
+    expect(callUsd(call({ provider: "gpt", tier: "padrao", usage: { inputTokens: 30, outputTokens: 1770 }, costUsd: 0.053 }))).toBe(0.053);
   });
 
   it("pesquisa e código respondem em texto e não escondem que não pesquisaram nem rodaram o código (F45)", () => {

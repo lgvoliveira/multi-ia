@@ -87,7 +87,7 @@ export interface ChatTask {
   attachments: ChatFile[];
   /** Arquivos que a IA fez (PDF, planilha, gráfico, projeto...). */
   deliveries: ChatFile[];
-  /** O gráfico desenhado, para mostrar na conversa (data:image/svg+xml). */
+  /** O que mostrar na conversa: o gráfico desenhado (data:image/svg+xml) ou a imagem criada pela IA. */
   chart: string | null;
 }
 

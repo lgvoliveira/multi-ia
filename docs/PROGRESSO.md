@@ -4,7 +4,7 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 26/10/2026, madrugada (o Claude trabalhou sozinho: PRs #46 a #48 abertos, empilhados, esperando o
+**Última atualização:** 26/10/2026, madrugada (o Claude trabalhou sozinho: PRs #46 a #49 abertos, empilhados, esperando o
 teste do Luis; resumo em "Resumo da madrugada de 26/10", antes do "Próximo passo")
 **Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite), o aviso de troca de login
 e o PR 3 inteiro (3a receitas com login, 3b receitas cobrando, 3c o chat, a aba Receitas e a 3d, painel do dono) no ar
@@ -869,6 +869,26 @@ empilhado sobre o PR das IAs de verdade)**
 - **Guia:** `docs/GUIA-TESTE-IAS-REAIS.md` ganhou a Parte D (ferramentas fingidas, sessão 1) e a Parte G (de verdade,
   sessão 2).
 
+**PR da imagem (madrugada de 26/10, Claude Code sozinho; branch `feat/imagem`, empilhado sobre o PR da pesquisa e do
+código)**
+- **O que ficou pronto, desligado:** com `imagem` em `OCK_AI_TOOLS`, o pedido de imagem do chat é criado pelo **GPT
+  Image 2** (OpenAI): uma imagem quadrada (1024 × 1024), de qualidade média, em JPEG, uns **US$ 0,053 (uns R$ 0,29)**,
+  conferido na tabela oficial. A imagem vira entrega da pessoa (`imagem.jpg`), aparece na conversa (dentro de uma
+  imagem, sem rodar nada na nossa página) e na aba Entregas. Desligada, continua "Isso chega em breve".
+- **Dinheiro:** a reserva é o máximo de uma imagem (o pedido e uns 25% de folga sobre a saída típica, uns R$ 0,36 com o
+  Chefe); a cobrança é o consumo que a OpenAI informa, com o preço próprio da imagem (texto US$ 5, imagem de referência
+  US$ 8 e imagem criada US$ 30 por milhão de tokens). Pedido barrado pelas regras de conteúdo da OpenAI
+  ("moderation_blocked") não tem nova tentativa nem cobrança, e a resposta sugere mudar o pedido.
+- **Simulada:** um quadriculado azul de 64 × 64 no lugar da imagem, "custando" o mesmo que uma de verdade.
+- **Decisão provisória do Claude (Luis confirmar):** qualidade média e formato quadrado (a alta custa uns R$ 1,16 por
+  imagem); a imagem nasce só do pedido (não lê a conversa nem os anexos; editar uma foto anexada fica para depois).
+- **Como foi conferido:** lint, tipos, 491 testes (novos: o pedido ao GPT Image, o consumo e o preço, o pedido barrado,
+  a imagem simulada, o entregador sem chave, a reserva e o chat do começo ao fim, com e sem falha) e build. Ponta a
+  ponta contra o projeto de testes: fumaça com as três ferramentas ligadas (11 conferências) e uma mensagem com a imagem
+  gravada no banco e na pasta, como o servidor grava, aberta pela tela (3: a imagem na conversa, "Baixar imagem.png" e a
+  aba Entregas).
+- **Guia:** Partes D e G do `docs/GUIA-TESTE-IAS-REAIS.md` ganharam a imagem.
+
 ## Resumo da madrugada de 26/10 (para o Luis ler primeiro)
 
 O Claude trabalhou sozinho, sem merge, sem o Supabase de verdade, sem chaves e sem créditos. Tudo com a IA simulada.
@@ -880,6 +900,7 @@ O Claude trabalhou sozinho, sem merge, sem o Supabase de verdade, sem chaves e s
 | #46 | Só documentos: o teste do painel do dono (PR #45), o que conferir no Supabase de verdade e a Parte J do guia | `main` |
 | #47 | IAs de verdade prontas, sem gastar: consumo informado pelas empresas (F40), `OCK_AI_MODE` (F42), modelos e preços oficiais (F17), correções F50 e F51, guia `docs/GUIA-TESTE-IAS-REAIS.md` com a compra dos créditos | #46 |
 | #48 | Pesquisa na internet (Claude) e contas com um programa (Gemini) no chat, desligadas (`OCK_AI_TOOLS`) | #47 |
+| #49 | Imagens no chat com o GPT Image 2 (uns R$ 0,29 cada), desligadas (`OCK_AI_TOOLS`) | #48 |
 
 O PR #45 já estava na `main` quando a madrugada começou (merge às 23:39 de 25/10 pela conta `lgvoliveira`; **confirmar se
 foi você**). Por isso a pilha parte da `main`, não do branch do #45.
@@ -888,7 +909,7 @@ foi você**). Por isso a pilha parte da `main`, não do branch do #45.
 1. **Supabase de verdade:** conferir a migração do #45 (passos em "3d testada pelo Luis e no ar", acima).
 2. **Testar a pilha de uma vez:** a sessão 1 do `docs/GUIA-TESTE-IAS-REAIS.md` (Partes A a D, uns 25 minutos, sem gastar)
    no branch do PR mais alto (a Parte A diz qual).
-3. **Merge em ordem:** #46, depois #47, depois #48. **Depois de cada merge, clique em "Delete branch"** no PR que entrou:
+3. **Merge em ordem:** #46, depois #47, depois #48, depois #49. **Depois de cada merge, clique em "Delete branch"** no PR que entrou:
    só assim o GitHub troca a base do PR seguinte para a `main` (o repositório não apaga o branch sozinho). Antes de cada
    merge, confira que o alto do PR diz "into main" e que as checagens estão verdes. Se um PR falhar no teste, pare ali:
    os de baixo podem entrar, os de cima esperam a correção.
@@ -906,6 +927,7 @@ foi você**). Por isso a pilha parte da `main`, não do branch do #45.
    manter e corrigir o AGENTS.md).
 6. Pesquisa na internet pelo Claude, não pelo Gemini (termos do Google); código pelo Gemini.
 7. Fontes e "programa rodado" escritos no fim da resposta, sem coluna nova no banco (F53, limitação aceita).
+8. Imagem de qualidade média e quadrada, criada só a partir do pedido.
 
 **Para você decidir:**
 - **Câmbio:** continua R$ 5,50 (sua decisão de 25/10), mas cada dólar pago com cartão brasileiro sai por uns R$ 5,6 a
@@ -913,15 +935,16 @@ foi você**). Por isso a pilha parte da `main`, não do branch do #45.
   diferença. Mudar é uma linha (`USD_TO_BRL` em `lib/ock/pricing.ts`).
 - **F52:** manter as chamadas diretas ou trocar pelas bibliotecas oficiais.
 
-**Não feito nesta madrugada:** a geração de imagem e a voz (ver o próximo passo).
+**Não feito nesta madrugada:** a voz (ver o próximo passo).
 
 ## Próximo passo
 
 1. **Luis:** seguir a "Ordem de testar e fazer o merge" do resumo da madrugada, acima, e decidir o câmbio e as
    decisões provisórias.
-2. **Claude Code:** o que falta das IAs de verdade, desligado até as chaves: **criar imagens** no chat (GPT Image 2,
-   uns R$ 0,29 por imagem) e a **voz** (ditar a mensagem; conversar com o parceiro antes, porque o PR #36 dele mexe na
-   mesma tela). Depois, com as chaves, medir custo e tempo de verdade e rever as folgas da estimativa.
+2. **Claude Code:** a **voz** (ditar a mensagem no chat), que ficou de fora da madrugada: pede uma tela nova (gravar no
+   navegador), uma rota que recebe o áudio e uma cobrança por minuto (OpenAI gpt-4o-mini-transcribe, US$ 0,003 por
+   minuto), e o PR #36 do parceiro (o botão "Ouvir") mexe na mesma tela; combinar com ele antes. Depois, com as chaves,
+   medir custo e tempo de verdade e rever as folgas da estimativa.
 3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.

@@ -189,8 +189,9 @@ Com as IAs de verdade ligadas, uma IA sem chave falha (e a troca de IA entra), n
 **Ferramentas do chat** (ligadas uma a uma pelo interruptor `OCK_AI_TOOLS`, desligadas até a decisão do Luis): a
 **pesquisa na internet** é a do Claude, que cita as fontes no fim da resposta (US$ 0,01 por pesquisa, até 3 por
 mensagem); a do Gemini exige mostrar junto um bloco do Google e proíbe misturar o resultado com outro conteúdo, o que não
-combina com as entregas. **Rodar código** para fazer contas é do Gemini, sem custo além dos tokens. Sem a ferramenta, a
-resposta avisa que não pesquisou ou não rodou o programa (F45).
+combina com as entregas. **Rodar código** para fazer contas é do Gemini, sem custo além dos tokens. **Criar imagens** é
+do GPT Image (uma imagem quadrada de qualidade média, uns US$ 0,053), entregue como arquivo e mostrada na conversa. Sem a
+ferramenta, a resposta avisa que não pesquisou ou não rodou o programa (F45), e a imagem "chega em breve".
 
 **Modelos de cada nível** (econômico / padrão / potente), conferidos nas páginas oficiais em 26/10/2026: Claude Haiku,
 Sonnet e Opus 5.5; GPT-6 Luna, GPT-6.1 Sol e GPT-6 Astra; Gemini 3.5 Flash-Lite, 3.8 Flash e 4 Argon. Nomes e preços

@@ -1,7 +1,8 @@
 // O cálculo do custo de cada uso em reais, a partir do preço oficial de cada modelo (lib/providers/models.ts).
 // É o que a OCK usa para MEDIR quanto cada tarefa gastou e descontar da carteira da empresa.
 
-import { modelPrice } from "@/lib/providers/models";
+import type { ImageUsage } from "@/lib/providers/images";
+import { IMAGE_MODEL, modelPrice } from "@/lib/providers/models";
 import type { ModelTier, ProviderId, Usage } from "@/lib/providers/types";
 
 /** O nível mais caro de todos (Claude Opus). Base da "economia": e se tudo rodasse no mais potente? */
@@ -34,6 +35,14 @@ export function costInUsd(provider: ProviderId, tier: ModelTier, usage: Usage, a
   const microDollars =
     plainInput * price.input + cached * price.cachedInput + written * price.cacheWrite + usage.outputTokens * price.output;
   return microDollars / 1_000_000 + (usage.webSearchRequests ?? 0) * (price.webSearch ?? 0);
+}
+
+/** Quanto uma imagem criada custa, em DÓLAR: o texto do pedido, as imagens de referência e a imagem criada. */
+export function imageCostInUsd(usage: ImageUsage): number {
+  const price = IMAGE_MODEL.prices;
+  const microDollars =
+    usage.textInputTokens * price.textInput + usage.imageInputTokens * price.imageInput + usage.outputTokens * price.output;
+  return microDollars / 1_000_000;
 }
 
 /**
