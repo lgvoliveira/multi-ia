@@ -3,7 +3,7 @@
 > **Status (24/10/2026):** proposta aprovada e decisões tomadas pelo Luis (fim deste arquivo). As migrações entraram na
 > `main` no PR #24 e já estão no projeto de verdade (conferido pelo Luis: 11 tabelas vazias, pasta `files` privada,
 > Postgres 17.11, a mesma versão das checagens). A migração 6 (convites, PR 2b) chegou com o merge do PR #30; a 7 (as
-> contas do mês, parte 3d) chega no merge do PR #45.
+> contas do mês, parte 3d) chegou com o merge do PR #45 (conferida pelo Luis no projeto de verdade em 26/10).
 > **A versão oficial das tabelas são as migrações** em
 > `supabase/migrations/`; este arquivo explica o desenho em português e precisa mudar junto quando elas mudarem.
 

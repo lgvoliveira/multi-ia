@@ -4,11 +4,11 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 26/10/2026, madrugada (o Claude trabalhou sozinho: PRs #46 a #52 abertos, empilhados, esperando o
-teste do Luis; resumo em "Resumo da madrugada de 26/10", antes do "Próximo passo")
-**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite), o aviso de troca de login
-e o PR 3 inteiro (3a receitas com login, 3b receitas cobrando, 3c o chat, a aba Receitas e a 3d, painel do dono) no ar
-e testados; agora, o PR das IAs de verdade
+**Última atualização:** 26/10/2026, manhã (o Luis testou a sessão 1 do `GUIA-TESTE-IAS-REAIS.md`, tudo certo, e fez o
+merge dos PRs #46 a #52; as IAs de verdade estão prontas e desligadas, esperando a sessão 2, com créditos)
+**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite), o aviso de troca de login,
+o PR 3 inteiro (3a receitas com login, 3b receitas cobrando, 3c o chat, a aba Receitas e a 3d, painel do dono) e a parte
+das IAs de verdade que não gasta (#47 a #52) no ar e testados; falta o teste com créditos (sessão 2 do guia)
 
 ---
 
@@ -118,7 +118,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite) e o PR 3 inteiro (3a, 3b, 3c, aba Receitas e 3d, painel do dono) no ar e testados; falta o PR das IAs de verdade | Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite), o PR 3 inteiro (3a, 3b, 3c, aba Receitas e 3d, painel do dono) e as IAs de verdade sem gastar (#47 a #52) no ar e testados; falta o teste com créditos | Claude Code |
 | 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
 | 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
@@ -797,14 +797,12 @@ production* ligado, *Automatic branching* desligado por ser do plano Pro). Opç�
   - **Privacidade (I):** a Carla não abre o `/dono`; o Meus gastos do dono não tem a frase e não mostra conversas da Carla.
   - **Celular (J):** em 360 px tudo coube e "Ver o que fez" funcionou. No Opera GX, o F12 e o Ctrl + Shift + I não
     abriram as ferramentas; pelo botão direito → Inspecionar, sim. O guia passou a dizer isso.
-- **Merge do PR #45:** aparece feito às 23:39 de 25/10, pela conta `lgvoliveira`, minutos depois da mensagem em que o
-  Luis dizia que faria o merge de manhã. **Luis confirmar se foi ele** (se foi o parceiro, com a conta do Luis, é mais um
-  motivo para a F21). Com o merge, o Supabase aplica a migração nova no projeto de verdade sozinho.
-- **Conferir no Supabase de verdade** (projeto `multi-ia`, não o `multi-ia-teste`), uma vez:
-  1. Menu da esquerda → **Database** → **Migrations**: a última linha é `20261025200001` (`month_summaries`).
-  2. **Database** → **Functions**, esquema `public`: aparecem `company_credit`, `company_month_by_provider`,
-     `member_month_summary` e `month_statement`.
-  3. Se alguma não aparecer, não crie nada à mão pelo painel (AGENTS.md, seção 8): avise o Claude.
+- **Merge do PR #45:** feito pelo **próprio Luis** às 23:39 de 25/10, depois de terminar o teste completo do
+  `GUIA-TESTE-PAINEL.md` com o chat do Claude (confirmado por ele em 26/10; não foi o parceiro). Com o merge, o Supabase
+  aplicou a migração nova no projeto de verdade sozinho.
+- **Conferido no Supabase de verdade pelo Luis (26/10, projeto `multi-ia`):** em **Database** → **Migrations**, a última
+  é `20261025200001` (`month_summaries`); em **Database** → **Functions** aparecem `company_credit`,
+  `company_month_by_provider`, `member_month_summary` e `month_statement`.
 
 **PR das IAs de verdade, parte que não depende de chave nem de crédito (madrugada de 26/10, Claude Code sozinho; branch
 `feat/ias-reais`, empilhado sobre o PR #46)**
@@ -935,6 +933,24 @@ sobre o PR da planilha)**
 - **Como foi conferido:** lint, tipos, 524 testes (7 novos: a limpeza e uma receita inteira com as IAs cercando o site)
   e build; fumaça de ponta a ponta (11 conferências). Com a IA simulada nada muda (ela não cerca o site).
 
+**Sessão 1 do guia das IAs de verdade testada pelo Luis, e a pilha no ar (26/10, manhã)**
+- O Luis seguiu as Partes A a D do `docs/GUIA-TESTE-IAS-REAIS.md` (sem gastar) e tudo deu o resultado esperado:
+  - **Preços novos com a simulada (B):** "Criar um site" com estimativa **"até R$ 6,09"** (R$ 4,30 com o Front-end no
+    Gemini); a receita custou uns R$ 0,32 e o chat R$ 0,01. A `Planilha.xlsx` abriu no Excel **sem aviso**, com os
+    títulos em negrito e os números somáveis (era o que faltava conferir da F15).
+  - **IAs de verdade sem chave (C):** com `OCK_AI_MODE=real`, o chat mostrou "A IA não conseguiu responder agora. Nada
+    foi cobrado.", o terminal apontou a falta da `OCK_CLAUDE_KEY`, a receita parou no Chefe com R$ 0,00, Meus gastos não
+    mudou e o `ai_calls` registrou `error` com `charged` falso, sem nenhuma linha da simulada (F42 testada pela tela).
+  - **Ferramentas fingidas (D):** com `OCK_AI_TOOLS` ligado, a pesquisa veio do Claude com as fontes, as contas do Gemini
+    com a frase do programa, a imagem com o quadriculado e o `imagem.png` em Entregas, tudo continuou depois do F5, e o
+    Ditar transcreveu de forma simulada, com "Voz · Transcrição" em Meus gastos. Desligando, voltaram os avisos e o
+    Ditar sumiu.
+  - No fim, o `.env.local` voltou sem `OCK_AI_MODE` e sem `OCK_AI_TOOLS` (simulada, ferramentas desligadas).
+- **Merges:** o Luis fez o merge dos PRs **#46 a #52**, em ordem, com "Delete branch" em cada um, e atualizou a `main`.
+  Nenhum deles mudou o banco, então o Supabase de verdade não muda.
+- **Ficou para depois, por decisão do Luis:** as decisões provisórias da madrugada e o câmbio (ele vê depois) e a
+  sessão 2 do guia, com créditos de verdade (quando ele decidir gastar).
+
 ## Resumo da madrugada de 26/10 (para o Luis ler primeiro)
 
 O Claude trabalhou sozinho, sem merge, sem o Supabase de verdade, sem chaves e sem créditos. Tudo com a IA simulada.
@@ -951,10 +967,10 @@ O Claude trabalhou sozinho, sem merge, sem o Supabase de verdade, sem chaves e s
 | #51 | Planilha Excel montada pela plataforma, sem o pacote `xlsx` (F15, falha de segurança) | #50 |
 | #52 | O site das IAs de verdade sem as marcas de código (```html) em volta | #51 |
 
-O PR #45 já estava na `main` quando a madrugada começou (merge às 23:39 de 25/10 pela conta `lgvoliveira`; **confirmar se
-foi você**). Por isso a pilha parte da `main`, não do branch do #45.
+O PR #45 já estava na `main` quando a madrugada começou (merge do Luis às 23:39 de 25/10). Por isso a pilha parte da
+`main`, não do branch do #45.
 
-**Ordem de testar e fazer o merge:**
+**Ordem de testar e fazer o merge** (passos 1 a 3 **feitos** pelo Luis em 26/10, de manhã; o 4 espera ele decidir gastar):
 1. **Supabase de verdade:** conferir a migração do #45 (passos em "3d testada pelo Luis e no ar", acima).
 2. **Testar a pilha de uma vez:** a sessão 1 do `docs/GUIA-TESTE-IAS-REAIS.md` (Partes A a D, uns 30 minutos, sem gastar)
    no branch do PR mais alto (a Parte A diz qual).
@@ -965,7 +981,7 @@ foi você**). Por isso a pilha parte da `main`, não do branch do #45.
 4. **Quando decidir gastar:** a sessão 2 do guia (Partes E a H): comprar US$ 5 na Anthropic e na OpenAI com a recarga
    automática desligada, criar as chaves e o primeiro teste com IA de verdade.
 
-**Decisões provisórias do Claude (confirmar ou mudar):**
+**Decisões provisórias do Claude (confirmar ou mudar; o Luis vê depois):**
 1. `OCK_AI_MODE` vazio continua simulado no computador (real no site publicado).
 2. Modelos de cada nível: Claude Haiku/Sonnet/Opus 5.5; GPT-6 Luna / 6.1 Sol / 6 Astra; Gemini 3.5 Flash-Lite / 3.8 Flash /
    4 Argon.
@@ -996,13 +1012,17 @@ créditos.
 
 ## Próximo passo
 
-1. **Luis:** seguir a "Ordem de testar e fazer o merge" do resumo da madrugada, acima, e decidir o câmbio e as
-   decisões provisórias.
-2. **Claude Code, depois das chaves:** medir custo e tempo de verdade (receita e chat) e rever as folgas da estimativa
-   (pensamento, 3 caracteres por token, ferramentas); conferir o consumo com o painel das empresas (F40).
-3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
+1. **Luis, quando quiser (no chat do Claude, sem código):** as decisões provisórias da madrugada, o câmbio e a F52
+   (lista no resumo da madrugada, acima).
+2. **Luis, quando decidir gastar:** a sessão 2 do `docs/GUIA-TESTE-IAS-REAIS.md` (Partes E a H): US$ 5 na Anthropic e na
+   OpenAI com a recarga automática desligada, a chave do Gemini no plano grátis e o primeiro teste com IA de verdade.
+3. **Claude Code, depois das chaves:** medir custo e tempo de verdade (receita e chat; o tempo de cada fase entra na
+   F54) e rever as folgas da estimativa (pensamento, 3 caracteres por token, ferramentas); conferir o consumo com o
+   painel das empresas (F40).
+4. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
-   PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração.
+   PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração; e decidir o PR #36 dele (o botão
+   "Ouvir"), ainda aberto.
 
 ## Decisões em aberto
 

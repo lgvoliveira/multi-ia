@@ -182,6 +182,9 @@ com a IA simulada e as ferramentas desligadas até a sessão 2).
 Faça esta sessão só quando quiser começar a gastar. O total para começar é de **uns US$ 10 (uns R$ 60)**: US$ 5 na
 Anthropic e US$ 5 na OpenAI. O Gemini começa no **plano grátis**.
 
+**O código já está na `main`** (os PRs da sessão 1 entraram em 26/10). Antes de começar, pare o site (**Ctrl + C**) e
+rode no terminal `git checkout main` e depois `git pull`. O branch `fix/site-sem-crases` da Parte A não existe mais.
+
 **Cuidados que valem para as três empresas:**
 - Use o **Gmail do projeto**, não o pessoal (decisão de 09/10).
 - **Recarga automática desligada** em todas. Na OpenAI ela vem **ligada** na hora da compra: desligue.
