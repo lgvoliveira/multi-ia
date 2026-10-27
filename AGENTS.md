@@ -73,8 +73,8 @@ Estrutura de pastas (criada na etapa 4, pode ser ajustada com aprovação):
 
 ```
 app/                 telas e rotas do Next.js. app/api/runs/ são as rotas das receitas: começar, ver, buscar as
-                     novidades, cancelar e continuar depois de uma pausa ([id]/resume), com o login de quem pede, e a
-                     rota interna [id]/continue, que roda uma fase de cada vez no servidor e cobra cada etapa;
+                     novidades, cancelar, continuar depois de uma pausa ([id]/resume) e baixar em Word o resultado em
+                     texto ([id]/document), com o login de quem pede, e a rota interna [id]/continue, que roda uma fase de cada vez no servidor e cobra cada etapa;
                      app/api/ock/ são as rotas do chat (mandar mensagem, anexar, ditar, baixar, conversas, entregas
                      e gastos) e, para o painel do dono, o mês de uma pessoa da equipe (team/[id]), todas com o login
                      de quem pede; app/trabalho/ é o espaço de trabalho, onde as receitas
@@ -83,7 +83,9 @@ app/                 telas e rotas do Next.js. app/api/runs/ são as rotas das r
 components/          pedaços de tela reutilizáveis (cada um com seu .module.css). SitePreview.tsx e
                      generated-site.ts são a prévia isolada do site feito pelas IAs (seção 6). OckWorkspace.tsx é o
                      espaço de trabalho (abas Chat, Receitas, Entregas e Meus gastos; a aba e a receita aberta ficam
-                     no endereço, workspace-view.ts). OwnerHome.tsx é o painel do dono: o crédito da empresa
+                     no endereço, workspace-view.ts). RunResult.tsx é a tela do resultado de uma receita (o
+                     site, ou o texto com RichText.tsx, que mostra títulos, listas e destaques sem rodar nada da
+                     IA). OwnerHome.tsx é o painel do dono: o crédito da empresa
                      (CompanyCredit.tsx), o mês de cada pessoa (MemberMonth.tsx) e o extrato (StatementList.tsx, que
                      também mostra o Meus gastos)
 lib/engine/          motor: executa as etapas de um time e narra cada passo em eventos (types.ts).
@@ -96,7 +98,9 @@ lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts)
                      tela; registry.ts entrega as IAs e é SÓ do servidor, escolhendo a simulada ou a de verdade pelo
                      interruptor OCK_AI_MODE (mode.ts); limits.ts é o teto de saída de cada IA (resposta +
                      pensamento), usado pelos conectores e pela estimativa
-lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema, etapas);
+lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema, etapas), uma por arquivo
+                     (create-site.ts, commercial-proposal.ts), com as respostas de exemplo da IA simulada em
+                     *.samples.ts; text-format.ts é como as receitas que terminam em texto escrevem;
                      validate.ts confere toda receita nos testes; screen.ts é o que a tela de uma receita recebe
                      (nunca as instruções das IAs)
 lib/auth/            o login (Supabase Auth): quem está vendo a página (viewer.ts, com requireMember para
@@ -113,15 +117,16 @@ lib/ock/             o workspace para empresas: a parte "Equipe" do painel do do
                      tentativas (ai-call.ts), conversas e mensagens (task-store.ts), arquivos na pasta fechada
                      (files.ts e attachments.ts), a voz ditada (voice.ts) e os gastos do mês, da pessoa e da empresa, lidos das contas feitas no
                      banco (spending.ts), tudo SÓ do servidor; chat.ts (limites e o formato do que a tela recebe),
-                     statement.ts (o formato das contas do mês), site-file.ts (o nome do arquivo do site) e
+                     statement.ts (o formato das contas do mês), site-file.ts (o nome do arquivo do site),
+                     rich-text.ts (o texto final de uma receita lido em partes, para a tela e o Word) e
                      chat-client.ts (os pedidos do navegador) vão para a tela
 lib/runs/            a execução vista de fora: o que dos eventos pode chegar ao usuário
                      (public-events.ts), a conferência do pedido que chega pela internet (parse-request.ts),
                      o banco das execuções (store.ts), a narração gravada aos poucos (event-buffer.ts), a
                      retomada de execução parada (resume.ts), a chamada interna (trigger.ts e
                      internal-secret.ts), a carteira vista por uma execução e por uma mensagem do chat (wallet.ts),
-                     o que cobrar de cada etapa (billing.ts) e o site pronto guardado como entrega
-                     (site-delivery.ts), tudo SÓ do servidor; no navegador, começar, cancelar e continuar
+                     o que cobrar de cada etapa (billing.ts) e o resultado pronto (o site ou o Word) guardado como
+                     entrega (delivery.ts), tudo SÓ do servidor; no navegador, começar, cancelar e continuar
                      (client.ts) e buscar as novidades (live-client.ts). A estimativa (estimate.ts) roda nos dois
                      lados: o servidor calcula o máximo de cada etapa com cada IA, e a tela só soma
 styles/tokens.css    TODAS as cores, fontes, espaçamentos e arredondamentos
@@ -233,8 +238,8 @@ Revisado em 22/10/2026, com o produto para empresas (detalhes em `docs/DOCUMENTO
 
 **Entra:** cadastro da empresa e login de verdade (dono e funcionários); painel do dono (funcionários, teto de gasto,
 crédito da empresa, entregas e gastos por funcionário e por IA); workspace com receitas prontas, receita própria e
-tarefa rápida; as 4 receitas do MVP (Criar site simples, Escrever e revisar texto, Pesquisa com checagem cruzada,
-Comitê de investimento); recomendação de IA com escolha livre do funcionário; histórico; Claude, GPT e Gemini via API,
+tarefa rápida; as 4 receitas do MVP (Criar um site, Proposta comercial, Posts para redes sociais e Relatório mensal
+para cliente; as três últimas escolhidas pelo Luis em 26/10, issue #54); recomendação de IA com escolha livre do funcionário; histórico; Claude, GPT e Gemini via API,
 com medição de custo; geração de arquivos (PDF, Word, Excel, gráficos).
 
 **Fica de fora por enquanto:** pagamento real (empresas convidadas, crédito carregado à mão), vídeo, execução de código

@@ -158,6 +158,9 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   para a receita "Criar um site". Trazer as receitas para dentro dele é da etapa 6.
 - **Andamento (25/10/2026, issue #42):** a pedido do Luis, a receita pronta entrou no espaço de trabalho antes da etapa
   6: a aba Receitas mostra as receitas em cartões, e a escolhida abre ali mesmo. Falta a receita própria (etapa 6).
+- **Andamento (26/10/2026, bloco 1, issue #54):** a segunda receita pronta, "Proposta comercial", a primeira que termina
+  num texto (com Copiar e Word, que vira entrega). Faltam as receitas de posts e de relatório e a receita própria, nos
+  próximos PRs do bloco 1.
 
 ### F09 — Resultado que um leigo não sabe usar
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 09/10/2026 (no PROGRESSO), trazida para cá em 22/10/2026
