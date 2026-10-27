@@ -10,6 +10,8 @@ Atualizado em 25/10/2026 com o chat (tarefa rápida) no banco novo: custo mostra
 pesquisa, código e voz só com as IAs de verdade, mensagem de até 4.000 caracteres e gastos do funcionário em reais.
 Atualizado em 25/10/2026 com o painel do dono (parte 3d, issue #43): uma receita vira uma linha só no extrato, o site da
 receita vira entrega, o funcionário lê o que o dono vê, e só o mês atual por enquanto.
+Atualizado em 26/10/2026 com a nova ordem do Luis: as IAs de verdade ficam para o fim, depois de seis blocos (próximos
+passos, no fim deste documento).
 
 ## Visão e problema
 
@@ -198,8 +200,8 @@ para a pessoa revisar antes de enviar; o áudio não é guardado, e o extrato mo
 **Modelos de cada nível** (econômico / padrão / potente), conferidos nas páginas oficiais em 26/10/2026: Claude Haiku,
 Sonnet e Opus 5.5; GPT-6 Luna, GPT-6.1 Sol e GPT-6 Astra; Gemini 3.5 Flash-Lite, 3.8 Flash e 4 Argon. Nomes e preços
 ficam num lugar só (`lib/providers/models.ts`); o consumo cobrado é o que cada empresa informa, com o "pensamento" da
-IA (F40). A escolha é provisória (PR das IAs de verdade) e deve ser revista com as primeiras medições de custo e
-qualidade.
+IA (F40). A escolha é provisória (PR das IAs de verdade) e deve ser revista no bloco 6, com as primeiras medições de
+custo e qualidade e a pesquisa "Melhor IA por função" (`docs/pesquisas/melhor-ia-por-funcao-2026-10-12.pdf`).
 
 **Banco de dados:** desenho, regras de acesso e carteira em `docs/BANCO-DE-DADOS.md`; as tabelas vivem no repositório,
 como migrações (`supabase/migrations/`).
@@ -357,11 +359,26 @@ O GitHub é o ponto de encontro: as duas IAs leem o mesmo repositório e convers
 - [x] Criar conta no GitHub e o repositório do projeto
 - [x] Escrever o `AGENTS.md` com a stack e as regras
 - [x] Primeiro fluxo ponta a ponta com IA simulada (etapa 4, Parte A)
-- [x] IAs reais ligadas no código (PR #19); falta conferir com chaves no computador do Luis
+- [x] IAs reais ligadas no código (PR #19) e preparadas sem gastar (consumo real, modelos e preços oficiais); falta
+  conferir com chaves (bloco 6)
+- [x] Base para empresas: banco no repositório, login de verdade, cadastro de empresa, painel do dono protegido,
+  carteira, teto e estimativa (etapa 5, concluída em 26/10)
 - [ ] Alinhar a visão nova com o parceiro (este documento e o `FALHAS.md`)
-- [ ] Base para empresas: banco no repositório, login de verdade, cadastro de empresa, painel do dono protegido
-- [ ] Workspace com receitas prontas, receita própria e tarefa rápida; escolha livre da IA
-- [ ] Créditos, teto e preço
+
+**Nova ordem (decisão do Luis, 26/10/2026):** as IAs de verdade ficam para o fim. Antes, todo o resto do site
+funcionando com a IA simulada, um bloco de cada vez, cada um com a proposta aprovada pelo Luis antes de começar:
+
+| Bloco | O que entra |
+| --- | --- |
+| 1 — O produto do funcionário | 3 receitas escolhidas para PMEs (no lugar das 3 "Em breve"), receita própria salva só para a pessoa ou para a empresa toda, e escolha livre da IA, do nível e do esforço no chat (F03) |
+| 2 — Conta de verdade | E-mail próprio para o login (F30), recuperar a senha do dono, termos de uso e política de privacidade com aceite no cadastro (F05; rascunho a ser revisto por um advogado antes da primeira empresa de verdade) |
+| 3 — Painel interno da plataforma | Área protegida para a equipe da plataforma: empresas, recarga de crédito pela tela, extrato de recargas e custo real das IAs contra o cobrado |
+| 4 — Pagamento, só preparar | Comparação de gateways (Pix, boleto, cartão) com fontes oficiais; programar só depois da decisão do preço (F04) e do CNPJ; o pagamento confirmado vira uma recarga automática |
+| 5 — Publicação | Site no ar na Vercel, com domínio, chaves de produção e a F54 resolvida |
+| 6 — IAs de verdade | Primeiro teste com créditos, medição de custo e tempo e revisão dos modelos de cada papel (com a pesquisa de 12/10, `docs/pesquisas/`) |
+
+Depois dos seis blocos:
+
 - [ ] Conversar com 3 a 5 donos de empresa e testar com empresas reais
 - [ ] Mapear players brasileiros de IA para empresas
 
