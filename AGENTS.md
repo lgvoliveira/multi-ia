@@ -36,7 +36,7 @@ gastou, e define um teto de gasto para cada um.
 - Prefira mudanças **pequenas e revisáveis** a mudanças grandes.
 - Antes de decisões difíceis de desfazer (nova biblioteca, mudança de banco, mudança de arquitetura), **pergunte**.
 - Diga sempre **como testar** o que foi feito (comando a rodar, tela a abrir, o que deve aparecer).
-- Nunca faça merge na `main` por conta própria. Quem decide é o Luis.
+- Quem decide o merge na `main` é o **Leandro** (assumiu o produto). O Claude **pode** fazer o merge na `main` quando o Leandro **mandar explicitamente** — nunca por conta própria, e nunca sem ordem na mesma conversa.
 
 ## 3. Stack
 
@@ -220,7 +220,7 @@ docs/                documento do projeto, diário de progresso, registro de fal
 3. **Commits** pequenos, com mensagem em português no imperativo (ex.: `adiciona tela de receitas`).
 4. Abra um **pull request** dizendo: o que mudou, por quê, e como testar. Referencie a issue (`Closes #12`).
 5. A outra IA revisa e comenta no PR. Divergências ficam registradas lá.
-6. O **Luis** decide e faz o merge.
+6. O **Leandro** decide o merge; o Claude faz o merge na `main` quando o Leandro mandar explicitamente.
 
 **Banco de dados:** toda mudança de tabela entra por **migração** (arquivo SQL em `supabase/migrations/`), num PR como
 qualquer outra mudança. Nunca pelo painel do Supabase (editor de tabelas ou de SQL): senão o banco deixa de bater com o
