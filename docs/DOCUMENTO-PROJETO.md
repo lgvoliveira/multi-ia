@@ -11,7 +11,8 @@ pesquisa, código e voz só com as IAs de verdade, mensagem de até 4.000 caract
 Atualizado em 25/10/2026 com o painel do dono (parte 3d, issue #43): uma receita vira uma linha só no extrato, o site da
 receita vira entrega, o funcionário lê o que o dono vê, e só o mês atual por enquanto.
 Atualizado em 26/10/2026 com a nova ordem do Luis: as IAs de verdade ficam para o fim, depois de seis blocos (próximos
-passos, no fim deste documento).
+passos, no fim deste documento). No mesmo dia, as receitas do MVP para PMEs (issue #54): Proposta comercial, Posts para
+redes sociais e Relatório mensal para cliente, ao lado de "Criar um site"; o resultado em texto vira um arquivo Word.
 
 ## Visão e problema
 
@@ -118,8 +119,11 @@ são produtos separados e ficam para integrações futuras.
 - O espaço de trabalho (`/trabalho`, etapa 5, PR 3c) com o chat da **tarefa rápida**: conversas, anexos (PDF, texto e
   imagens) e arquivos gerados (PDF, Word, Excel, CSV, gráficos e projeto em .zip), mais as abas Entregas e Meus gastos
   (gasto do mês e teto, em reais). Cada resposta mostra quem o Chefe escolheu e "Custou R$ X".
-- A aba **Receitas** no espaço de trabalho (issue #42): as receitas em cartões (a pronta e as outras 3 do MVP como "Em
-  breve"); a escolhida abre ali mesmo, sem sair da página, e o chat vazio sugere as receitas prontas. Falta a receita
+- A aba **Receitas** no espaço de trabalho (issue #42): as receitas em cartões (as prontas e as do MVP que ainda faltam,
+  como "Em breve"); a escolhida abre ali mesmo, sem sair da página, e o chat vazio sugere as receitas prontas.
+- A receita **"Proposta comercial"** (bloco 1, issue #54), a primeira que termina num texto: a tela "Sua proposta está
+  pronta" mostra o texto com títulos, listas e destaques, com **Copiar o texto** e **Baixar em Word**, e o Word vira uma
+  entrega da pessoa, como o site. O nome do arquivo vem da receita, nunca do pedido (F49). Falta a receita
   própria (etapa 6, F08). O dono tem atalhos no topo do site entre o painel e o espaço de trabalho.
 - O Chefe escolhe sozinho a IA, o nível, o esforço e a ação (responder, documento, gráfico, projeto, pesquisa, código ou
   imagem). **Falta** o funcionário poder escolher (etapa 6).
@@ -133,18 +137,22 @@ são produtos separados e ficam para integrações futuras.
 
 ## Receitas iniciais
 
-As receitas ficam dentro do workspace do funcionário. A lista abaixo é a original; com o produto para empresas,
-vale acrescentar receitas do trabalho de uma PME (ex.: post e legenda para redes sociais, proposta comercial,
-relatório mensal para cliente). Essas novas ainda são ideias, não decisões.
+As receitas ficam dentro do workspace do funcionário. As do MVP foram escolhidas pelo Luis em 26/10/2026 (issue #54)
+para o trabalho de uma pequena empresa, no lugar de três da lista original, pensadas para a pessoa comum.
 
 O MVP começa com receitas cujo resultado é texto ou código, que só exigem as APIs. As que precisam de ambiente de execução ficam para depois.
+Nas receitas de texto, quem revisa é sempre de outra família de IA que quem escreveu, e ninguém inventa preço, prazo,
+número, cliente ou depoimento: o que falta vira um marcador entre colchetes, como [valor], para a pessoa preencher.
 
 | Receita | Time sugerido | Fase |
 | --- | --- | --- |
-| Criar um site simples | Chefe + programador + revisor | MVP |
-| Escrever e revisar um texto | Redator + revisor crítico | MVP |
-| Pesquisa com checagem cruzada | Pesquisador + verificador + síntese | MVP |
-| Comitê de investimento | Analista da tese + advogado do diabo + consolidador | MVP |
+| Criar um site | Chefe + pesquisador + front-end + back-end, com revisão do chefe | MVP (pronta) |
+| Proposta comercial | Consultor (roteiro) + redator + cliente exigente (crítica), e o redator entrega a versão final em Word | MVP (pronta desde 26/10) |
+| Posts para redes sociais | Estrategista + dois redatores ao mesmo tempo (IAs diferentes) + editor que escolhe as melhores legendas | MVP |
+| Relatório mensal para cliente | Analista dos números + redator + conferente que checa cada número contra os dados | MVP |
+| Escrever e revisar um texto | Redator + revisor crítico | Ideia (o chat já faz boa parte) |
+| Pesquisa com checagem cruzada | Pesquisador + verificador + síntese | Ideia (depende da pesquisa na internet de verdade) |
+| Avaliar uma decisão (o antigo "Comitê de investimento") | A favor + advogado do diabo + conselheiro | Ideia |
 | Analisar contrato ou documento | Leitor + revisor jurídico + resumo | Fase 2 |
 | Revisão de modelo financeiro e valuation | Auditor + segundo auditor | Fase 2 (precisa ler planilhas) |
 | Editar um vídeo gravado | Transcritor + editor (decide os cortes) + revisor | Fase 3 (precisa de oficina na nuvem) |
@@ -254,7 +262,7 @@ porque os funcionários entregam melhor ou mais rápido e o dono enxerga e contr
 - Cadastro da empresa e login de verdade para o dono e para os funcionários
 - Painel do dono: funcionários, teto de gasto, crédito da empresa, entregas e gastos por funcionário e por IA
 - Workspace do funcionário com os três modos: receitas prontas, receita própria e tarefa rápida
-- As 4 receitas do MVP (marcadas na tabela acima), adaptadas ao uso dentro da empresa
+- As 4 receitas do MVP (marcadas na tabela acima), escolhidas para o trabalho de uma pequena empresa
 - Recomendação de IA, nível e esforço, com o funcionário livre para escolher
 - Histórico de tarefas e entregas
 - Claude, GPT e Gemini via API, com a medição do custo de cada tarefa

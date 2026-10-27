@@ -5,6 +5,7 @@
 
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import { PDFDocument, StandardFonts, type PDFFont } from "pdf-lib";
+import { parseRichText, type TextBlock } from "./rich-text";
 import { csvToXlsx } from "./spreadsheet";
 
 export type DocFormat = "pdf" | "csv" | "txt" | "xlsx" | "docx";
@@ -56,6 +57,25 @@ async function renderDocx(title: string, content: string): Promise<Uint8Array> {
   const doc = new Document({ sections: [{ children }] });
   const buf = await Packer.toBuffer(doc);
   return new Uint8Array(buf);
+}
+
+/**
+ * O resultado em texto de uma receita (ex.: a proposta comercial) num arquivo Word, com o título, as seções, as listas e
+ * os destaques que a IA marcou (lib/ock/rich-text.ts). O nome vem da receita, nunca do pedido (F49).
+ */
+export async function textDocument(name: string, text: string): Promise<GeneratedDoc> {
+  const paragraphs = parseRichText(text).map(toParagraph);
+  const doc = new Document({ sections: [{ children: paragraphs.length > 0 ? paragraphs : [new Paragraph("")] }] });
+  const bytes = new Uint8Array(await Packer.toBuffer(doc));
+  return { name: `${safeName(name) || "documento"}.docx`, mime: DOCX_MIME, bytes };
+}
+
+function toParagraph(block: TextBlock): Paragraph {
+  const children = block.spans.map((span) => new TextRun({ text: span.text, bold: span.bold }));
+  if (block.kind === "title") return new Paragraph({ children, heading: HeadingLevel.HEADING_1 });
+  if (block.kind === "heading") return new Paragraph({ children, heading: HeadingLevel.HEADING_2 });
+  if (block.kind === "item") return new Paragraph({ children, bullet: { level: 0 } });
+  return new Paragraph({ children });
 }
 
 const PAGE_W = 595.28; // A4 em pontos

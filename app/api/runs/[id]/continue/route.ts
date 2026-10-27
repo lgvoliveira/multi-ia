@@ -19,7 +19,7 @@ import { estimateCents, stepCosts } from "@/lib/runs/estimate";
 import { createEventBuffer } from "@/lib/runs/event-buffer";
 import { isInternalCall } from "@/lib/runs/internal-secret";
 import { toPublicEvent } from "@/lib/runs/public-events";
-import { finalSite, saveSiteDelivery } from "@/lib/runs/site-delivery";
+import { finalDelivery, saveRunDelivery } from "@/lib/runs/delivery";
 import {
   appendEvents,
   claimRun,
@@ -140,10 +140,10 @@ async function runOneSegment(row: RunRow, claimedAt: number): Promise<void> {
   await recordAiCalls(aiCallRows(row, calls, new Set(charged.map((result) => result.stepId))));
 
   if (updated.done) {
-    // Terminou (sucesso, falha ou cancelamento): encerra e devolve ao saldo o que sobrou da reserva. O site vai para as
-    // entregas antes de a execução aparecer como terminada, para a aba Entregas já o mostrar quando a tela avisar.
+    // Terminou (sucesso, falha ou cancelamento): encerra e devolve ao saldo o que sobrou da reserva. O resultado (o site
+    // ou o Word) vai para as entregas antes de a execução aparecer como terminada, para a aba Entregas já o mostrar.
     const status = updated.status ?? "finished";
-    if (status === "finished") await keepSiteQuietly(row, recipe, finalResult);
+    if (status === "finished") await keepDeliveryQuietly(row, recipe, finalResult);
     await setStatus(row.id, status, {
       result: finalResult,
       duration_ms: finalDurationMs,
@@ -195,7 +195,7 @@ async function finishInterruptedRun(row: RunRow, recipe: Recipe, claimedAt: numb
   const hold = await findOpenRunHold(row.id);
   if (hold) await chargeCompletedSteps(row.id, recipe, row.results ?? [], hold.id);
   const result = row.results.at(-1)?.output ?? null;
-  await keepSiteQuietly(row, recipe, result);
+  await keepDeliveryQuietly(row, recipe, result);
   await setStatus(row.id, "finished", {
     result,
     duration_ms: waitedMs(row, claimedAt),
@@ -206,16 +206,15 @@ async function finishInterruptedRun(row: RunRow, recipe: Recipe, claimedAt: numb
 }
 
 /**
- * Guarda o site pronto nas entregas da pessoa (F47). Se não der, a execução termina assim mesmo: o site continua na tela
- * do resultado, com o botão de baixar; só não aparece em Entregas.
+ * Guarda o resultado (o site ou o Word) nas entregas da pessoa (F47). Se não der, a execução termina assim mesmo: o
+ * resultado continua na tela, com o botão de baixar; só não aparece em Entregas.
  */
-async function keepSiteQuietly(row: RunRow, recipe: Recipe, result: string | null): Promise<void> {
-  const site = finalSite(recipe, result);
-  if (!site) return;
+async function keepDeliveryQuietly(row: RunRow, recipe: Recipe, result: string | null): Promise<void> {
   try {
-    await saveSiteDelivery(row, site);
+    const delivery = await finalDelivery(recipe, result);
+    if (delivery) await saveRunDelivery(row, delivery);
   } catch (error) {
-    console.error(`[api/runs/continue] Não consegui guardar o site de ${row.id} nas entregas:`, error);
+    console.error(`[api/runs/continue] Não consegui guardar o resultado de ${row.id} nas entregas:`, error);
   }
 }
 

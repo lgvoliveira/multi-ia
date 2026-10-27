@@ -229,11 +229,11 @@ export function liveDocument(state: RunState): LiveDocument {
   return document;
 }
 
-/** O site pronto, quando o time terminou e o resultado final é um site. Senão, null. */
-export function finishedSite(state: RunState): string | null {
+/** O resultado pronto, quando o time terminou: um site ou um texto, conforme a última etapa. Senão, null. */
+export function finishedResult(state: RunState): { format: OutputFormat; content: string } | null {
   const finalStep = state.steps.at(-1);
-  if (state.status !== "finished" || state.result === undefined || finalStep?.format !== "html") return null;
-  return state.result;
+  if (state.status !== "finished" || state.result === undefined || !finalStep) return null;
+  return { format: finalStep.format, content: state.result };
 }
 
 /** Tempo de uma etapa, do jeito que se fala: "menos de 1 s", "12 s", "1 min 5 s". */

@@ -28,6 +28,7 @@ export const createSiteRecipe: Recipe = {
   description: "Um planeja, três trabalham juntos, um revisa. Você recebe o site pronto.",
   requestPlaceholder:
     "Ex.: Um site de uma página para minha confeitaria, com cardápio, fotos, horário de funcionamento e botão para pedir pelo WhatsApp.",
+  resultTitle: "Seu site está pronto",
 
   roles: [
     {

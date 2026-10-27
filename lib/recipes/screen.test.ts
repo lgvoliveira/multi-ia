@@ -9,6 +9,7 @@ describe("o que a tela de uma receita recebe", () => {
   it("leva os papéis com nome, frase e IA sugerida", () => {
     const screen = recipeScreen(recipe);
     expect(screen.name).toBe("Criar um site");
+    expect(screen.resultTitle).toBe("Seu site está pronto");
     expect(screen.roles.map((role) => [role.name, role.suggestedProvider])).toEqual(
       recipe.roles.map((role) => [role.name, role.suggestedProvider]),
     );

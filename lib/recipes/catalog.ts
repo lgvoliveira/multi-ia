@@ -1,42 +1,35 @@
 // Lista de receitas. As prontas ficam em RECIPES; as do MVP que ainda não foram feitas
 // aparecem como "Em breve", só com nome, descrição e time.
 
+import { commercialProposalRecipe } from "./commercial-proposal";
 import { createSiteRecipe } from "./create-site";
 import type { Recipe, RecipeSummary } from "./types";
 
-export const RECIPES: readonly Recipe[] = [createSiteRecipe];
+export const RECIPES: readonly Recipe[] = [createSiteRecipe, commercialProposalRecipe];
 
+// As receitas para PMEs escolhidas pelo Luis em 26/10 (issue #54) que ainda vão ser feitas.
 const COMING_SOON: readonly RecipeSummary[] = [
   {
-    id: "write-review-text",
-    name: "Escrever e revisar um texto",
-    description: "Uma IA escreve e outra critica como um editor exigente.",
+    id: "social-posts",
+    name: "Posts para redes sociais",
+    description: "Um estrategista planeja, duas IAs escrevem ao mesmo tempo e um editor escolhe as melhores legendas.",
     available: false,
     team: [
-      { roleName: "Redator", provider: "claude" },
-      { roleName: "Revisor crítico", provider: "gpt" },
+      { roleName: "Estrategista", provider: "claude" },
+      { roleName: "Redator 1", provider: "gpt" },
+      { roleName: "Redator 2", provider: "claude" },
+      { roleName: "Editor", provider: "gpt" },
     ],
   },
   {
-    id: "cross-checked-research",
-    name: "Pesquisa com checagem cruzada",
-    description: "Uma pesquisa, outra confere as fontes e uma terceira resume.",
-    available: false,
-    team: [
-      { roleName: "Pesquisador", provider: "gemini" },
-      { roleName: "Verificador", provider: "claude" },
-      { roleName: "Síntese", provider: "gpt" },
-    ],
-  },
-  {
-    id: "investment-committee",
-    name: "Comitê de investimento",
-    description: "Tese, advogado do diabo e um parecer final sobre uma ideia de investimento.",
+    id: "client-report",
+    name: "Relatório mensal para cliente",
+    description: "Um analista organiza os números, um redator escreve e um conferente checa cada número.",
     available: false,
     team: [
       { roleName: "Analista", provider: "claude" },
-      { roleName: "Advogado do diabo", provider: "gpt" },
-      { roleName: "Consolidador", provider: "gemini" },
+      { roleName: "Redator", provider: "gpt" },
+      { roleName: "Conferente", provider: "claude" },
     ],
   },
 ];

@@ -4,8 +4,8 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 26/10/2026, noite (nova ordem do Luis: as IAs de verdade ficam para o fim, em seis blocos;
-proposta do bloco 1 na issue #54, esperando a aprovação dele)
+**Última atualização:** 26/10/2026, noite (nova ordem do Luis: as IAs de verdade ficam para o fim, em seis blocos; o
+bloco 1 aprovado na issue #54, e o primeiro PR dele, a receita "Proposta comercial", esperando o teste do Luis)
 **Etapa atual:** bloco 1 da nova ordem (etapa 6, o produto do funcionário). A etapa 5 (base para empresas) está no ar e
 testada; o teste com créditos dela passou para o bloco 6. Veja "Nova ordem (26/10)", antes do "Próximo passo"
 
@@ -118,7 +118,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
 | 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Concluída (26/10): PR 1 (banco), PR 2a (login), PR 2b (convite), o PR 3 inteiro (3a, 3b, 3c, aba Receitas e 3d, painel do dono) e as IAs de verdade sem gastar (#47 a #52) no ar e testados. O teste com créditos passou para o bloco 6 | Claude Code |
-| 6 = bloco 1 | O produto do funcionário: 3 receitas para PMEs, receita própria e escolha livre da IA no chat | Proposta na issue #54, esperando aprovação | Claude Code |
+| 6 = bloco 1 | O produto do funcionário: 3 receitas para PMEs, receita própria e escolha livre da IA no chat | Em andamento (issue #54, aprovada em 26/10): 1º PR, a Proposta comercial, esperando o teste | Claude Code |
 | bloco 2 | Conta de verdade: e-mail próprio do login (F30), recuperar a senha do dono, termos de uso e privacidade com aceite (F05) | A fazer | Claude Code (+ guia para criar a conta do e-mail) |
 | bloco 3 | Painel interno da plataforma: empresas, recarga pela tela, extrato de recargas, custo real das IAs contra o cobrado | A fazer | Claude Code |
 | 7 = bloco 4 | Pagamento, só preparar: comparação de gateways (Pix, boleto, cartão); programar só depois da decisão do preço (F04) e do CNPJ | A fazer | Claude Code (pesquisa) + Luis e parceiro (decisão) |
@@ -1040,13 +1040,58 @@ As IAs de verdade ficam para o fim. Antes, todo o resto do site funcionando com 
 5 depende de coisas do bloco 6 (chaves de produção e o tempo medido para a F54). Antes do bloco 5, o Luis decide entre
 publicar com a IA simulada só para empresas de teste ou fazer a sessão 2 logo antes de publicar.
 
+## Bloco 1 — o produto do funcionário (issue #54)
+
+**Decisões do Luis (26/10, na aprovação da issue):** aceitas as cinco recomendações do Claude.
+1. **As receitas para PMEs:** Proposta comercial, Posts para redes sociais e Relatório mensal para cliente, ao lado de
+   "Criar um site". As três antigas ("Escrever e revisar um texto", "Pesquisa com checagem cruzada" e "Comitê de
+   investimento") viram ideias no DOCUMENTO-PROJETO; a pesquisa depende da pesquisa na internet de verdade (bloco 6).
+2. **O resultado em texto vira um arquivo Word**, para editar e mandar.
+3. **Escolha livre no chat, forma (A):** a pessoa escolhe a IA, o nível e o esforço antes de mandar; o Chefe continua
+   recomendando, e a resposta mostra os dois.
+4. **Receita própria com 2 a 4 papéis, um depois do outro.**
+5. **O nome da receita própria aparece no extrato** que o dono vê, com a tela avisando quem cria.
+
+**Ordem dos PRs:** (1) o resultado em texto e a Proposta comercial; (2) os Posts; (3) o Relatório; (4) a escolha livre
+no chat; (5) a receita própria: montar, salvar, editar e apagar; (6) a receita própria: rodar.
+
+**PR 1 — o resultado em texto e a receita "Proposta comercial" (26/10, Claude Code; branch `feat/receita-proposta`,
+empilhado sobre o PR #55)**
+- **A receita:** o **Consultor** (Claude, reserva GPT) monta o roteiro; o **Redator** (GPT, reserva Claude) escreve; o
+  **Cliente exigente** (Claude, reserva GPT) lê como quem vai receber a proposta e aponta o que melhorar; o Redator
+  aplica os apontamentos e entrega a **versão final** (esforço baixo, partindo da própria proposta). Quatro etapas, uma
+  depois da outra. Ninguém inventa preço, prazo, número, cliente ou depoimento: o que falta vira [marcador]. Estimativa
+  **"até R$ 2,50"** (R$ 1,69 com o Gemini de Redator); com a IA simulada, a receita custa uns R$ 0,08.
+- **O resultado em texto:** a tela "Sua proposta está pronta" (o título vem da receita) mostra o texto numa folha branca,
+  com o título, as seções, as listas e os destaques que a IA marca (`# `, `## `, `- `, `**`), sem rodar nada do que ela
+  escreveu (`lib/ock/rich-text.ts` e `components/RichText.tsx`); **Copiar o texto** (sem as marcas) e **Baixar em Word**
+  (`GET /api/runs/[id]/document`, só para quem pediu, sempre como anexo). O Word vira uma **entrega** quando a receita
+  termina (`lib/runs/delivery.ts`, que era o `site-delivery.ts`), com o nome da receita ("Proposta-comercial.docx"),
+  nunca do pedido (F49). A tela e o arquivo do site não mudaram.
+- **Os cartões:** saíram as três receitas antigas "Em breve"; entraram a Proposta comercial (pronta), os Posts e o
+  Relatório ("Em breve", com o time de cada um).
+- **Decisão do Claude:** as quatro etapas da proposta rodam uma depois da outra, sem a "revisão que manda refazer" do
+  site: com uma rodada só, quem aplica a crítica é a versão final, e o caminho fica mais simples e barato.
+- **Como foi conferido:** lint, tipos, 550 testes (26 novos: a receita, o texto lido em partes, o Word, a entrega, a rota
+  do Word, a proposta rodando do começo ao fim no servidor, a conferência das receitas) e build. **Ponta a ponta** contra
+  o projeto de testes, com o Chrome por roteiro e uma empresa de mentira sem crédito: 49 conferências, todas certas (os
+  cartões, a tela da receita com a estimativa e a recusa sem crédito; a execução encerrada pelo servidor cobrando as 4
+  etapas e guardando o Word uma vez só; a tela do resultado, Copiar e Baixar em Word; Entregas, Meus gastos e o "Ver o
+  que fez" do dono, sem o pedido; o site igual a antes; colega, dono e outra empresa sem acesso ao Word pela execução;
+  360 e 320 px sem rolar para o lado).
+- **Guia do teste:** `docs/GUIA-TESTE-PROPOSTA.md`, para o Luis seguir com o chat do Claude.
+
 ## Próximo passo
 
-1. **Luis:** ler a proposta do bloco 1 na issue #54 (as 3 receitas, a receita própria e a escolha livre no chat) e
-   responder às 5 decisões do fim dela. Depois da aprovação, o Claude começa pelo primeiro PR da lista da issue.
-2. **Luis, quando quiser (no chat do Claude, sem código):** as decisões provisórias da madrugada, o câmbio e a F52
+1. **Luis:** testar o PR da Proposta comercial com o `docs/GUIA-TESTE-PROPOSTA.md` (uns 25 minutos, com o chat do
+   Claude) e contar ao Claude Code como foi. O merge vem depois, na ordem: primeiro o PR #55 (com **Delete branch**),
+   depois o da proposta.
+2. **Claude Code, numa conversa nova:** o PR 2 do bloco 1, a receita "Posts para redes sociais" (estrategista, dois
+   redatores ao mesmo tempo com IAs diferentes e um editor), empilhado sobre o PR da proposta, que traz o resultado em
+   texto.
+3. **Luis, quando quiser (no chat do Claude, sem código):** as decisões provisórias da madrugada, o câmbio e a F52
    (lista no resumo da madrugada, acima). A sessão 2 do guia das IAs de verdade ficou para o bloco 6.
-3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
+4. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração; e decidir o PR #36 dele (o botão
    "Ouvir"), ainda aberto.

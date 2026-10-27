@@ -42,6 +42,8 @@ describe("verificador de receitas", () => {
       name: "Receita com defeitos",
       description: "Só para teste.",
       requestPlaceholder: "",
+      resultTitle: "Pronto",
+      documentName: "Texto",
       roles: [
         { ...ROLE, id: "writer", name: "Redator" },
         { ...ROLE, id: "idle", name: "Parado" },
@@ -91,6 +93,8 @@ describe("verificador de receitas", () => {
       name: "Fase em paralelo com referência cruzada",
       description: "",
       requestPlaceholder: "",
+      resultTitle: "Pronto",
+      documentName: "Texto",
       roles: [
         { ...ROLE, id: "a", name: "A" },
         { ...ROLE, id: "b", name: "B" },
@@ -118,6 +122,8 @@ describe("verificador de receitas", () => {
       name: "Fase em paralelo com papel repetido",
       description: "",
       requestPlaceholder: "",
+      resultTitle: "Pronto",
+      documentName: "Texto",
       roles: [{ ...ROLE, id: "a", name: "A" }],
       stages: [
         {
@@ -139,6 +145,8 @@ describe("verificador de receitas", () => {
       name: "Revisão mal configurada",
       description: "",
       requestPlaceholder: "",
+      resultTitle: "Pronto",
+      documentName: "Texto",
       roles: [{ ...ROLE, id: "a", name: "A" }],
       stages: [
         { id: "brief", kind: "sequential", steps: [makeStep("brief", "a")] },
@@ -164,6 +172,8 @@ describe("verificador de receitas", () => {
       name: "Entrada de revisão fora de lugar",
       description: "",
       requestPlaceholder: "",
+      resultTitle: "Pronto",
+      documentName: "Texto",
       roles: [{ ...ROLE, id: "a", name: "A" }],
       stages: [
         {
@@ -177,5 +187,29 @@ describe("verificador de receitas", () => {
     expect(findRecipeProblems(recipe)).toEqual([
       'A etapa "brief" espera uma revisão, mas a fase dela não é refeita por nenhuma revisão.',
     ]);
+  });
+
+  it("aponta receita sem título do resultado e receita de texto sem o nome do arquivo Word", () => {
+    const recipe: Recipe = {
+      id: "no-result",
+      name: "Sem resultado",
+      description: "",
+      requestPlaceholder: "",
+      resultTitle: " ",
+      roles: [{ ...ROLE, id: "a", name: "A" }],
+      stages: [{ id: "only", kind: "sequential", steps: [makeStep("only", "a")] }],
+    };
+
+    expect(findRecipeProblems(recipe)).toEqual([
+      "A receita está sem o título da tela do resultado.",
+      "A receita termina num texto e está sem o nome do arquivo Word (documentName).",
+    ]);
+    // Uma receita que termina num site não precisa do nome do Word.
+    const site: Recipe = {
+      ...recipe,
+      resultTitle: "Pronto",
+      stages: [{ id: "only", kind: "sequential", steps: [makeStep("only", "a", { format: "html" })] }],
+    };
+    expect(findRecipeProblems(site)).toEqual([]);
   });
 });

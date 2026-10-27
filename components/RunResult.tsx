@@ -1,29 +1,36 @@
 "use client";
 
-// Tela "Seu site está pronto": a prévia do site (ou o código), o botão de baixar o arquivo,
-// quanto custou e o resumo de como o time chegou ao resultado, com acesso a todas as etapas.
+// Tela do resultado ("Seu site está pronto", "Sua proposta está pronta"): o site (prévia ou código) ou o texto, os
+// botões de copiar e de baixar o arquivo, quanto custou e o resumo de como o time chegou ao resultado, com acesso a
+// todas as etapas.
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { formatBRL } from "@/lib/ock/pricing";
+import { parseRichText, plainText } from "@/lib/ock/rich-text";
 import { siteFileName } from "@/lib/ock/site-file";
 import { getProviderInfo } from "@/lib/providers/catalog";
 import { AiDot } from "./AiDot";
+import { RichText } from "./RichText";
 import { formatDuration, type RunState } from "./run-state";
 import { SitePreview } from "./SitePreview";
 import { StepCard } from "./StepCard";
 import styles from "./RunResult.module.css";
 
+/** O resultado final: um site, ou um texto com o endereço que baixa o Word dele. */
+export type RunOutcome = { kind: "site"; site: string } | { kind: "text"; text: string; documentHref: string };
+
 interface RunResultProps {
   request: string;
   run: RunState;
-  /** O site pronto: o resultado final da execução. */
-  site: string;
+  /** O título da tela, que vem da receita (ex.: "Sua proposta está pronta"). */
+  title: string;
+  outcome: RunOutcome;
   /** Quanto o time gastou do saldo da empresa, em centavos; null enquanto não se sabe. */
   chargedCents: number | null;
   onRestart: () => void;
 }
 
-export function RunResult({ request, run, site, chargedCents, onRestart }: RunResultProps) {
+export function RunResult({ request, run, title, outcome, chargedCents, onRestart }: RunResultProps) {
   const ids = useId();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const stepsTitleRef = useRef<HTMLHeadingElement>(null);
@@ -53,27 +60,48 @@ export function RunResult({ request, run, site, chargedCents, onRestart }: RunRe
             {chargedCents !== null && ` · Custou ${formatBRL(chargedCents)}`}
           </p>
           <h2 ref={titleRef} tabIndex={-1} className={styles.title}>
-            Seu site está pronto
+            {title}
           </h2>
         </div>
         <div className={styles.actions}>
           <button type="button" className={styles.button} onClick={onRestart}>
             Começar de novo
           </button>
-          <button type="button" className={styles.primaryButton} onClick={() => downloadSite(site)}>
-            Baixar arquivo
-          </button>
+          {outcome.kind === "site" ? (
+            <button type="button" className={styles.primaryButton} onClick={() => downloadSite(outcome.site)}>
+              Baixar arquivo
+            </button>
+          ) : (
+            <>
+              <CopyButton text={outcome.text} />
+              {/* O servidor manda o Word como anexo: o navegador só salva. */}
+              <a className={styles.primaryButton} href={outcome.documentHref} download>
+                Baixar em Word
+              </a>
+            </>
+          )}
         </div>
       </div>
 
       <div className={styles.layout}>
-        <section className={styles.main} aria-label="Seu site">
-          <ResultTabs site={site} />
-          <p className={styles.note}>
-            Na prévia, os botões que levam para fora do site (WhatsApp, telefone, e-mail) não abrem. No
-            arquivo baixado, eles funcionam normalmente.
-          </p>
-        </section>
+        {outcome.kind === "site" ? (
+          <section className={styles.main} aria-label="Seu site">
+            <ResultTabs site={outcome.site} />
+            <p className={styles.note}>
+              Na prévia, os botões que levam para fora do site (WhatsApp, telefone, e-mail) não abrem. No
+              arquivo baixado, eles funcionam normalmente.
+            </p>
+          </section>
+        ) : (
+          <section className={styles.main} aria-label="O resultado">
+            <div className={styles.document}>
+              <RichText text={outcome.text} />
+            </div>
+            <p className={styles.note}>
+              Confira o texto antes de mandar: o que estiver entre colchetes, como [valor], é para você preencher.
+            </p>
+          </section>
+        )}
 
         <aside className={styles.team} aria-labelledby={`${ids}-team`}>
           <h3 id={`${ids}-team`} className={styles.teamTitle}>
@@ -126,6 +154,42 @@ export function RunResult({ request, run, site, chargedCents, onRestart }: RunRe
         </ol>
       </section>
     </div>
+  );
+}
+
+/** Quanto tempo o "Copiado" fica no botão antes de voltar ao normal. */
+const COPIED_NOTICE_MS = 2500;
+
+/** Copia o texto sem as marcas da IA, pronto para colar num e-mail ou no WhatsApp. */
+function CopyButton({ text }: { text: string }) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+
+  useEffect(() => {
+    if (state !== "copied") return;
+    const timer = setTimeout(() => setState("idle"), COPIED_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(plainText(parseRichText(text)));
+      setState("copied");
+    } catch {
+      setState("failed");
+    }
+  }
+
+  return (
+    <>
+      <button type="button" className={styles.button} onClick={handleCopy}>
+        {state === "copied" ? "Copiado" : "Copiar o texto"}
+      </button>
+      {/* Avisa quem usa leitor de tela, que não vê o botão mudar. */}
+      <span role="status" className={state === "failed" ? styles.copyProblem : styles.visuallyHidden}>
+        {state === "copied" && "Texto copiado."}
+        {state === "failed" && "Não deu para copiar. Selecione o texto e copie com Ctrl + C."}
+      </span>
+    </>
   );
 }
 

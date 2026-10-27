@@ -2,7 +2,7 @@
 // então uma receita nova com erro é barrada antes de chegar à tela.
 
 import { isProviderId } from "@/lib/providers/catalog";
-import { stageSteps, type Recipe, type Stage, type Step } from "./types";
+import { finalStep, stageSteps, type Recipe, type Stage, type Step } from "./types";
 
 /** Devolve a lista de problemas da receita. Lista vazia = receita bem montada. */
 export function findRecipeProblems(recipe: Recipe): string[] {
@@ -24,6 +24,10 @@ export function findRecipeProblems(recipe: Recipe): string[] {
   }
 
   if (recipe.stages.length === 0) problems.push("A receita não tem etapas.");
+  if (!recipe.resultTitle.trim()) problems.push("A receita está sem o título da tela do resultado.");
+  if (finalStep(recipe)?.format === "text" && !recipe.documentName?.trim()) {
+    problems.push("A receita termina num texto e está sem o nome do arquivo Word (documentName).");
+  }
 
   // Fases que uma revisão manda refazer: só nelas vale from:"review" (o recado da revisão).
   const reworkTargets = new Set<string>();
