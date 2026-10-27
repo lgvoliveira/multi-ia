@@ -2,6 +2,7 @@
 // (dono ou funcionário) entra. O funcionário não se cadastra sozinho: o acesso vem por convite do dono.
 
 import Link from "next/link";
+import { isDemoMode } from "@/lib/auth/demo";
 import styles from "./OckEntry.module.css";
 
 export function OckEntry() {
@@ -37,6 +38,19 @@ export function OckEntry() {
             Entrar
           </Link>
         </section>
+
+        {isDemoMode() && (
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>🕶️ Visão raio-x</h2>
+            <p className={styles.cardText}>
+              Só no seu computador: entre como Chefe ou como Funcionário com um clique, sem login nem crédito, para ver
+              o site inteiro. Não aparece no site publicado.
+            </p>
+            <Link href="/raiox" className={styles.ownerButton}>
+              Abrir a visão raio-x
+            </Link>
+          </section>
+        )}
       </div>
     </main>
   );

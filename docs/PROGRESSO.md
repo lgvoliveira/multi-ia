@@ -15,6 +15,13 @@ testada; o teste com créditos dela passou para o bloco 6. Veja "Nova ordem (26/
 > quem chama é da empresa, logado e ativo. (Recuperado do antigo branch `feat/ock-voz-ouvir-resposta`, que havia
 > divergido; portado só o "Ouvir" sobre a `main` atual.) Pendente: cobrar da carteira por leitura (hoje grátis).
 
+> **Nota (27/10/2026):** adicionada a **visão raio-x** — um modo SÓ LOCAL para ver o site inteiro dos dois lados
+> (Chefe e Funcionário) com um clique, sem login, e-mail nem crédito. Liga com `OCK_DEMO_MODE=1` no `.env.local`, com
+> **trava dupla**: a variável E `NODE_ENV !== "production"` (no site publicado nunca liga; a rota `/raiox` dá 404).
+> Usa as contas que o seed já cria (empresa "Agência Exemplo", com crédito). Arquivos: `lib/auth/demo.ts` (+ teste),
+> `app/raiox/` (página + ação `signInWithPassword` nas contas de teste), `components/DemoSwitcher` (barra no topo que
+> alterna o lado) e um atalho na porta de entrada (`OckEntry`). Serve para o dono do produto demonstrar o funcionamento.
+
 ---
 
 ## Links importantes
