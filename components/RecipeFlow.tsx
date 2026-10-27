@@ -1,7 +1,7 @@
 "use client";
 
 // Uma receita na tela, do começo ao fim: montar o time, acompanhar o time trabalhando ao vivo
-// depois de "Começar" e, quando o site fica pronto, a tela de resultado.
+// depois de "Começar" e, quando o resultado (um site ou um texto) fica pronto, a tela de resultado.
 //
 // Desde a execução persistida, "Começar" só CRIA a execução no servidor (que roda sozinha, em partes).
 // A tela acompanha pelo id: guarda ?run=<id> no endereço (dá para recarregar e continuar vendo),
@@ -22,14 +22,14 @@ import { subscribeRun, type LostReason } from "@/lib/runs/live-client";
 import type { PublicPlannedStage } from "@/lib/runs/public-events";
 import {
   createRunState,
-  finishedSite,
+  finishedResult,
   runReducer,
   type PlannedStageView,
   type RunAction,
   type RunState,
 } from "./run-state";
 import { RunProgress } from "./RunProgress";
-import { RunResult } from "./RunResult";
+import { RunResult, type RunOutcome } from "./RunResult";
 import { TeamBuilder, type Team, type TeamRole } from "./TeamBuilder";
 import styles from "./RecipeFlow.module.css";
 
@@ -60,6 +60,8 @@ interface RecipeFlowProps {
   memberId: string;
   recipeId: string;
   recipeName: string;
+  /** O título da tela do resultado (ex.: "Sua proposta está pronta"). */
+  resultTitle: string;
   roles: TeamRole[];
   stages: FlowStage[];
   /** O custo máximo de cada etapa com cada IA, calculado no servidor, para a estimativa da tela de montar o time. */
@@ -83,6 +85,7 @@ export function RecipeFlow({
   memberId,
   recipeId,
   recipeName,
+  resultTitle,
   roles,
   stages,
   stepCosts,
@@ -262,13 +265,15 @@ export function RecipeFlow({
   }
 
   if (run) {
-    const site = finishedSite(run);
-    if (site !== null) {
+    const finished = finishedResult(run);
+    const outcome = finished && runId ? toOutcome(finished, runId) : null;
+    if (outcome) {
       return (
         <RunResult
           request={request}
           run={run}
-          site={site}
+          title={resultTitle}
+          outcome={outcome}
           chargedCents={cost.chargedCents}
           onRestart={handleRestart}
         />
@@ -325,6 +330,13 @@ function buildRunState(stages: FlowStage[], plan: PublicPlannedStage[]): RunStat
     steps: stage.steps.map((step) => ({ ...step, provider: providerOf.get(step.id) ?? "claude" })),
   }));
   return createRunState(planned);
+}
+
+/** O resultado pronto do jeito que a tela do resultado mostra: o site, ou o texto com o endereço do Word. */
+function toOutcome(finished: { format: string; content: string }, runId: string): RunOutcome {
+  return finished.format === "html"
+    ? { kind: "site", site: finished.content }
+    : { kind: "text", text: finished.content, documentHref: `/api/runs/${runId}/document` };
 }
 
 /** Quanto a execução custou até agora, pelo resumo do servidor. Sem resposta, null (a tela fica com o que já sabia). */

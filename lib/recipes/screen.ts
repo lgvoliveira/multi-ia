@@ -1,4 +1,4 @@
-// O que a tela de uma receita recebe do servidor: o nome, o exemplo de pedido, os papéis (nome, frase e IA sugerida) e
+// O que a tela de uma receita recebe do servidor: o nome, o exemplo de pedido, o título do resultado, os papéis (nome, frase e IA sugerida) e
 // as fases com as etapas (nome e frases dos cartões). Nunca as instruções das IAs, os limites nem as respostas de
 // exemplo: isso fica no servidor.
 
@@ -21,6 +21,7 @@ export interface RecipeScreen {
   id: string;
   name: string;
   requestPlaceholder: string;
+  resultTitle: string;
   roles: ScreenRole[];
   stages: ScreenStage[];
 }
@@ -30,6 +31,7 @@ export function recipeScreen(recipe: Recipe): RecipeScreen {
     id: recipe.id,
     name: recipe.name,
     requestPlaceholder: recipe.requestPlaceholder,
+    resultTitle: recipe.resultTitle,
     roles: recipe.roles.map(({ id, name, description, suggestedProvider }) => ({
       id,
       name,

@@ -103,6 +103,12 @@ export function stageSteps(stage: Stage): Step[] {
   return stage.kind === "review" ? [stage.step] : stage.steps;
 }
 
+/** A etapa que escreve o resultado final: a última da última fase. */
+export function finalStep(recipe: Pick<Recipe, "stages">): Step | undefined {
+  const lastStage = recipe.stages.at(-1);
+  return lastStage ? stageSteps(lastStage).at(-1) : undefined;
+}
+
 export interface Recipe {
   id: string;
   name: string;
@@ -110,6 +116,13 @@ export interface Recipe {
   description: string;
   /** Exemplo mostrado na caixa "O que você quer?". */
   requestPlaceholder: string;
+  /** O título da tela do resultado (ex.: "Seu site está pronto"). */
+  resultTitle: string;
+  /**
+   * O nome do arquivo Word do resultado, sem a extensão (ex.: "Proposta comercial"). Obrigatório quando o resultado
+   * final é texto. Fixo na receita: nunca sai do pedido, que o dono da empresa não pode ler (F49).
+   */
+  documentName?: string;
   roles: Role[];
   /** Executadas em ordem. A saída da última etapa da última fase é o resultado final. */
   stages: Stage[];

@@ -63,6 +63,7 @@ export function WorkspaceRecipes({
           memberId={pageMemberId}
           recipeId={recipe.id}
           recipeName={recipe.name}
+          resultTitle={recipe.resultTitle}
           roles={recipe.roles}
           stages={recipe.stages}
           stepCosts={recipe.stepCosts}

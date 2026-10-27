@@ -4,6 +4,7 @@ import type { StepResult } from "@/lib/engine/types";
 import { USD_TO_BRL } from "@/lib/ock/pricing";
 import type { ProviderId } from "@/lib/providers/types";
 import { getRecipe } from "@/lib/recipes/catalog";
+import { SAMPLE_PROPOSAL_FINAL } from "@/lib/recipes/commercial-proposal.samples";
 import { SAMPLE_FINAL_SITE } from "@/lib/recipes/create-site.samples";
 import { stepChargeCents } from "@/lib/runs/billing";
 import { estimateCents, stepCosts } from "@/lib/runs/estimate";
@@ -97,8 +98,12 @@ const releaseRun = vi.hoisted(() =>
   }),
 );
 const triggerContinue = vi.hoisted(() => vi.fn());
-// O site pronto vai para as entregas da pessoa (F47); aqui só se anota o que seria guardado.
-const saveSiteDelivery = vi.hoisted(() => vi.fn<(run: { id: string }, html: string) => Promise<void>>(async () => {}));
+// O resultado pronto vai para as entregas da pessoa (F47); aqui só se anota o que seria guardado.
+const saveRunDelivery = vi.hoisted(() =>
+  vi.fn<(run: { id: string }, delivery: { name: string; mime: string; bytes: Uint8Array }) => Promise<void>>(
+    async () => {},
+  ),
+);
 
 vi.mock("@/lib/runs/store", () => ({
   claimRun,
@@ -151,10 +156,15 @@ vi.mock("@/lib/runs/wallet", async (importOriginal) => {
 
 vi.mock("@/lib/runs/trigger", () => ({ triggerContinue }));
 
-vi.mock("@/lib/runs/site-delivery", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/runs/site-delivery")>()),
-  saveSiteDelivery,
+vi.mock("@/lib/runs/delivery", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/runs/delivery")>()),
+  saveRunDelivery,
 }));
+
+/** O site que foi para as entregas na chamada `call` (contando de 0). */
+function deliveredSite(call: number): string {
+  return new TextDecoder().decode(saveRunDelivery.mock.calls[call][1].bytes);
+}
 
 const RUN_ID = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const COMPANY_ID = "c0000000-0000-4000-8000-000000000000";
@@ -288,23 +298,46 @@ describe("rota interna POST /api/runs/[id]/continue", () => {
 
   it("o site pronto vai para as entregas de quem pediu, uma vez, antes de a execução aparecer como terminada (F47)", async () => {
     let statusWhenSaved = "";
-    saveSiteDelivery.mockImplementationOnce(async () => {
+    saveRunDelivery.mockImplementationOnce(async () => {
       statusWhenSaved = db.row.status;
     });
     await runToEnd();
 
     expect(statusWhenSaved).toBe("running");
 
-    expect(saveSiteDelivery).toHaveBeenCalledTimes(1);
-    expect(saveSiteDelivery).toHaveBeenCalledWith(
+    expect(saveRunDelivery).toHaveBeenCalledTimes(1);
+    expect(saveRunDelivery).toHaveBeenCalledWith(
       expect.objectContaining({ id: RUN_ID, company_id: COMPANY_ID, member_id: MEMBER_ID }),
-      SAMPLE_FINAL_SITE,
+      expect.objectContaining({ name: "doce-encanto-confeitaria.html", mime: "text/html" }),
+    );
+    expect(deliveredSite(0)).toBe(SAMPLE_FINAL_SITE);
+  });
+
+  it("uma receita que termina num texto (a proposta comercial) vai do começo ao fim e guarda o Word nas entregas", async () => {
+    const proposal = getRecipe("commercial-proposal")!;
+    const estimate = estimateCents(stepCosts(proposal), resolveTeam(proposal));
+    db.row = { ...db.row, recipe_id: proposal.id, request: "Uma proposta para a Clínica Sorriso.", team: resolveTeam(proposal) };
+    wallet.holds = [{ id: "hold-1", amountCents: estimate, chargedCents: 0, open: true, expiresAt: IN_AN_HOUR() }];
+    await runToEnd();
+
+    expect(db.row.status).toBe("finished");
+    expect(db.row.result).toBe(SAMPLE_PROPOSAL_FINAL);
+    // Uma cobrança por etapa: roteiro, proposta, crítica e versão final.
+    expect(wallet.charges).toHaveLength(4);
+    expect(wallet.holds[0].open).toBe(false);
+    expect(saveRunDelivery).toHaveBeenCalledTimes(1);
+    expect(saveRunDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({ id: RUN_ID }),
+      expect.objectContaining({
+        name: "Proposta-comercial.docx",
+        mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      }),
     );
   });
 
   it("se não der para guardar o site nas entregas, a execução termina assim mesmo", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    saveSiteDelivery.mockRejectedValueOnce(new Error("pasta fora do ar"));
+    saveRunDelivery.mockRejectedValueOnce(new Error("pasta fora do ar"));
     await runToEnd();
 
     expect(db.row.status).toBe("finished");
@@ -417,7 +450,7 @@ describe("rota interna POST /api/runs/[id]/continue", () => {
     expect(wallet.charges).toHaveLength(0);
     expect(wallet.holds[0].open).toBe(false);
     // Sem site pronto, nada vai para as entregas.
-    expect(saveSiteDelivery).not.toHaveBeenCalled();
+    expect(saveRunDelivery).not.toHaveBeenCalled();
   });
 
   it("se a pessoa cancelou entre duas fases, cobra a fase que terminou, não encadeia e fecha a reserva", async () => {
@@ -500,7 +533,11 @@ describe("rota interna POST /api/runs/[id]/continue", () => {
     // Nenhuma IA foi chamada de novo.
     expect(db.aiCalls).toHaveLength(calls);
     // O site vai para as entregas também por aqui (quem guarda confere se já não estava lá).
-    expect(saveSiteDelivery).toHaveBeenLastCalledWith(expect.objectContaining({ id: RUN_ID }), SAMPLE_FINAL_SITE);
+    expect(saveRunDelivery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: RUN_ID }),
+      expect.objectContaining({ mime: "text/html" }),
+    );
+    expect(deliveredSite(saveRunDelivery.mock.calls.length - 1)).toBe(SAMPLE_FINAL_SITE);
   });
 
   it("grava a narração aos poucos, enquanto a fase ainda roda (F35)", async () => {

@@ -4,7 +4,7 @@ import type { OutputFormat, StageKind } from "@/lib/recipes/types";
 import type { PublicRunEvent } from "@/lib/runs/public-events";
 import {
   createRunState,
-  finishedSite,
+  finishedResult,
   formatDuration,
   liveDocument,
   runReducer,
@@ -327,7 +327,7 @@ describe("agrupamento por fase e documento vivo", () => {
   });
 });
 
-describe("site pronto", () => {
+describe("resultado pronto", () => {
   // Fases que terminam com texto, para conferir o caso em que o resultado não é um site.
   const TEXT_ONLY: PlannedStageView[] = [
     parallelStage("brief", "sequential", [stepView("brief", "chief", "Chefe", "text", "claude")]),
@@ -340,18 +340,18 @@ describe("site pronto", () => {
       event({ type: "run-finished", result: SITE, durationMs: 1 }),
     );
 
-    expect(finishedSite(state)).toBe(SITE);
+    expect(finishedResult(state)).toEqual({ format: "html", content: SITE });
   });
 
-  it("não há site se o resultado final é texto ou se o time não terminou", () => {
+  it("quando a última etapa escreve texto, o resultado é o texto; se o time não terminou, não há resultado", () => {
     const textResult = runReducer(
       createRunState(TEXT_ONLY),
       event({ type: "run-finished", result: "Texto final.", durationMs: 1 }),
     );
     const cancelled = runReducer(createRunState(STAGES), { type: "cancel" });
 
-    expect(finishedSite(textResult)).toBeNull();
-    expect(finishedSite(cancelled)).toBeNull();
+    expect(finishedResult(textResult)).toEqual({ format: "text", content: "Texto final." });
+    expect(finishedResult(cancelled)).toBeNull();
   });
 });
 

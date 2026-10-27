@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { getRecipe, listRecipeSummaries } from "./catalog";
 
 describe("catálogo de receitas", () => {
-  it("mostra as 4 receitas do MVP, com só a primeira pronta", () => {
+  it("mostra as 4 receitas do MVP para PMEs: o site e a proposta prontos, os posts e o relatório em breve", () => {
     expect(listRecipeSummaries().map((recipe) => [recipe.name, recipe.available])).toEqual([
       ["Criar um site", true],
-      ["Escrever e revisar um texto", false],
-      ["Pesquisa com checagem cruzada", false],
-      ["Comitê de investimento", false],
+      ["Proposta comercial", true],
+      ["Posts para redes sociais", false],
+      ["Relatório mensal para cliente", false],
     ]);
   });
 
@@ -18,6 +18,11 @@ describe("catálogo de receitas", () => {
       { roleName: "Front-end", provider: "gpt" },
       { roleName: "Back-end", provider: "claude" },
     ]);
+    expect(listRecipeSummaries()[1].team).toEqual([
+      { roleName: "Consultor", provider: "claude" },
+      { roleName: "Redator", provider: "gpt" },
+      { roleName: "Cliente exigente", provider: "claude" },
+    ]);
   });
 
   it("não repete identificadores", () => {
@@ -27,7 +32,8 @@ describe("catálogo de receitas", () => {
 
   it("encontra receitas prontas pelo identificador e devolve nada para as outras", () => {
     expect(getRecipe("create-site")?.name).toBe("Criar um site");
-    expect(getRecipe("investment-committee")).toBeUndefined();
+    expect(getRecipe("commercial-proposal")?.name).toBe("Proposta comercial");
+    expect(getRecipe("social-posts")).toBeUndefined();
     expect(getRecipe("nao-existe")).toBeUndefined();
   });
 });
