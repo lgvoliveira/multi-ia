@@ -36,7 +36,7 @@ gastou, e define um teto de gasto para cada um.
 - Prefira mudanças **pequenas e revisáveis** a mudanças grandes.
 - Antes de decisões difíceis de desfazer (nova biblioteca, mudança de banco, mudança de arquitetura), **pergunte**.
 - Diga sempre **como testar** o que foi feito (comando a rodar, tela a abrir, o que deve aparecer).
-- Nunca faça merge na `main` por conta própria. Quem decide é o Luis.
+- Quem é dono do merge na `main` é o **Leandro** (assumiu o produto). O Claude **pode mergear na `main` por conta própria**, sem precisar de ordem a cada vez — **desde que o merge esteja certo**: CI verde, sem conflito, e a mudança já revisada/aprovada. Na dúvida sobre se está certo, **não mergeia — pergunta**. (O merge deixou de ser do Luis.) Isso vale só pro merge na `main`; **deploy em produção continua exigindo ordem explícita** do Leandro na mesma conversa.
 
 ## 3. Stack
 
@@ -220,7 +220,7 @@ docs/                documento do projeto, diário de progresso, registro de fal
 3. **Commits** pequenos, com mensagem em português no imperativo (ex.: `adiciona tela de receitas`).
 4. Abra um **pull request** dizendo: o que mudou, por quê, e como testar. Referencie a issue (`Closes #12`).
 5. A outra IA revisa e comenta no PR. Divergências ficam registradas lá.
-6. O **Luis** decide e faz o merge.
+6. O **Leandro** é dono do produto; o Claude **pode fazer o merge na `main` por conta própria** quando o PR estiver certo (CI verde, sem conflito, revisado). Na dúvida, pergunta. Deploy em produção é à parte: só com ordem explícita.
 
 **Banco de dados:** toda mudança de tabela entra por **migração** (arquivo SQL em `supabase/migrations/`), num PR como
 qualquer outra mudança. Nunca pelo painel do Supabase (editor de tabelas ou de SQL): senão o banco deixa de bater com o
