@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { signOut } from "@/app/entrar/actions";
+import { isDemoMode } from "@/lib/auth/demo";
 import { getViewer, type Viewer } from "@/lib/auth/viewer";
+import { DemoSwitcher } from "./DemoSwitcher";
 import { OwnerNav } from "./OwnerNav";
 import styles from "./SiteHeader.module.css";
 
@@ -16,32 +18,35 @@ export async function SiteHeader() {
   }
 
   return (
-    <header className={styles.header}>
-      <div className={styles.inner}>
-        <Link href="/" className={styles.logo}>
-          OCK
-        </Link>
-        {viewer.status === "member" && viewer.member.role === "owner" && (
-          <div className={styles.nav}>
-            <OwnerNav />
-          </div>
-        )}
-        {viewer.status !== "signed-out" && (
-          <div className={styles.account}>
-            {viewer.status === "member" && (
-              <p className={styles.who}>
-                <span className={styles.name}>{viewer.member.name}</span>
-                <span className={styles.company}>{viewer.member.companyName}</span>
-              </p>
-            )}
-            <form action={signOut}>
-              <button type="submit" className={styles.signOut}>
-                Sair
-              </button>
-            </form>
-          </div>
-        )}
-      </div>
-    </header>
+    <>
+      <header className={styles.header}>
+        <div className={styles.inner}>
+          <Link href="/" className={styles.logo}>
+            OCK
+          </Link>
+          {viewer.status === "member" && viewer.member.role === "owner" && (
+            <div className={styles.nav}>
+              <OwnerNav />
+            </div>
+          )}
+          {viewer.status !== "signed-out" && (
+            <div className={styles.account}>
+              {viewer.status === "member" && (
+                <p className={styles.who}>
+                  <span className={styles.name}>{viewer.member.name}</span>
+                  <span className={styles.company}>{viewer.member.companyName}</span>
+                </p>
+              )}
+              <form action={signOut}>
+                <button type="submit" className={styles.signOut}>
+                  Sair
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      </header>
+      {isDemoMode() && <DemoSwitcher />}
+    </>
   );
 }
