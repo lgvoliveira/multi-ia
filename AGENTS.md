@@ -99,8 +99,8 @@ lib/providers/       um adaptador por IA, todos com a mesma interface (types.ts)
                      interruptor OCK_AI_MODE (mode.ts); limits.ts é o teto de saída de cada IA (resposta +
                      pensamento), usado pelos conectores e pela estimativa
 lib/recipes/         definição das receitas (papéis, IA sugerida, prompt de sistema, etapas), uma por arquivo
-                     (create-site.ts, commercial-proposal.ts), com as respostas de exemplo da IA simulada em
-                     *.samples.ts; text-format.ts é como as receitas que terminam em texto escrevem;
+                     (create-site.ts, commercial-proposal.ts, social-posts.ts), com as respostas de exemplo da
+                     IA simulada em *.samples.ts; text-format.ts é como as receitas que terminam em texto escrevem;
                      validate.ts confere toda receita nos testes; screen.ts é o que a tela de uma receita recebe
                      (nunca as instruções das IAs)
 lib/auth/            o login (Supabase Auth): quem está vendo a página (viewer.ts, com requireMember para
