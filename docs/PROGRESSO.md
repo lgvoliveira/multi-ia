@@ -9,6 +9,12 @@ bloco 1 aprovado na issue #54, e o primeiro PR dele, a receita "Proposta comerci
 **Etapa atual:** bloco 1 da nova ordem (etapa 6, o produto do funcionário). A etapa 5 (base para empresas) está no ar e
 testada; o teste com créditos dela passou para o bloco 6. Veja "Nova ordem (26/10)", antes do "Próximo passo"
 
+> **Nota (27/10/2026):** adicionada a **voz de saída** — botão "Ouvir" em cada resposta da IA, que lê o texto
+> em voz alta via TTS da OpenAI (`lib/ock/speak.ts`, rota `app/api/ock/speak`, botão no `QuickChat`/`Answer`).
+> A rota segue o padrão das outras do chat: portão de ferramentas `OCK_AI_TOOLS` ("voz") e conferência de que
+> quem chama é da empresa, logado e ativo. (Recuperado do antigo branch `feat/ock-voz-ouvir-resposta`, que havia
+> divergido; portado só o "Ouvir" sobre a `main` atual.) Pendente: cobrar da carteira por leitura (hoje grátis).
+
 ---
 
 ## Links importantes
