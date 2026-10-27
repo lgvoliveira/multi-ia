@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { OwnerHome } from "@/components/OwnerHome";
+import { isDemoMode } from "@/lib/auth/demo";
 import { createSessionClient } from "@/lib/auth/session";
 import { requireMember } from "@/lib/auth/viewer";
 import { loadCompanyCredit, loadMemberMonths, loadMonthStatement } from "@/lib/ock/spending";
@@ -32,6 +33,7 @@ export default async function DonoPage() {
       credit={credit}
       months={new Map(months.map((month) => [month.memberId, month]))}
       statement={statement}
+      demo={isDemoMode()}
     />
   );
 }

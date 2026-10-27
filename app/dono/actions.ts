@@ -7,6 +7,7 @@
 // do login, nunca do formulário.
 
 import { refresh } from "next/cache";
+import { isDemoMode } from "@/lib/auth/demo";
 import { text } from "@/lib/auth/forms";
 import { invitePath } from "@/lib/auth/invite-token";
 import { inviteEmployee, issueNewLink } from "@/lib/auth/invites";
@@ -20,10 +21,12 @@ import {
   parseBudget,
   parseInviteForm,
   parseMemberId,
+  parseTopupAmount,
   type InviteFormState,
   type MemberActionState,
   type PageOwnerCheck,
 } from "@/lib/ock/team-forms";
+import { supabaseAdmin } from "@/lib/runs/supabase-server";
 
 const GENERIC = "Não deu certo agora, por um problema do nosso lado. Tente de novo em instantes.";
 const NOT_FOUND = "Não encontramos essa pessoa na equipe. Recarregue a página e tente de novo.";
@@ -124,4 +127,30 @@ export async function setStatusAction(_previous: MemberActionState, formData: Fo
   const status = formData.get("status");
   if (status !== "active" && status !== "disabled") return { status: "error", message: GENERIC };
   return changeEmployee(formData, { status });
+}
+
+/**
+ * Recarga de TESTE (visão raio-x): adiciona crédito fictício na empresa do dono logado. Só funciona no modo raio-x
+ * (lib/auth/demo.ts: no computador, nunca em produção); fora dele, recusa. A recarga de verdade continua só pelo painel
+ * do Supabase (F25). A função demo_wallet_topup existe só no banco local (seed), então em produção isto nunca roda.
+ */
+export async function demoTopupAction(_previous: MemberActionState, formData: FormData): Promise<MemberActionState> {
+  if (!isDemoMode()) return { status: "error", message: "A recarga de teste só existe no modo raio-x (no computador)." };
+  const owner = await pageOwner(formData);
+  if (!owner.ok) return { status: "error", message: owner.message };
+  const amount = parseTopupAmount(formData.get("amount")?.toString() ?? "");
+  if (!amount.ok) return { status: "error", message: amount.message };
+
+  try {
+    const { error } = await supabaseAdmin().rpc("demo_wallet_topup", {
+      p_company_id: owner.me.companyId,
+      p_amount_cents: amount.cents,
+    });
+    if (error) throw new Error(error.message);
+  } catch (error) {
+    console.error("[dono] A recarga de teste falhou:", error instanceof Error ? error.message : error);
+    return { status: "error", message: GENERIC };
+  }
+  refresh();
+  return { status: "done" };
 }

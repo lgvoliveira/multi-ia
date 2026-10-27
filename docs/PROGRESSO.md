@@ -22,6 +22,14 @@ testada; o teste com créditos dela passou para o bloco 6. Veja "Nova ordem (26/
 > `app/raiox/` (página + ação `signInWithPassword` nas contas de teste), `components/DemoSwitcher` (barra no topo que
 > alterna o lado) e um atalho na porta de entrada (`OckEntry`). Serve para o dono do produto demonstrar o funcionamento.
 
+> **Nota (27/10/2026):** adicionada a **recarga de teste** na visão raio-x. No painel do dono, só no computador (modo
+> raio-x), aparece "Recarga de teste": o dono põe crédito fictício na empresa para testar à vontade. A recarga de
+> verdade continua só pelo painel do Supabase (F25); esta é uma função à parte (`demo_wallet_topup`) criada **só no seed
+> local** (não existe na produção, onde a F25 segue inteira), chamada por uma ação conferida no servidor (modo raio-x e
+> dono logado). Arquivos: `components/DemoRecharge`, `demoTopupAction` em `app/dono/actions.ts`, `parseTopupAmount` em
+> `lib/ock/team-forms.ts`, a função no `supabase/seed.sql` e a exceção "demo_*" no teste de estrutura do banco. Para
+> ver no computador: `supabase db reset` (recria o seed com a função) e entre pela visão raio-x como Chefe.
+
 ---
 
 ## Links importantes

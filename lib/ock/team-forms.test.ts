@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { CurrentMember } from "@/lib/auth/member";
-import { budgetInputValue, checkPageOwner, parseBudget, parseInviteForm, parseMemberId } from "./team-forms";
+import {
+  budgetInputValue,
+  checkPageOwner,
+  parseBudget,
+  parseInviteForm,
+  parseMemberId,
+  parseTopupAmount,
+} from "./team-forms";
 
 function form(fields: Record<string, string>): FormData {
   const data = new FormData();
@@ -143,5 +150,25 @@ describe("o dono que abriu o painel ainda é quem está conectado", () => {
 
   it("sem o id do dono no formulário, recusa", () => {
     expect(checkPageOwner({ status: "member", member: owner }, null).ok).toBe(false);
+  });
+});
+
+describe("valor da recarga de teste (raio-x)", () => {
+  it("entende o jeito brasileiro de escrever dinheiro", () => {
+    expect(parseTopupAmount("100")).toEqual({ ok: true, cents: 10000 });
+    expect(parseTopupAmount("R$ 1.000")).toEqual({ ok: true, cents: 100000 });
+    expect(parseTopupAmount("50,50")).toEqual({ ok: true, cents: 5050 });
+    expect(parseTopupAmount("19.90")).toEqual({ ok: true, cents: 1990 });
+  });
+
+  it("recusa vazio, zero e o que não é número", () => {
+    expect(parseTopupAmount("").ok).toBe(false);
+    expect(parseTopupAmount("0").ok).toBe(false);
+    expect(parseTopupAmount("abc").ok).toBe(false);
+  });
+
+  it("aceita o máximo de teste e recusa acima dele (R$ 1.000.000,00)", () => {
+    expect(parseTopupAmount("1.000.000")).toEqual({ ok: true, cents: 100000000 });
+    expect(parseTopupAmount("1.000.000,01").ok).toBe(false);
   });
 });

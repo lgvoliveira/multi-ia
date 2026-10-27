@@ -13,6 +13,7 @@ import {
 import { deadlineText, type TeamMember } from "@/lib/ock/team";
 import { budgetInputValue } from "@/lib/ock/team-forms";
 import { CompanyCredit } from "./CompanyCredit";
+import { DemoRecharge } from "./DemoRecharge";
 import { InviteEmployee } from "./InviteEmployeeForm";
 import { MemberActions } from "./MemberActions";
 import { MemberMonth } from "./MemberMonth";
@@ -27,6 +28,8 @@ interface OwnerHomeProps {
   months: ReadonlyMap<string, Month>;
   /** O extrato do mês da empresa (as linhas mais recentes) e se há mais. */
   statement: { lines: StatementLine[]; more: boolean };
+  /** Na visão raio-x (só no computador), mostra a recarga de teste. Em produção é sempre falso. */
+  demo: boolean;
 }
 
 /** A etiqueta e a frase do convite que a pessoa ainda não usou. Quem foi desativado não mostra convite. */
@@ -48,7 +51,7 @@ function inviteInfo(person: TeamMember): { tag: string; note: string } | null {
   };
 }
 
-export function OwnerHome({ me, team, credit, months, statement }: OwnerHomeProps) {
+export function OwnerHome({ me, team, credit, months, statement, demo }: OwnerHomeProps) {
   const people = new Map(team.map((person) => [person.id, person.name]));
   return (
     <main className={styles.main}>
@@ -61,6 +64,19 @@ export function OwnerHome({ me, team, credit, months, statement }: OwnerHomeProp
       </section>
 
       <CompanyCredit credit={credit} />
+
+      {demo && (
+        <section className={styles.section} aria-labelledby="demo-topup-title">
+          <h2 id="demo-topup-title" className={styles.sectionTitle}>
+            Recarga de teste
+          </h2>
+          <p className={styles.sectionLead}>
+            Só no computador, na visão raio-x: adiciona crédito fictício na empresa para você testar à vontade. Não
+            existe no site publicado.
+          </p>
+          <DemoRecharge ownerId={me.id} />
+        </section>
+      )}
 
       <section className={styles.section} aria-labelledby="team-title">
         <h2 id="team-title" className={styles.sectionTitle}>
