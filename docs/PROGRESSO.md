@@ -4,11 +4,10 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 26/10/2026, manhã (o Luis testou a sessão 1 do `GUIA-TESTE-IAS-REAIS.md`, tudo certo, e fez o
-merge dos PRs #46 a #52; as IAs de verdade estão prontas e desligadas, esperando a sessão 2, com créditos)
-**Etapa atual:** etapa 5 — Base para empresas. PR 1 (banco), PR 2a (login), PR 2b (convite), o aviso de troca de login,
-o PR 3 inteiro (3a receitas com login, 3b receitas cobrando, 3c o chat, a aba Receitas e a 3d, painel do dono) e a parte
-das IAs de verdade que não gasta (#47 a #52) no ar e testados; falta o teste com créditos (sessão 2 do guia)
+**Última atualização:** 26/10/2026, noite (nova ordem do Luis: as IAs de verdade ficam para o fim, em seis blocos;
+proposta do bloco 1 na issue #54, esperando a aprovação dele)
+**Etapa atual:** bloco 1 da nova ordem (etapa 6, o produto do funcionário). A etapa 5 (base para empresas) está no ar e
+testada; o teste com créditos dela passou para o bloco 6. Veja "Nova ordem (26/10)", antes do "Próximo passo"
 
 ---
 
@@ -118,12 +117,18 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 3 | Preparar ambiente: GitHub, repositório, AGENTS.md, Claude Code | Concluída (08/10) | Cowork |
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
-| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Em andamento: PR 1 (banco), PR 2a (login), PR 2b (convite), o PR 3 inteiro (3a, 3b, 3c, aba Receitas e 3d, painel do dono) e as IAs de verdade sem gastar (#47 a #52) no ar e testados; falta o teste com créditos | Claude Code |
-| 6 | Workspace do funcionário: receitas prontas, receita própria e tarefa rápida; recomendação de IA com escolha livre | A fazer | Cowork (telas) + Claude Code |
-| 7 | Créditos e preço: carteira, teto, estimativa, regras de cobrança, preço do plano | A fazer | Cowork (preço) + Claude Code |
+| 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Concluída (26/10): PR 1 (banco), PR 2a (login), PR 2b (convite), o PR 3 inteiro (3a, 3b, 3c, aba Receitas e 3d, painel do dono) e as IAs de verdade sem gastar (#47 a #52) no ar e testados. O teste com créditos passou para o bloco 6 | Claude Code |
+| 6 = bloco 1 | O produto do funcionário: 3 receitas para PMEs, receita própria e escolha livre da IA no chat | Proposta na issue #54, esperando aprovação | Claude Code |
+| bloco 2 | Conta de verdade: e-mail próprio do login (F30), recuperar a senha do dono, termos de uso e privacidade com aceite (F05) | A fazer | Claude Code (+ guia para criar a conta do e-mail) |
+| bloco 3 | Painel interno da plataforma: empresas, recarga pela tela, extrato de recargas, custo real das IAs contra o cobrado | A fazer | Claude Code |
+| 7 = bloco 4 | Pagamento, só preparar: comparação de gateways (Pix, boleto, cartão); programar só depois da decisão do preço (F04) e do CNPJ | A fazer | Claude Code (pesquisa) + Luis e parceiro (decisão) |
+| bloco 5 | Publicação: site na Vercel com domínio, chaves de produção e a F54 resolvida | A fazer | Claude Code + guia |
+| bloco 6 | IAs de verdade: sessão 2 do `GUIA-TESTE-IAS-REAIS.md`, medição de custo e tempo, revisão dos modelos com a pesquisa de 12/10 | A fazer (por último) | Claude Code + guia |
 | 8 | Conversas e testes com 3 a 5 empresas reais, e ajustes | A fazer | — |
 
-As etapas 5 a 8 são uma proposta de 22/10, a confirmar com o parceiro.
+As etapas 5 a 8 eram uma proposta de 22/10, a confirmar com o parceiro. Em 26/10 o Luis trocou a ordem do que vem depois
+da etapa 5 pelos seis blocos acima (detalhes em "Nova ordem (26/10)"). A carteira, o teto e a estimativa da etapa 7
+ficaram prontos na etapa 5; dela sobraram o preço e o pagamento, que viraram o bloco 4.
 
 ## Etapa 3 — o que ficou pronto (08/10/2026)
 
@@ -970,7 +975,7 @@ O Claude trabalhou sozinho, sem merge, sem o Supabase de verdade, sem chaves e s
 O PR #45 já estava na `main` quando a madrugada começou (merge do Luis às 23:39 de 25/10). Por isso a pilha parte da
 `main`, não do branch do #45.
 
-**Ordem de testar e fazer o merge** (passos 1 a 3 **feitos** pelo Luis em 26/10, de manhã; o 4 espera ele decidir gastar):
+**Ordem de testar e fazer o merge** (passos 1 a 3 **feitos** pelo Luis em 26/10, de manhã; o 4 passou para o bloco 6 da nova ordem):
 1. **Supabase de verdade:** conferir a migração do #45 (passos em "3d testada pelo Luis e no ar", acima).
 2. **Testar a pilha de uma vez:** a sessão 1 do `docs/GUIA-TESTE-IAS-REAIS.md` (Partes A a D, uns 30 minutos, sem gastar)
    no branch do PR mais alto (a Parte A diz qual).
@@ -1010,16 +1015,38 @@ de verdade pode passar dos 5 minutos da função na Vercel; medir o tempo na Par
 faltando vira erro (F42), modelos e preços oficiais (F17), pesquisa, código, imagem e voz, e o guia com a compra dos
 créditos.
 
+## Nova ordem (decisão do Luis, 26/10)
+
+As IAs de verdade ficam para o fim. Antes, todo o resto do site funcionando com a IA simulada, **um bloco de cada vez**:
+
+| Bloco | O que entra |
+|-------|-------------|
+| 1 — O produto do funcionário (etapa 6) | As 3 receitas que faltam, escolhidas para PMEs (o Luis escolhe entre as propostas); a receita própria (o funcionário monta o time e salva só para ele ou para a empresa toda, na tabela `custom_recipes`); a escolha livre da IA, do nível e do esforço no chat, guardando o recomendado e o escolhido (F03) |
+| 2 — Conta de verdade | E-mail próprio para o login (F30), com o serviço de envio proposto pelo Claude (custo e plano grátis) e guia para criar a conta; recuperar a senha do dono; páginas de termos de uso e de privacidade (LGPD, F05) com o aceite no cadastro, em rascunho marcado para revisão de um advogado antes da primeira empresa de verdade |
+| 3 — Painel interno da plataforma | Área protegida só para a equipe da plataforma (o Luis e o parceiro): lista de empresas, recarga de crédito pela tela (no lugar do SQL), extrato de recargas e o custo real das IAs (`ai_calls`) contra o cobrado, por empresa e no total. O Claude propõe como marcar quem é da equipe sem abrir brecha |
+| 4 — Pagamento, só preparar | Um documento curto comparando Asaas, Mercado Pago, Efí, Pagar.me e Stripe (taxas de Pix, boleto e cartão; CNPJ; nota fiscal; recarga avulsa e assinatura; aviso ao servidor), com as fontes oficiais. **Não programar** até o Luis e o parceiro decidirem o formato do preço (F04) e o CNPJ. Depois, o pagamento confirmado vira uma recarga automática, pela mesma função da recarga |
+| 5 — Publicação (depois do pagamento) | Site na Vercel, com domínio, chaves de produção e a F54 resolvida, com guia passo a passo |
+| 6 — IAs de verdade (por último) | A sessão 2 do `docs/GUIA-TESTE-IAS-REAIS.md`, a medição de custo e tempo e a revisão dos modelos com a pesquisa `docs/pesquisas/melhor-ia-por-funcao-2026-10-12.pdf` (feita no Cowork em 12/10): comparar com a decisão provisória 2 da madrugada e **mostrar as diferenças ao Luis antes de mudar** |
+
+**Como trabalhar (pedido do Luis):**
+- Para cada bloco, o Claude mostra a issue com a proposta e espera a aprovação antes de começar.
+- Um PR pequeno por tarefa: testes, lint, tipos e build verdes, teste de ponta a ponta no projeto de testes e um guia de
+  teste em `docs/`, no formato dos outros, para o Luis testar com o chat do Claude antes do merge.
+- Tudo com a IA simulada. Nada no Supabase de verdade além das migrações que entram pelos merges do Luis. Não mexer no
+  `.env.local` nem nos PRs abertos do parceiro (hoje, o #36).
+- PROGRESSO e FALHAS atualizados em todo PR; o Claude avisa quando for hora de trocar de conversa.
+
+**Risco aceito (F55, nova):** as receitas novas e a receita própria só rodam com a IA simulada até o bloco 6, e o bloco
+5 depende de coisas do bloco 6 (chaves de produção e o tempo medido para a F54). Antes do bloco 5, o Luis decide entre
+publicar com a IA simulada só para empresas de teste ou fazer a sessão 2 logo antes de publicar.
+
 ## Próximo passo
 
-1. **Luis, quando quiser (no chat do Claude, sem código):** as decisões provisórias da madrugada, o câmbio e a F52
-   (lista no resumo da madrugada, acima).
-2. **Luis, quando decidir gastar:** a sessão 2 do `docs/GUIA-TESTE-IAS-REAIS.md` (Partes E a H): US$ 5 na Anthropic e na
-   OpenAI com a recarga automática desligada, a chave do Gemini no plano grátis e o primeiro teste com IA de verdade.
-3. **Claude Code, depois das chaves:** medir custo e tempo de verdade (receita e chat; o tempo de cada fase entra na
-   F54) e rever as folgas da estimativa (pensamento, 3 caracteres por token, ferramentas); conferir o consumo com o
-   painel das empresas (F40).
-4. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
+1. **Luis:** ler a proposta do bloco 1 na issue #54 (as 3 receitas, a receita própria e a escolha livre no chat) e
+   responder às 5 decisões do fim dela. Depois da aprovação, o Claude começa pelo primeiro PR da lista da issue.
+2. **Luis, quando quiser (no chat do Claude, sem código):** as decisões provisórias da madrugada, o câmbio e a F52
+   (lista no resumo da madrugada, acima). A sessão 2 do guia das IAs de verdade ficou para o bloco 6.
+3. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a
    visão e as etapas 5 a 8; combinar o jeito de trabalhar: cada um com a própria conta no GitHub (F21), uma tarefa = um
    PR pequeno, o PROGRESSO atualizado em todo PR (F20) e tabelas só por migração; e decidir o PR #36 dele (o botão
    "Ouvir"), ainda aberto.
@@ -1030,7 +1057,8 @@ créditos.
 - Formato do preço (por empresa, por funcionário, pelo consumo), margem e plano de teste (F04)
 - Se e quando nichar (F02)
 - Modelo de cada papel e de cada nível (econômico, padrão, potente): escolha provisória do Claude desde 26/10 (resumo da
-  madrugada), a confirmar e a rever com as primeiras medições
+  madrugada), a confirmar e a rever no bloco 6, com as primeiras medições e a pesquisa
+  `docs/pesquisas/melhor-ia-por-funcao-2026-10-12.pdf`
 - Cronograma
 
 ## Como retomar em uma conversa nova

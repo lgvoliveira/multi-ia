@@ -127,8 +127,9 @@ lib/runs/            a execução vista de fora: o que dos eventos pode chegar a
 styles/tokens.css    TODAS as cores, fontes, espaçamentos e arredondamentos
 supabase/            banco de dados: migrations/ (a versão oficial das tabelas), seed.sql (empresa de exemplo, só
                      local) e tests/ (testes do banco, rodam nas checagens). Explicação em docs/BANCO-DE-DADOS.md
-docs/                documento do projeto, diário de progresso, registro de falhas (FALHAS.md) e guias
-                     de tarefas feitas à mão pelo Luis (GUIA-*.md, seguidos com o chat do Claude)
+docs/                documento do projeto, diário de progresso, registro de falhas (FALHAS.md), guias
+                     de tarefas feitas à mão pelo Luis (GUIA-*.md, seguidos com o chat do Claude) e pesquisas
+                     feitas no Cowork (pesquisas/, guardadas para consulta)
 .github/workflows/   checagens automáticas (CI) que rodam em todo pull request
 ```
 

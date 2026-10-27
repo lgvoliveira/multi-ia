@@ -72,6 +72,7 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F52 | O código fala com as IAs sem as bibliotecas oficiais, ao contrário do que diz o AGENTS.md | Processo | Baixa | Aberta |
 | F53 | O aviso de "não pesquisou" depende do texto no fim da resposta | Produto / Código | Baixa | Aceita |
 | F54 | Uma fase com IA de verdade pode passar do tempo máximo da função na Vercel | Código | Média | Aberta |
+| F55 | Com as IAs de verdade por último, o site é montado sem medir custo, tempo e qualidade de verdade | Processo / Produto | Média | Aceita |
 
 ## Negócio
 
@@ -755,3 +756,17 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   o conector (com as bibliotecas, viria numa atualização delas).
 - **O que fazer (Luis decidir):** (a) manter as chamadas diretas e corrigir o AGENTS.md (recomendação do Claude, por
   ser o que está testado e não trazer dependência nova), ou (b) trocar pelas três bibliotecas oficiais num PR próprio.
+
+### F55 — Com as IAs de verdade por último, o site é montado sem medir custo, tempo e qualidade de verdade
+- **Gravidade:** Média · **Status:** Aceita · **Anotada:** 26/10/2026 (percebida pelo Claude na mudança de ordem)
+- **O problema:** com a nova ordem (decisão do Luis, 26/10), as receitas novas, a receita própria e a escolha livre da
+  IA no chat são feitas e testadas só com a IA simulada. As instruções de cada papel, a estimativa "até R$ X" e o tempo
+  de cada fase só serão conferidos com as IAs de verdade no bloco 6. E o bloco 5 (publicação) pede as chaves de produção
+  e a F54 resolvida, que dependem de créditos comprados e do tempo medido com as IAs de verdade, coisas do bloco 6.
+- **Por que aceitar:** o Luis prefere ver o site inteiro funcionando antes de gastar, e a IA simulada já testa as telas,
+  a carteira, as regras de acesso e o caminho de cada receita.
+- **O que fazer:** (1) antes da primeira empresa de verdade, rodar cada receita com as IAs de verdade (bloco 6) e
+  ajustar as instruções e as folgas da estimativa; (2) antes do bloco 5, o Luis decidir entre publicar com a IA
+  simulada, só com empresas de teste, e ligar as chaves depois do bloco 6, ou fazer a sessão 2 do
+  `docs/GUIA-TESTE-IAS-REAIS.md` logo antes de publicar; (3) a F54 pode ser resolvida no bloco 5 sem medir, dividindo as
+  fases longas (cada etapa numa chamada).
