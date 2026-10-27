@@ -34,6 +34,12 @@ describe("o texto final de uma receita, lido em partes", () => {
     expect(blocks.map((block) => block.kind)).toEqual(["title", "paragraph"]);
   });
 
+  it("hashtags no começo da linha continuam texto: só vira título o # seguido de espaço", () => {
+    const blocks = parseRichText("#PãoQuente #Campinas\n# Título");
+    expect(blocks.map((block) => block.kind)).toEqual(["paragraph", "title"]);
+    expect(plainText(blocks)).toBe("#PãoQuente #Campinas\n\nTítulo");
+  });
+
   it("### e níveis mais fundos também são títulos de seção", () => {
     expect(parseRichText("### Prazo\n#### Etapas").map((block) => block.kind)).toEqual(["heading", "heading"]);
   });

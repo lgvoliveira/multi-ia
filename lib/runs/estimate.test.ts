@@ -4,7 +4,7 @@ import type { AiCallReport } from "@/lib/engine/types";
 import { MAX_REQUEST_CHARS } from "@/lib/engine/validate";
 import { costInCents } from "@/lib/ock/pricing";
 import { createMockProvider } from "@/lib/providers/mock";
-import { getRecipe } from "@/lib/recipes/catalog";
+import { getRecipe, RECIPES } from "@/lib/recipes/catalog";
 import type { Recipe } from "@/lib/recipes/types";
 import { estimateCents, stepCosts } from "./estimate";
 
@@ -98,6 +98,25 @@ describe("estimativa de custo (o máximo que o time pode gastar)", () => {
       );
       expect(calls).toHaveLength(6);
       expect(spent).toBeLessThanOrEqual(estimateCents(stepCosts(recipe), team));
+    }
+  });
+
+  it("em toda receita pronta, com a IA simulada e o pedido mais longo possível, o gasto fica abaixo da estimativa", async () => {
+    for (const each of RECIPES) {
+      const team = resolveTeam(each);
+      const calls: AiCallReport[] = [];
+      const events = runRecipe(
+        { recipe: each, request: "a".repeat(MAX_REQUEST_CHARS), team },
+        {
+          getProvider: (id) => createMockProvider({ id, chunkDelayMs: 0 }),
+          onAiCall: (call) => calls.push(call),
+        },
+      );
+      for await (const event of events) void event;
+
+      const spent = calls.reduce((sum, call) => sum + costInCents(call.provider, call.tier, call.usage), 0);
+      expect(calls.length, each.id).toBeGreaterThan(0);
+      expect(spent, each.id).toBeLessThanOrEqual(estimateCents(stepCosts(each), team));
     }
   });
 });

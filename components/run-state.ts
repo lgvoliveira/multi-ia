@@ -215,6 +215,10 @@ export interface LiveDocument {
 
 /** Junta o que cada etapa produziu num "documento vivo" que a tela mostra enquanto o time trabalha. */
 export function liveDocument(state: RunState): LiveDocument {
+  // As partes são as etapas do "Criar um site", com os nomes delas ("Plano do chefe", "Visual do site"...). Uma receita
+  // de texto pode ter uma etapa com o mesmo id (a proposta e os posts têm "brief") e ganharia o nome errado (F56). Nela,
+  // os cartões das etapas já mostram o que cada IA escreveu.
+  if (state.steps.at(-1)?.format !== "html") return {};
   const textOf = (stepId: string) => {
     const step = state.steps.find((candidate) => candidate.id === stepId);
     return step && step.text.length > 0 ? step.text : undefined;
