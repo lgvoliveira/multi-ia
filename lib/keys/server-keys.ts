@@ -5,6 +5,7 @@
 
 import type { ProviderKeys } from "@/lib/providers/registry";
 import type { ProviderId } from "@/lib/providers/types";
+import { demoKeys } from "./demo-keys";
 
 /** O nome da variável de ambiente com a chave de cada IA (vai no aviso do servidor quando falta, nunca o valor). */
 export const KEY_ENV_NAMES: Record<ProviderId, string> = {
@@ -18,6 +19,10 @@ export function serverKeys(env: Record<string, string | undefined> = process.env
   for (const [id, name] of Object.entries(KEY_ENV_NAMES) as [ProviderId, string][]) {
     const value = env[name]?.trim();
     if (value) keys[id] = value;
+  }
+  // No modo raio-x, as chaves coladas na tela (arquivo local, fora do Git) preenchem o que faltar no ambiente.
+  for (const [id, value] of Object.entries(demoKeys()) as [ProviderId, string][]) {
+    if (!keys[id]) keys[id] = value;
   }
   return keys;
 }

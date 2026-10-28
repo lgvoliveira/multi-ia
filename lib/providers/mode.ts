@@ -2,6 +2,8 @@
 // alguém ter pedido: com as IAs de verdade ligadas, uma IA sem chave falha (e a troca de IA entra), em vez de devolver
 // uma resposta de mentira cobrada como se fosse de verdade.
 
+import { hasAnyDemoKey } from "@/lib/keys/demo-keys";
+
 export type AiMode = "simulada" | "real";
 
 /**
@@ -16,6 +18,8 @@ export function aiMode(env: Record<string, string | undefined> = process.env): A
   const value = env.OCK_AI_MODE?.trim().toLowerCase() ?? "";
   if (value === "real" || value === "simulada") return value;
   if (value) throw new Error(`OCK_AI_MODE: não entendi "${value}". Use "real" ou "simulada".`);
+  // Na visão raio-x, conectar uma chave pela tela já liga a IA real (sem precisar mexer no OCK_AI_MODE).
+  if (hasAnyDemoKey()) return "real";
   return env.NODE_ENV === "development" || env.NODE_ENV === "test" ? "simulada" : "real";
 }
 
