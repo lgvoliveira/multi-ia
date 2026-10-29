@@ -327,6 +327,25 @@ describe("agrupamento por fase e documento vivo", () => {
   });
 });
 
+describe("documento vivo numa receita de texto", () => {
+  it("não tem documento vivo, mesmo com uma etapa de id igual ao do site (F56)", () => {
+    const textStages: PlannedStageView[] = [
+      parallelStage("brief", "sequential", [stepView("brief", "strategist", "Estrategista", "text", "claude")]),
+      parallelStage("drafts", "parallel", [
+        stepView("draft1", "writer1", "Redator 1", "text", "gpt"),
+        stepView("draft2", "writer2", "Redator 2", "text", "claude"),
+      ]),
+      parallelStage("final", "sequential", [stepView("final", "editor", "Editor", "text", "gpt")]),
+    ];
+    const state = [
+      event({ type: "step-started", stepId: "brief", provider: "claude" }),
+      event({ type: "step-text", stepId: "brief", text: "Estratégia dos posts." }),
+    ].reduce(runReducer, createRunState(textStages));
+
+    expect(liveDocument(state)).toEqual({});
+  });
+});
+
 describe("resultado pronto", () => {
   // Fases que terminam com texto, para conferir o caso em que o resultado não é um site.
   const TEXT_ONLY: PlannedStageView[] = [

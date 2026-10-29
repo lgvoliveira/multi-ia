@@ -3,24 +3,13 @@
 
 import { commercialProposalRecipe } from "./commercial-proposal";
 import { createSiteRecipe } from "./create-site";
+import { socialPostsRecipe } from "./social-posts";
 import type { Recipe, RecipeSummary } from "./types";
 
-export const RECIPES: readonly Recipe[] = [createSiteRecipe, commercialProposalRecipe];
+export const RECIPES: readonly Recipe[] = [createSiteRecipe, commercialProposalRecipe, socialPostsRecipe];
 
 // As receitas para PMEs escolhidas pelo Luis em 26/10 (issue #54) que ainda vão ser feitas.
 const COMING_SOON: readonly RecipeSummary[] = [
-  {
-    id: "social-posts",
-    name: "Posts para redes sociais",
-    description: "Um estrategista planeja, duas IAs escrevem ao mesmo tempo e um editor escolhe as melhores legendas.",
-    available: false,
-    team: [
-      { roleName: "Estrategista", provider: "claude" },
-      { roleName: "Redator 1", provider: "gpt" },
-      { roleName: "Redator 2", provider: "claude" },
-      { roleName: "Editor", provider: "gpt" },
-    ],
-  },
   {
     id: "client-report",
     name: "Relatório mensal para cliente",

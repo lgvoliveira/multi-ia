@@ -73,6 +73,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 | F53 | O aviso de "não pesquisou" depende do texto no fim da resposta | Produto / Código | Baixa | Aceita |
 | F54 | Uma fase com IA de verdade pode passar do tempo máximo da função na Vercel | Código | Média | Aberta |
 | F55 | Com as IAs de verdade por último, o site é montado sem medir custo, tempo e qualidade de verdade | Processo / Produto | Média | Aceita |
+| F56 | A tela ao vivo das receitas de texto mostrava "Plano do chefe" | Produto / Código | Baixa | Resolvida |
+| F57 | O Editor dos posts é da mesma IA que um dos redatores | Produto | Baixa | Aceita |
 
 ## Negócio
 
@@ -161,6 +163,8 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
 - **Andamento (26/10/2026, bloco 1, issue #54):** a segunda receita pronta, "Proposta comercial", a primeira que termina
   num texto (com Copiar e Word, que vira entrega). Faltam as receitas de posts e de relatório e a receita própria, nos
   próximos PRs do bloco 1.
+- **Andamento (27/10/2026, bloco 1, PR 2):** a terceira receita pronta, "Posts para redes sociais", com dois redatores
+  de IAs diferentes trabalhando ao mesmo tempo. Faltam a receita do relatório e a receita própria.
 
 ### F09 — Resultado que um leigo não sabe usar
 - **Gravidade:** Média · **Status:** Aberta · **Anotada:** 09/10/2026 (no PROGRESSO), trazida para cá em 22/10/2026
@@ -244,6 +248,29 @@ categoria, com a data. Ao mudar o status, escreva a data e o que aconteceu.
   26/10), e o efeito é só o aviso faltar numa resposta rara.
 - **O que fazer depois:** guardar numa coluna de `tasks` se a IA pesquisou ou rodou um programa (migração), junto com
   outra mudança de banco do chat (o apagar da F28 ou a escolha livre da etapa 6).
+
+### F56 — A tela ao vivo das receitas de texto mostrava "Plano do chefe"
+- **Gravidade:** Baixa · **Status:** Resolvida · **Anotada:** 27/10/2026 (achada pelo Claude no teste de ponta a ponta
+  da receita dos posts)
+- **O problema:** enquanto o time trabalha, a caixa "O documento vai tomando forma" junta o que as etapas do "Criar um
+  site" escreveram, procurando etapas com nomes fixos (`brief`, `front`, `back`, `research`, `review`) e dando a elas
+  os nomes do site ("Plano do chefe", "Visual do site"...). A Proposta comercial (já na `main`) e os Posts também têm
+  uma etapa `brief`, então a caixa aparecia nelas com "Plano do chefe", quando quem planeja é o Consultor ou o
+  Estrategista. Não vazava nada: era o texto da própria pessoa, com o nome errado.
+- **Resolvida (27/10/2026, bloco 1, PR dos posts):** a caixa só aparece nas receitas que terminam num site
+  (`components/run-state.ts`). Nas de texto, os cartões das etapas, logo abaixo, já mostram o que cada IA escreveu.
+
+### F57 — O Editor dos posts é da mesma IA que um dos redatores
+- **Gravidade:** Baixa · **Status:** Aceita · **Anotada:** 27/10/2026 (percebida pelo Claude ao montar a receita dos
+  posts)
+- **O problema:** a regra das receitas para PMEs (issue #54) é que quem revisa seja de uma família de IA diferente de
+  quem escreveu, porque uma IA não enxerga bem o próprio erro e tende a preferir o próprio jeito de escrever. Nos posts,
+  o Editor (GPT) escolhe entre os textos do Redator 1 (GPT) e do Redator 2 (Claude): pode preferir os do GPT sem que
+  sejam melhores. Com dois redatores de famílias diferentes, só um Editor Gemini ficaria de fora das duas.
+- **Por que aceitar:** o time foi o aprovado pelo Luis na issue #54, as IAs de cada papel são provisórias até o bloco
+  6, e a pessoa pode trocar a IA do Editor na tela do time.
+- **O que fazer depois:** no bloco 6, com a IA de verdade, comparar o Editor GPT com um Editor Gemini (ou Claude) em
+  alguns pedidos e mostrar o resultado ao Luis antes de mudar.
 
 ## Código e segurança
 
