@@ -93,6 +93,7 @@ const CARLA: CurrentMember = {
   name: "Carla Dias",
   email: "carla@example.com",
   role: "employee",
+  mustChangePassword: false,
 };
 const SESSION = {} as SupabaseClient;
 

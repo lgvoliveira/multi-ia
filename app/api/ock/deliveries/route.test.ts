@@ -20,7 +20,7 @@ describe("rota GET /api/ock/deliveries", () => {
   it("lista as entregas de quem está logado, mesmo quando é o dono", async () => {
     state.viewer = {
       status: "member",
-      member: { id: "dona", companyId: "c1", companyName: "Doce Encanto", name: "Marina", email: "m@example.com", role: "owner" },
+      member: { id: "dona", companyId: "c1", companyName: "Doce Encanto", name: "Marina", email: "m@example.com", role: "owner", mustChangePassword: false },
     };
     const response = await GET();
     expect(response.status).toBe(200);

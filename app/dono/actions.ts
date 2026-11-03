@@ -9,10 +9,8 @@
 import { refresh } from "next/cache";
 import { isDemoMode } from "@/lib/auth/demo";
 import { text } from "@/lib/auth/forms";
-import { invitePath } from "@/lib/auth/invite-token";
 import { inviteEmployee, issueNewLink } from "@/lib/auth/invites";
 import { createSessionClient } from "@/lib/auth/session";
-import { siteOrigin } from "@/lib/auth/site-origin";
 import { getViewer } from "@/lib/auth/viewer";
 import { findEmployee, updateEmployee, type EmployeeChange } from "@/lib/ock/team";
 import {
@@ -32,15 +30,11 @@ const GENERIC = "Não deu certo agora, por um problema do nosso lado. Tente de n
 const NOT_FOUND = "Não encontramos essa pessoa na equipe. Recarregue a página e tente de novo.";
 
 const INVITE_REFUSED = {
-  "already-in-team": "Esta pessoa já está na equipe. Se ela perdeu o link, use “Gerar link novo” no cartão dela.",
+  "already-in-team": "Esta pessoa já está na equipe. Se ela perdeu a senha, use “Gerar senha nova” no cartão dela.",
   "email-taken":
     "Este e-mail já tem uma conta na plataforma (de outra empresa, ou de um dono). Use outro e-mail para esta pessoa.",
   "email-invalid": "Este e-mail não é aceito. Confira se está certo ou use outro.",
 } as const;
-
-async function inviteLink(token: string): Promise<string> {
-  return `${await siteOrigin()}${invitePath(token)}`;
-}
 
 /**
  * O dono que abriu o painel, conferido a cada pedido. Se o login do navegador mudou no meio do caminho (ex.: outra aba
@@ -66,7 +60,7 @@ export async function inviteEmployeeAction(_previous: InviteFormState, formData:
     const result = await inviteEmployee({ companyId: me.companyId, name, email, budgetCents });
     if (!result.ok) return { status: "error", message: INVITE_REFUSED[result.reason], values: typed };
     refresh();
-    return { status: "created", name, link: await inviteLink(result.token) };
+    return { status: "created", name, email: result.email, tempPassword: result.tempPassword };
   } catch (error) {
     console.error("[dono] O convite falhou:", error instanceof Error ? error.message : error);
     return { status: "error", message: GENERIC, values: typed };
@@ -86,11 +80,12 @@ export async function newLinkAction(_previous: MemberActionState, formData: Form
     const employee = await findEmployee(supabase, memberId);
     if (!employee) return { status: "error", message: NOT_FOUND };
     if (employee.status !== "active") {
-      return { status: "error", message: "Reative a pessoa antes de gerar um link novo." };
+      return { status: "error", message: "Reative a pessoa antes de gerar uma senha nova." };
     }
-    const { token, kind } = await issueNewLink({ memberId, companyId: me.companyId });
+    const reset = await issueNewLink({ memberId, companyId: me.companyId });
+    if (!reset.ok) return { status: "error", message: NOT_FOUND };
     refresh();
-    return { status: "link", link: await inviteLink(token), kind };
+    return { status: "credentials", email: reset.email, tempPassword: reset.tempPassword };
   } catch (error) {
     console.error("[dono] O link novo falhou:", error instanceof Error ? error.message : error);
     return { status: "error", message: GENERIC };

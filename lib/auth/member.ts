@@ -10,6 +10,8 @@ export interface CurrentMember {
   name: string;
   email: string;
   role: MemberRole;
+  /** Entrou com uma senha temporária e ainda precisa criar a própria (só o servidor marca/desmarca). */
+  mustChangePassword: boolean;
 }
 
 /** A página de cada papel: o dono vai para o painel; o funcionário, para o espaço de trabalho. */
@@ -49,5 +51,6 @@ export function parseMemberRow(row: unknown): CurrentMember {
     name: r.name,
     email: r.email,
     role: r.role,
+    mustChangePassword: r.must_change_password === true,
   };
 }

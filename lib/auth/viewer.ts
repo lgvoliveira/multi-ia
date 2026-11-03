@@ -28,7 +28,7 @@ export const getViewer = cache(async (): Promise<Viewer> => {
   // Com a sessão: as regras de acesso devolvem o próprio cadastro (e, para o dono, os da empresa; daí o filtro).
   const { data: row, error } = await supabase
     .from("members")
-    .select("id, company_id, name, email, role, companies (name)")
+    .select("id, company_id, name, email, role, must_change_password, companies (name)")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(`Não deu para ler o cadastro de quem está logado: ${error.message}`);
@@ -53,6 +53,8 @@ export async function requireMember(role?: MemberRole): Promise<CurrentMember> {
   const viewer = await getViewer();
   if (viewer.status === "signed-out") redirect("/entrar");
   if (viewer.status !== "member") redirect("/");
+  // Entrou com senha temporária: só sai do lugar depois de criar a própria senha.
+  if (viewer.member.mustChangePassword) redirect("/trocar-senha");
   if (role && viewer.member.role !== role) redirect(homePathFor(viewer.member.role));
   return viewer.member;
 }

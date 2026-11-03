@@ -29,6 +29,7 @@ const CARLA: CurrentMember = {
   name: "Carla Dias",
   email: "carla@example.com",
   role: "employee",
+  mustChangePassword: false,
 };
 
 function post(body: unknown, contentType = "application/json"): Promise<Response> {

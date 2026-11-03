@@ -135,16 +135,16 @@ export function parseInviteForm(formData: FormData): InviteFormResult {
   return { ok: true, values: { name: typed.name, email: typed.email, budgetCents: budget.cents } };
 }
 
-/** O que a ação de convidar devolve para a tela. */
+/** O que a ação de criar um funcionário devolve para a tela: o e-mail e a senha temporária, para o dono entregar. */
 export type InviteFormState =
   | { status: "idle" }
   | { status: "invalid"; errors: Partial<Record<InviteField, string>>; values: InviteTyped }
   | { status: "error"; message: string; values: InviteTyped }
-  | { status: "created"; name: string; link: string };
+  | { status: "created"; name: string; email: string; tempPassword: string };
 
-/** O que as ações do cartão de cada funcionário (teto, link novo, desativar) devolvem para a tela. */
+/** O que as ações do cartão de cada funcionário (teto, senha nova, desativar) devolvem para a tela. */
 export type MemberActionState =
   | { status: "idle" }
   | { status: "done" }
   | { status: "error"; message: string }
-  | { status: "link"; link: string; kind: "invite" | "reset" };
+  | { status: "credentials"; email: string; tempPassword: string };

@@ -23,7 +23,7 @@ function get(id = FILE_ID): Promise<Response> {
 beforeEach(() => {
   state.viewer = {
     status: "member",
-    member: { id: "m1", companyId: "c1", companyName: "Doce Encanto", name: "Carla", email: "c@example.com", role: "employee" },
+    member: { id: "m1", companyId: "c1", companyName: "Doce Encanto", name: "Carla", email: "c@example.com", role: "employee", mustChangePassword: false },
   };
   state.file = {
     id: FILE_ID,

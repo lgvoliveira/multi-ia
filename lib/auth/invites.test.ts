@@ -21,7 +21,7 @@ function newId(): string {
 type Result = { data: unknown; error: unknown };
 
 class FakeQuery implements PromiseLike<Result> {
-  private op: "select" | "insert" | "upsert" | "delete" = "select";
+  private op: "select" | "insert" | "upsert" | "update" | "delete" = "select";
   private filters: ((row: Row) => boolean)[] = [];
   private payload: Row = {};
   private ignoreDuplicates = false;
@@ -41,6 +41,11 @@ class FakeQuery implements PromiseLike<Result> {
     this.op = "upsert";
     this.payload = row;
     this.ignoreDuplicates = options?.ignoreDuplicates ?? false;
+    return this;
+  }
+  update(row: Row) {
+    this.op = "update";
+    this.payload = row;
     return this;
   }
   delete() {
@@ -86,6 +91,9 @@ class FakeQuery implements PromiseLike<Result> {
       if (index >= 0 && !this.ignoreDuplicates) rows[index] = { ...this.payload };
       if (index < 0) rows.push({ ...this.payload });
       result = [];
+    } else if (this.op === "update") {
+      result = rows.filter((row) => this.filters.every((f) => f(row)));
+      for (const row of result) Object.assign(row, this.payload);
     } else if (this.op === "delete") {
       result = rows.filter((row) => this.filters.every((f) => f(row)));
       db.tables[this.table] = rows.filter((row) => !result.includes(row));
@@ -103,11 +111,11 @@ vi.mock("@/lib/runs/supabase-server", () => ({
     from: (table: string) => new FakeQuery(table),
     auth: {
       admin: {
-        createUser: async ({ email }: { email: string }) => {
+        createUser: async ({ email, password }: { email: string; password?: string }) => {
           if (db.users.some((u) => u.email === email)) {
             return { data: { user: null }, error: { code: "email_exists", status: 422 } };
           }
-          const user = { id: newId(), email };
+          const user = { id: newId(), email, password };
           db.users.push(user);
           return { data: { user }, error: null };
         },
@@ -126,8 +134,8 @@ vi.mock("@/lib/runs/supabase-server", () => ({
   }),
 }));
 
-const { acceptInvite, findInvite, inviteEmployee, issueNewLink } = await import("./invites");
-const { hashInviteToken, newInviteToken } = await import("./invite-token");
+const { acceptInvite, findInvite, inviteEmployee, issueInvite, issueNewLink } = await import("./invites");
+const { newInviteToken } = await import("./invite-token");
 
 const COMPANY = "c0000000-0000-4000-8000-000000000001";
 const OTHER_COMPANY = "c0000000-0000-4000-8000-000000000002";
@@ -141,19 +149,27 @@ beforeEach(() => {
   db.failPassword = null;
 });
 
-async function invitedAna(): Promise<{ token: string; memberId: string; userId: string }> {
+async function createdAna(): Promise<{ tempPassword: string; memberId: string; userId: string }> {
   const result = await inviteEmployee(ANA);
-  if (!result.ok) throw new Error("o convite deveria ter dado certo");
+  if (!result.ok) throw new Error("o cadastro deveria ter dado certo");
   const member = db.tables.members[0];
-  return { token: result.token, memberId: String(member.id), userId: String(member.user_id) };
+  return { tempPassword: result.tempPassword, memberId: String(member.id), userId: String(member.user_id) };
 }
 
-describe("convidar um funcionário", () => {
-  it("cria o login sem senha, a pessoa na empresa e um convite de 24 horas", async () => {
-    const before = Date.now();
-    const { token, memberId, userId } = await invitedAna();
+// Os caminhos antigos de link (findInvite/acceptInvite) continuam existindo; para testá-los, cria-se o convite à mão,
+// já que o fluxo novo (o dono cria o login) não gera mais link nenhum.
+async function withLegacyInvite(kind: "invite" | "reset" = "invite"): Promise<{ token: string; memberId: string; userId: string }> {
+  const { memberId, userId } = await createdAna();
+  const token = await issueInvite({ memberId, companyId: COMPANY, kind });
+  return { token, memberId, userId };
+}
 
-    expect(db.users).toEqual([{ id: userId, email: "ana@example.com" }]);
+describe("criar um funcionário", () => {
+  it("cria o login com uma senha temporária e põe a pessoa na empresa marcada para trocá-la", async () => {
+    const { tempPassword, memberId, userId } = await createdAna();
+
+    expect(tempPassword).toHaveLength(10);
+    expect(db.users).toEqual([{ id: userId, email: "ana@example.com", password: tempPassword }]);
     expect(db.tables.members).toEqual([
       {
         id: memberId,
@@ -163,28 +179,23 @@ describe("convidar um funcionário", () => {
         email: "ana@example.com",
         role: "employee",
         monthly_budget_cents: 5000,
+        must_change_password: true,
         status: "active",
       },
     ]);
-    const [invite] = db.tables.member_invites;
-    expect(invite).toMatchObject({ member_id: memberId, company_id: COMPANY, kind: "invite" });
-    // No banco fica só o resumo do código, nunca o código do link.
-    expect(invite.token_hash).toBe(hashInviteToken(token));
-    expect(JSON.stringify(db.tables)).not.toContain(token);
-    const hours = (Date.parse(String(invite.expires_at)) - before) / 3_600_000;
-    expect(hours).toBeGreaterThan(23.99);
-    expect(hours).toBeLessThanOrEqual(24.01);
+    // O fluxo novo não cria mais link de convite.
+    expect(db.tables.member_invites).toEqual([]);
   });
 
-  it("não convida de novo quem já está na equipe", async () => {
-    await invitedAna();
+  it("não cria de novo quem já está na equipe", async () => {
+    await createdAna();
     expect(await inviteEmployee({ ...ANA, name: "Ana de novo" })).toEqual({ ok: false, reason: "already-in-team" });
     expect(db.users).toHaveLength(1);
     expect(db.tables.members).toHaveLength(1);
   });
 
-  it("não convida um e-mail que já tem conta na plataforma (dono ou funcionário de outra empresa)", async () => {
-    await invitedAna();
+  it("não cria um e-mail que já tem conta na plataforma (dono ou funcionário de outra empresa)", async () => {
+    await createdAna();
     expect(await inviteEmployee({ ...ANA, companyId: OTHER_COMPANY })).toEqual({ ok: false, reason: "email-taken" });
     expect(db.tables.members).toHaveLength(1);
   });
@@ -200,28 +211,29 @@ describe("convidar um funcionário", () => {
   });
 });
 
-describe("link novo", () => {
-  it("continua sendo convite se a pessoa ainda não criou a senha, e o link antigo para de valer", async () => {
-    const { token: oldToken, memberId } = await invitedAna();
-    const { token, kind } = await issueNewLink({ memberId, companyId: COMPANY });
+describe("gerar uma senha nova", () => {
+  it("troca o login por uma senha temporária nova e marca a pessoa para trocá-la no próximo acesso", async () => {
+    const { tempPassword: first, memberId, userId } = await createdAna();
+    db.tables.members[0].must_change_password = false; // a pessoa já tinha criado a própria senha
 
-    expect(kind).toBe("invite");
-    expect(token).not.toBe(oldToken);
-    expect(db.tables.member_invites).toHaveLength(1);
-    expect(await findInvite(oldToken)).toEqual({ status: "not-found" });
-    expect((await findInvite(token)).status).toBe("valid");
+    const reset = await issueNewLink({ memberId, companyId: COMPANY });
+    if (!reset.ok) throw new Error("a senha nova deveria ter dado certo");
+
+    expect(reset.email).toBe("ana@example.com");
+    expect(reset.tempPassword).not.toBe(first);
+    expect(db.users.find((u) => u.id === userId)?.password).toBe(reset.tempPassword);
+    expect(db.tables.members[0].must_change_password).toBe(true);
   });
 
-  it("vira link de senha nova para quem já aceitou o convite", async () => {
-    const { token, memberId } = await invitedAna();
-    await acceptInvite(token, "senha-boa-123");
-    expect((await issueNewLink({ memberId, companyId: COMPANY })).kind).toBe("reset");
+  it("recusa gerar senha para quem não é da empresa de quem pediu", async () => {
+    const { memberId } = await createdAna();
+    expect(await issueNewLink({ memberId, companyId: OTHER_COMPANY })).toEqual({ ok: false, reason: "not-found" });
   });
 });
 
 describe("abrir o link do convite", () => {
   it("mostra a empresa, a pessoa e o e-mail, sem gastar o convite", async () => {
-    const { token, memberId } = await invitedAna();
+    const { token, memberId } = await withLegacyInvite();
     db.tables.members[0].companies = { name: "Agência Exemplo" };
 
     const found = await findInvite(token);
@@ -244,7 +256,7 @@ describe("abrir o link do convite", () => {
   });
 
   it("avisa quando o link venceu ou a pessoa foi desativada", async () => {
-    const { token } = await invitedAna();
+    const { token } = await withLegacyInvite();
     const tomorrow = new Date(Date.now() + 24 * 3_600_000 + 1000);
     expect(await findInvite(token, tomorrow)).toEqual({ status: "expired" });
 
@@ -255,7 +267,7 @@ describe("abrir o link do convite", () => {
 
 describe("aceitar o convite", () => {
   it("grava a senha criada pela pessoa e gasta o link", async () => {
-    const { token, userId } = await invitedAna();
+    const { token, userId } = await withLegacyInvite();
 
     expect(await acceptInvite(token, "senha-boa-123")).toEqual({ ok: true, email: "ana@example.com" });
     expect(db.users.find((u) => u.id === userId)?.password).toBe("senha-boa-123");
@@ -267,17 +279,18 @@ describe("aceitar o convite", () => {
   });
 
   it("não aceita link vencido, nem de pessoa desativada", async () => {
-    const { token, userId } = await invitedAna();
+    const { token, userId } = await withLegacyInvite();
     const tomorrow = new Date(Date.now() + 24 * 3_600_000 + 1000);
     expect(await acceptInvite(token, "senha-boa-123", tomorrow)).toEqual({ ok: false, reason: "not-found" });
 
     db.tables.members[0].status = "disabled";
     expect(await acceptInvite(token, "senha-boa-123")).toEqual({ ok: false, reason: "disabled" });
-    expect(db.users.find((u) => u.id === userId)?.password).toBeUndefined();
+    // A senha não virou a que foi tentada (continua a temporária que o login nasceu com).
+    expect(db.users.find((u) => u.id === userId)?.password).not.toBe("senha-boa-123");
   });
 
   it("devolve o convite se o Supabase não gravar a senha, para tentar de novo com o mesmo link", async () => {
-    const { token } = await invitedAna();
+    const { token } = await withLegacyInvite();
 
     db.failPassword = { code: "weak_password", status: 422 };
     expect(await acceptInvite(token, "senha-boa-123")).toEqual({ ok: false, reason: "weak-password" });

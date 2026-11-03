@@ -125,11 +125,11 @@ export function OwnerHome({ me, team, credit, months, statement, demo }: OwnerHo
 
       <section className={styles.section} aria-labelledby="invite-title">
         <h2 id="invite-title" className={styles.sectionTitle}>
-          Convidar um funcionário
+          Criar um funcionário
         </h2>
         <p className={styles.sectionLead}>
-          Você gera um link e manda para a pessoa (pelo WhatsApp, por exemplo). Ela abre, cria a própria senha e entra.
-          Ninguém além dela fica sabendo a senha.
+          Você cria o login da pessoa: informe o nome, o e-mail e o teto. O sistema gera uma senha temporária para você
+          entregar a ela; no primeiro acesso ela cria a própria senha.
         </p>
         <InviteEmployee ownerId={me.id} />
       </section>

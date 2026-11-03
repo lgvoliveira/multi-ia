@@ -111,6 +111,7 @@ describe("o dono que abriu o painel ainda é quem está conectado", () => {
     name: "Marina Souza",
     email: "marina@example.com",
     role: "owner",
+    mustChangePassword: false,
   };
   const employee: CurrentMember = {
     ...owner,

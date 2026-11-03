@@ -27,9 +27,9 @@ function InviteEmployeeForm({ ownerId, onAnother }: { ownerId: string; onAnother
   if (state.status === "created") {
     return (
       <div className={styles.stack}>
-        <InviteLinkPanel name={state.name} link={state.link} kind="invite" />
+        <InviteLinkPanel name={state.name} email={state.email} tempPassword={state.tempPassword} />
         <button type="button" className={styles.secondaryButton} onClick={onAnother}>
-          Convidar outra pessoa
+          Criar outra pessoa
         </button>
       </div>
     );
@@ -121,7 +121,7 @@ function InviteEmployeeForm({ ownerId, onAnother }: { ownerId: string; onAnother
       )}
 
       <button type="submit" className={styles.primaryButton} disabled={pending}>
-        {pending ? "Gerando o convite…" : "Gerar o link do convite"}
+        {pending ? "Criando…" : "Criar funcionário"}
       </button>
     </form>
   );

@@ -46,7 +46,7 @@ function get(id = MEMBER_ID): Promise<Response> {
 function signIn(role: "owner" | "employee") {
   state.viewer = {
     status: "member",
-    member: { id: "m1", companyId: "c1", companyName: "Doce Encanto", name: "Marina", email: "m@example.com", role },
+    member: { id: "m1", companyId: "c1", companyName: "Doce Encanto", name: "Marina", email: "m@example.com", role, mustChangePassword: false },
   };
 }
 

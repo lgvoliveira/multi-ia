@@ -15,6 +15,7 @@ const ANA: CurrentMember = {
   name: "Ana Lima",
   email: "ana@example.com",
   role: "employee",
+  mustChangePassword: false,
 };
 
 const state = vi.hoisted(() => ({

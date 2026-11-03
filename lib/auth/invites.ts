@@ -5,10 +5,21 @@
 // Tudo aqui usa a chave secreta, porque pela sessão ninguém cria login, pessoa nem convite (migrações 1 e
 // member_invites). Quem chama confere antes que é o dono daquela empresa (app/dono/actions.ts). SÓ do servidor.
 
+import { randomInt } from "node:crypto";
 import { supabaseAdmin } from "@/lib/runs/supabase-server";
 import { hashInviteToken, INVITE_TTL_MS, looksLikeInviteToken, newInviteToken, type InviteKind } from "./invite-token";
 
 const UNIQUE_VIOLATION = "23505";
+
+// Alfabeto sem caracteres que se confundem (0/O, 1/l/I), para a senha temporária ser fácil de ditar/passar.
+const PASSWORD_ALPHABET = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/** Uma senha temporária aleatória que o dono entrega ao funcionário (ele troca no primeiro acesso). */
+export function newTempPassword(length = 10): string {
+  let out = "";
+  for (let i = 0; i < length; i += 1) out += PASSWORD_ALPHABET[randomInt(PASSWORD_ALPHABET.length)];
+  return out;
+}
 
 /** Cria (ou troca) o convite da pessoa e devolve o código para o link. O link anterior dela para de valer. */
 export async function issueInvite(input: { memberId: string; companyId: string; kind: InviteKind }): Promise<string> {
@@ -31,20 +42,21 @@ export async function issueInvite(input: { memberId: string; companyId: string; 
   return token;
 }
 
-export type InviteEmployeeResult =
-  | { ok: true; token: string }
+export type CreateEmployeeResult =
+  | { ok: true; email: string; tempPassword: string }
   | { ok: false; reason: "already-in-team" | "email-taken" | "email-invalid" };
 
 /**
- * Convida um funcionário: cria o login dele no Supabase Auth (com o e-mail, ainda sem senha), a pessoa na empresa e o
- * convite. Nenhum e-mail é mandado: o dono leva o link. Se algo falhar no meio, desfaz o login criado.
+ * O dono cria um funcionário: faz o login dele no Supabase Auth com uma SENHA TEMPORÁRIA e o põe na empresa, marcado
+ * para trocar a senha no primeiro acesso. Devolve o e-mail e a senha para o dono entregar à pessoa. Nenhum e-mail é
+ * mandado. Se algo falhar no meio, desfaz o login criado.
  */
 export async function inviteEmployee(input: {
   companyId: string;
   name: string;
   email: string;
   budgetCents: number | null;
-}): Promise<InviteEmployeeResult> {
+}): Promise<CreateEmployeeResult> {
   const db = supabaseAdmin();
 
   const { data: existing, error: lookupError } = await db
@@ -56,9 +68,11 @@ export async function inviteEmployee(input: {
   if (lookupError) throw new Error(`Não deu para procurar a pessoa na equipe: ${lookupError.message}`);
   if (existing) return { ok: false, reason: "already-in-team" };
 
-  // O e-mail fica marcado como confirmado porque é só o nome de entrada: quem prova o convite é o link (F32).
+  const tempPassword = newTempPassword();
+  // O e-mail nasce confirmado: a pessoa entra direto com a senha temporária e troca por uma própria no primeiro acesso.
   const { data: created, error: userError } = await db.auth.admin.createUser({
     email: input.email,
+    password: tempPassword,
     email_confirm: true,
   });
   if (userError || !created.user) {
@@ -79,37 +93,44 @@ export async function inviteEmployee(input: {
       email: input.email,
       role: "employee",
       monthly_budget_cents: input.budgetCents,
+      must_change_password: true,
     })
     .select("id")
     .single();
   if (memberError || !member) {
-    // Sem a pessoa na empresa, o login não serve para nada: apaga para o e-mail poder ser convidado de novo.
+    // Sem a pessoa na empresa, o login não serve para nada: apaga para o e-mail poder ser usado de novo.
     const { error: deleteError } = await db.auth.admin.deleteUser(userId);
-    if (deleteError) console.error("[convite] Sobrou um login sem pessoa:", userId, deleteError.code);
+    if (deleteError) console.error("[funcionário] Sobrou um login sem pessoa:", userId, deleteError.code);
     if (memberError?.code === UNIQUE_VIOLATION) return { ok: false, reason: "already-in-team" };
     throw new Error(`Não deu para pôr o funcionário na equipe: ${memberError?.message ?? "sem resposta"}`);
   }
 
-  const token = await issueInvite({ memberId: member.id, companyId: input.companyId, kind: "invite" });
-  return { ok: true, token };
+  return { ok: true, email: input.email, tempPassword };
 }
 
+export type ResetPasswordResult = { ok: true; email: string; tempPassword: string } | { ok: false; reason: "not-found" };
+
 /**
- * Link novo para um funcionário: continua sendo convite se a pessoa ainda não criou a senha (o convite anterior não
- * foi usado), e vira link de senha nova se ela já entrou alguma vez.
+ * Gera uma SENHA TEMPORÁRIA nova para um funcionário (quem perdeu a senha). Marca para trocar de novo no próximo acesso.
+ * Devolve o e-mail e a senha para o dono entregar. Só funciona com uma pessoa da empresa do dono que tenha login.
  */
-export async function issueNewLink(input: { memberId: string; companyId: string }): Promise<{
-  token: string;
-  kind: InviteKind;
-}> {
-  const { data: current, error } = await supabaseAdmin()
-    .from("member_invites")
-    .select("kind")
-    .eq("member_id", input.memberId)
+export async function issueNewLink(input: { memberId: string; companyId: string }): Promise<ResetPasswordResult> {
+  const db = supabaseAdmin();
+  const { data: member, error } = await db
+    .from("members")
+    .select("email, user_id")
+    .eq("id", input.memberId)
+    .eq("company_id", input.companyId)
     .maybeSingle();
-  if (error) throw new Error(`Não deu para ler o convite atual: ${error.message}`);
-  const kind: InviteKind = current?.kind === "invite" ? "invite" : "reset";
-  return { token: await issueInvite({ ...input, kind }), kind };
+  if (error) throw new Error(`Não deu para ler a pessoa: ${error.message}`);
+  if (!member || !member.user_id) return { ok: false, reason: "not-found" };
+
+  const tempPassword = newTempPassword();
+  const { error: passwordError } = await db.auth.admin.updateUserById(member.user_id as string, { password: tempPassword });
+  if (passwordError) throw new Error(`Não deu para gerar a senha nova: ${passwordError.code ?? passwordError.status}`);
+  const { error: flagError } = await db.from("members").update({ must_change_password: true }).eq("id", input.memberId);
+  if (flagError) throw new Error(`Não deu para marcar a troca de senha: ${flagError.message}`);
+  return { ok: true, email: member.email as string, tempPassword };
 }
 
 export type InviteLookup =
