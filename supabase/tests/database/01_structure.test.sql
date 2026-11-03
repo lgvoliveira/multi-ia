@@ -67,6 +67,8 @@ select results_eq(
     select p.proname::text collate "default" from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname in ('public', 'private')
       and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+      -- As funções "demo_*" são ajudas de teste criadas só no seed local (nunca na produção): a F25 vale para as de verdade.
+      and p.proname not like 'demo\_%'
       and has_function_privilege('service_role', p.oid, 'EXECUTE')
     order by 1
   $$,

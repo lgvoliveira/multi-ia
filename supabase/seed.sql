@@ -45,3 +45,26 @@ values
 
 -- R$ 200,00 de crédito, como se o Pix tivesse chegado.
 select private.wallet_topup('c0000000-0000-4000-8000-000000000001', 20000, 'Recarga de exemplo');
+
+-- Recarga de TESTE, só para a visão raio-x. Este seed roda só no banco LOCAL (supabase start / db reset) e nas
+-- checagens do GitHub; a produção nunca o recebe, então esta função NÃO existe lá. É uma função à parte da recarga de
+-- verdade (private.wallet_topup, que segue só pelo painel do Supabase — F25): é SECURITY DEFINER para conseguir lançar
+-- a recarga, mas só o service_role a chama, e o servidor só a aciona na visão raio-x (lib/auth/demo.ts: OCK_DEMO_MODE=1
+-- e fora de produção). Como não existe na produção, a F25 continua inteira lá. O nome começa com "demo_": o teste de
+-- estrutura ignora as funções "demo_" do seed (nunca vão para a produção).
+create or replace function public.demo_wallet_topup(p_company_id uuid, p_amount_cents bigint)
+returns bigint
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if p_amount_cents is null or p_amount_cents <= 0 or p_amount_cents > 100000000 then
+    raise exception 'invalid_amount';
+  end if;
+  return private.wallet_topup(p_company_id, p_amount_cents, 'Recarga de teste (raio-x)');
+end;
+$$;
+
+revoke execute on function public.demo_wallet_topup(uuid, bigint) from public, anon, authenticated;
+grant execute on function public.demo_wallet_topup(uuid, bigint) to service_role;

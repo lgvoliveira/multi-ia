@@ -19,6 +19,7 @@ const ANA: CurrentMember = {
   name: "Ana Lima",
   email: "ana@example.com",
   role: "employee",
+  mustChangePassword: false,
 };
 const recipe = getRecipe("create-site")!;
 // Pausou depois do plano do Chefe: falta da 2ª fase em diante.

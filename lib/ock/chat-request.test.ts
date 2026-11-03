@@ -8,11 +8,11 @@ describe("conferência de uma mensagem enviada", () => {
   it("aceita a mensagem, a conversa e os anexos, sem espaços nas pontas e sem anexo repetido", () => {
     expect(parseSendBody({ message: "  Oi  ", conversationId: FILE_A, fileIds: [FILE_B, FILE_B] })).toEqual({
       ok: true,
-      input: { message: "Oi", conversationId: FILE_A, fileIds: [FILE_B] },
+      input: { message: "Oi", conversationId: FILE_A, fileIds: [FILE_B], agentId: null },
     });
     expect(parseSendBody({ message: "Oi" })).toEqual({
       ok: true,
-      input: { message: "Oi", conversationId: null, fileIds: [] },
+      input: { message: "Oi", conversationId: null, fileIds: [], agentId: null },
     });
   });
 

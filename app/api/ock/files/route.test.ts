@@ -26,6 +26,7 @@ const CARLA: CurrentMember = {
   name: "Carla Dias",
   email: "carla@example.com",
   role: "employee",
+  mustChangePassword: false,
 };
 
 function upload(file: File | null, pageMemberId: string | null = CARLA.id): Promise<Response> {

@@ -11,20 +11,22 @@ vi.mock("@/lib/auth/session", () => ({ signedInSession: async () => ({}) }));
 vi.mock("@/lib/ock/files", () => ({
   listOwnDeliveries: async (_session: unknown, memberId: string) => {
     state.asked.push(memberId);
-    return [{ id: "a1", name: "relatorio.pdf", createdAt: "2026-10-25T10:00:00Z" }];
+    return [{ id: "a1", name: "relatorio.pdf", createdAt: "2026-10-25T10:00:00Z", folderId: null }];
   },
+  listFolders: async () => [],
 }));
 
 describe("rota GET /api/ock/deliveries", () => {
   it("lista as entregas de quem está logado, mesmo quando é o dono", async () => {
     state.viewer = {
       status: "member",
-      member: { id: "dona", companyId: "c1", companyName: "Doce Encanto", name: "Marina", email: "m@example.com", role: "owner" },
+      member: { id: "dona", companyId: "c1", companyName: "Doce Encanto", name: "Marina", email: "m@example.com", role: "owner", mustChangePassword: false },
     };
     const response = await GET();
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      deliveries: [{ id: "a1", name: "relatorio.pdf", createdAt: "2026-10-25T10:00:00Z" }],
+      deliveries: [{ id: "a1", name: "relatorio.pdf", createdAt: "2026-10-25T10:00:00Z", folderId: null }],
+      folders: [],
     });
     expect(state.asked).toEqual(["dona"]);
   });

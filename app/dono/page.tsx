@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { OwnerHome } from "@/components/OwnerHome";
+import { isDemoMode } from "@/lib/auth/demo";
 import { createSessionClient } from "@/lib/auth/session";
 import { requireMember } from "@/lib/auth/viewer";
+import { listCompanyAgents } from "@/lib/ock/company-agents";
 import { loadCompanyCredit, loadMemberMonths, loadMonthStatement } from "@/lib/ock/spending";
 import { listTeam } from "@/lib/ock/team";
 
@@ -17,11 +19,12 @@ export default async function DonoPage() {
   const me = await requireMember("owner");
   const supabase = await createSessionClient();
   if (!supabase) throw new Error("Login não configurado.");
-  const [team, credit, months, statement] = await Promise.all([
+  const [team, credit, months, statement, agents] = await Promise.all([
     listTeam(supabase),
     loadCompanyCredit(supabase),
     loadMemberMonths(supabase),
     loadMonthStatement(supabase),
+    listCompanyAgents(supabase),
   ]);
   // O banco só entrega o crédito para quem é dono; se não veio, o login mudou entre conferir e ler.
   if (!credit) throw new Error("O crédito da empresa não veio para o dono.");
@@ -32,6 +35,8 @@ export default async function DonoPage() {
       credit={credit}
       months={new Map(months.map((month) => [month.memberId, month]))}
       statement={statement}
+      agents={agents}
+      demo={isDemoMode()}
     />
   );
 }

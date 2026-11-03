@@ -1,41 +1,46 @@
 "use client";
 
-// O link que o dono acabou de gerar, para mandar ao funcionário: copiar ou abrir o WhatsApp com a mensagem pronta.
-// O link só aparece aqui, uma vez: o banco guarda só o resumo do código. Perdeu? Gera outro (o antigo para de valer).
+// As credenciais que o dono acabou de criar para o funcionário: o e-mail e a SENHA TEMPORÁRIA, para entregar à pessoa
+// (ex.: pelo WhatsApp). A senha só aparece aqui, uma vez. A pessoa entra com ela e cria a própria no primeiro acesso.
 
 import { useEffect, useId, useRef, useState } from "react";
 import { firstName } from "@/lib/auth/member";
 import styles from "./InviteLinkPanel.module.css";
 
-interface InviteLinkPanelProps {
+interface CredentialsPanelProps {
   name: string;
-  link: string;
-  kind: "invite" | "reset";
+  email: string;
+  tempPassword: string;
+  /** Senha nova (reset) em vez de funcionário recém-criado: muda só os textos. */
+  reset?: boolean;
   onClose?: () => void;
 }
 
-function whatsappMessage(name: string, link: string, kind: "invite" | "reset"): string {
+function whatsappMessage(name: string, email: string, password: string, reset: boolean): string {
   const greeting = `Olá, ${firstName(name)}!`;
-  return kind === "invite"
-    ? `${greeting} Este é o seu convite para entrar na equipe no OCK. Abra o link e crie a sua senha ` +
-        `(ele vale por 24 horas e funciona uma vez só): ${link}`
-    : `${greeting} Este é o link para você criar uma senha nova no OCK ` +
-        `(ele vale por 24 horas e funciona uma vez só): ${link}`;
+  const head = reset ? "Aqui está a sua senha nova no OCK." : "Você foi adicionado à equipe no OCK.";
+  return (
+    `${greeting} ${head}\n` +
+    `E-mail: ${email}\n` +
+    `Senha temporária: ${password}\n` +
+    `Entre no OCK com esses dados e crie a sua própria senha no primeiro acesso.`
+  );
 }
 
-export function InviteLinkPanel({ name, link, kind, onClose }: InviteLinkPanelProps) {
+export function InviteLinkPanel({ name, email, tempPassword, reset = false, onClose }: CredentialsPanelProps) {
   const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
   const titleRef = useRef<HTMLParagraphElement>(null);
-  const inputId = useId();
+  const emailId = useId();
+  const passwordId = useId();
 
   // O painel aparece no lugar do botão que o gerou: o foco vai para ele, e o leitor de tela lê o título.
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
 
-  async function copyLink() {
+  async function copyBoth() {
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(`E-mail: ${email}\nSenha temporária: ${tempPassword}`);
       setCopy("copied");
     } catch {
       setCopy("failed");
@@ -46,31 +51,44 @@ export function InviteLinkPanel({ name, link, kind, onClose }: InviteLinkPanelPr
   return (
     <div className={styles.panel}>
       <p ref={titleRef} tabIndex={-1} className={styles.title}>
-        {kind === "invite" ? `Convite criado para ${first}` : `Link de senha nova para ${first}`}
+        {reset ? `Senha nova de ${first}` : `Funcionário criado: ${first}`}
       </p>
       <p className={styles.text}>
-        Mande este link para a pessoa, por exemplo pelo WhatsApp. Ele vale por 24 horas e funciona uma vez só.
+        Entregue estes dados à pessoa (ex.: pelo WhatsApp). A senha é temporária: no primeiro acesso ela cria a própria.
+        Aparecem aqui só uma vez.
       </p>
 
-      <label htmlFor={inputId} className={styles.label}>
-        Link
+      <label htmlFor={emailId} className={styles.label}>
+        E-mail
       </label>
       <input
-        id={inputId}
+        id={emailId}
         className={styles.link}
         type="text"
-        value={link}
+        value={email}
+        readOnly
+        onFocus={(event) => event.currentTarget.select()}
+      />
+
+      <label htmlFor={passwordId} className={styles.label}>
+        Senha temporária
+      </label>
+      <input
+        id={passwordId}
+        className={styles.link}
+        type="text"
+        value={tempPassword}
         readOnly
         onFocus={(event) => event.currentTarget.select()}
       />
 
       <div className={styles.actions}>
-        <button type="button" className={styles.primary} onClick={copyLink}>
-          {copy === "copied" ? "Link copiado!" : "Copiar o link"}
+        <button type="button" className={styles.primary} onClick={copyBoth}>
+          {copy === "copied" ? "Copiado!" : "Copiar e-mail e senha"}
         </button>
         <a
           className={styles.secondary}
-          href={`https://wa.me/?text=${encodeURIComponent(whatsappMessage(name, link, kind))}`}
+          href={`https://wa.me/?text=${encodeURIComponent(whatsappMessage(name, email, tempPassword, reset))}`}
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -85,8 +103,8 @@ export function InviteLinkPanel({ name, link, kind, onClose }: InviteLinkPanelPr
 
       <p className={styles.hint} aria-live="polite">
         {copy === "failed"
-          ? "Não deu para copiar sozinho. Clique no link acima e copie com Ctrl + C."
-          : "Se o link se perder, gere outro no cartão da pessoa: o antigo para de valer."}
+          ? "Não deu para copiar sozinho. Selecione os campos e copie com Ctrl + C."
+          : "Se a senha se perder, gere uma nova no cartão da pessoa."}
       </p>
     </div>
   );

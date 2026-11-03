@@ -11,7 +11,7 @@ import type { ChatAction, ChatConversation } from "./chat";
 const CONVERSATIONS = "conversations";
 const TASKS = "tasks";
 const ENTRIES = "wallet_entries";
-const CONVERSATION_COLUMNS = "id, title, updated_at";
+const CONVERSATION_COLUMNS = "id, title, updated_at, agent_id";
 const TASK_COLUMNS = "id, prompt, answer, status, action, chosen_provider, chosen_tier, chosen_effort, created_at";
 
 /** Quantas mensagens de uma conversa a tela mostra (as mais recentes). */
@@ -21,10 +21,11 @@ interface ConversationRow {
   id: string;
   title: string;
   updated_at: string;
+  agent_id: string | null;
 }
 
 function toConversation(row: ConversationRow): ChatConversation {
-  return { id: row.id, title: row.title, updatedAt: row.updated_at };
+  return { id: row.id, title: row.title, updatedAt: row.updated_at, agentId: row.agent_id ?? null };
 }
 
 /** As conversas da própria pessoa, das mais recentes para as mais antigas. */
@@ -45,9 +46,20 @@ export async function loadOwnConversation(session: SupabaseClient, id: string): 
   return data ? toConversation(data as ConversationRow) : null;
 }
 
-/** Cria uma conversa em nome de quem está logado (a empresa e a pessoa vêm do login, não daqui). */
-export async function createOwnConversation(session: SupabaseClient, title: string): Promise<ChatConversation> {
-  const { data, error } = await session.from(CONVERSATIONS).insert({ title }).select(CONVERSATION_COLUMNS).single();
+/**
+ * Cria uma conversa em nome de quem está logado (a empresa e a pessoa vêm do login, não daqui). `agentId` liga a conversa
+ * a um agente pronto (lib/ock/agents.ts); null é um chat comum.
+ */
+export async function createOwnConversation(
+  session: SupabaseClient,
+  title: string,
+  agentId: string | null = null,
+): Promise<ChatConversation> {
+  const { data, error } = await session
+    .from(CONVERSATIONS)
+    .insert({ title, agent_id: agentId })
+    .select(CONVERSATION_COLUMNS)
+    .single();
   if (error) throw error;
   return toConversation(data as ConversationRow);
 }

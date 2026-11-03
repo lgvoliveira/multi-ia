@@ -12,8 +12,10 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { QuickChat } from "@/components/QuickChat";
-import type { ChatConversation, ChatDelivery, MonthSpending } from "@/lib/ock/chat";
-import { fileUrl, loadDeliveries, loadSpending } from "@/lib/ock/chat-client";
+import { MAX_FOLDER_NAME } from "@/lib/ock/chat";
+import type { CompanyAgentCard } from "@/lib/ock/agent-forms";
+import type { ChatConversation, ChatDelivery, ChatFolder, DeliveriesData, MonthSpending } from "@/lib/ock/chat";
+import { createFolder, deleteFolder, fileUrl, loadDeliveries, loadSpending, moveDelivery } from "@/lib/ock/chat-client";
 import { formatBRL } from "@/lib/ock/pricing";
 import { formatDateTime, STATEMENT_PAGE_SIZE, type StatementLine } from "@/lib/ock/statement";
 import type { RecipeSummary } from "@/lib/recipes/types";
@@ -37,6 +39,8 @@ interface OckWorkspaceProps {
   recipeCards: RecipeSummary[];
   /** As receitas prontas, com o que a tela de cada uma precisa. */
   recipes: WorkspaceRecipe[];
+  /** Os agentes prontos que a empresa criou (Fase 2); aparecem na prateleira junto com os de fábrica. */
+  companyAgents: CompanyAgentCard[];
   /** A aba e a receita com que a página abre, lidas do endereço. */
   initialView: WorkspaceView;
   /** Se a voz está ligada no chat (OCK_AI_TOOLS). */
@@ -51,12 +55,15 @@ export function OckWorkspace({
   initialMonth,
   recipeCards,
   recipes,
+  companyAgents,
   initialView,
   voice,
 }: OckWorkspaceProps) {
   const ids = useId();
   const [view, setView] = useState(initialView);
   const [month, setMonth] = useState(initialMonth);
+  // O pedido de abrir o chat com um agente pronto: o nonce faz o chat reagir mesmo ao mesmo agente duas vezes seguidas.
+  const [agentChat, setAgentChat] = useState<{ agentId: string; nonce: number } | null>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const tab = view.tab;
   const suggestions = recipeCards.filter((card) => card.available);
@@ -70,6 +77,12 @@ export function OckWorkspace({
 
   function selectTab(next: WorkspaceTab) {
     changeView({ ...view, tab: next });
+  }
+
+  // Um agente foi escolhido na aba Receitas: vai para o Chat e manda o chat começar uma conversa nova com ele.
+  function startAgentChat(agentId: string) {
+    setAgentChat({ agentId, nonce: Date.now() });
+    changeView({ ...view, tab: "chat" });
   }
 
   // A receita cobrou uma etapa: busca o gasto do mês de novo, para o alto da página acompanhar.
@@ -94,12 +107,24 @@ export function OckWorkspace({
       <header className={styles.bar}>
         <div className={styles.greeting}>
           <h1 className={styles.title}>Olá, {firstName}!</h1>
-          <p className={styles.lead}>Peça o que precisar: o Chefe escolhe a IA, e você vê quanto cada resposta custou.</p>
+          <p className={styles.lead}>Peça o que precisar em português. O Chefe cuida do resto.</p>
         </div>
         <div className={styles.side}>
           <p className={styles.month}>
-            Gasto do mês: <strong>{formatBRL(month.spentCents)}</strong>
-            {month.budgetCents === null ? " (sem teto)" : ` de ${formatBRL(month.budgetCents)}`}
+            {isOwner ? (
+              <>
+                Gasto do mês: <strong>{formatBRL(month.spentCents)}</strong>
+                {month.budgetCents === null ? " (sem teto)" : ` de ${formatBRL(month.budgetCents)}`}
+              </>
+            ) : month.budgetCents === null ? (
+              <>
+                Créditos: <strong>ilimitados</strong>
+              </>
+            ) : (
+              <>
+                Créditos restantes: <strong>{formatCredits(Math.max(0, month.budgetCents - month.spentCents))}</strong>
+              </>
+            )}
           </p>
         </div>
       </header>
@@ -133,6 +158,8 @@ export function OckWorkspace({
           onMonthChange={setMonth}
           recipeSuggestions={suggestions}
           onOpenRecipe={(recipeId) => changeView({ tab: "recipes", recipeId })}
+          agentChat={agentChat}
+          companyAgents={companyAgents}
           voice={voice}
         />
       </div>
@@ -146,6 +173,8 @@ export function OckWorkspace({
           onOpen={(recipeId) => changeView({ tab: "recipes", recipeId })}
           onClose={() => changeView({ tab: "recipes", recipeId: null })}
           onSpendingChange={refreshMonth}
+          onStartAgent={startAgentChat}
+          companyAgents={companyAgents}
         />
       </div>
       <div
@@ -155,7 +184,7 @@ export function OckWorkspace({
         hidden={tab !== "deliveries"}
       >
         {/* Montadas só quando abertas: cada vez que a aba abre, a lista vem atualizada. */}
-        {tab === "deliveries" && <DeliveriesPanel isOwner={isOwner} />}
+        {tab === "deliveries" && <DeliveriesPanel isOwner={isOwner} pageMemberId={pageMemberId} />}
       </div>
       <div
         role="tabpanel"
@@ -171,40 +200,84 @@ export function OckWorkspace({
 
 type Loaded<T> = { state: "loading" } | { state: "ready"; data: T } | { state: "error"; problem: string };
 
-function DeliveriesPanel({ isOwner }: { isOwner: boolean }) {
-  const [deliveries, setDeliveries] = useState<Loaded<ChatDelivery[]>>({ state: "loading" });
+function DeliveriesPanel({ isOwner, pageMemberId }: { isOwner: boolean; pageMemberId: string }) {
+  const [state, setState] = useState<Loaded<DeliveriesData>>({ state: "loading" });
+  const [newFolder, setNewFolder] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
 
-  useEffect(() => {
-    let ignore = false;
+  const reload = useCallback(() => {
     void loadDeliveries().then((result) => {
-      if (ignore) return;
-      setDeliveries(result.ok ? { state: "ready", data: result.data } : { state: "error", problem: result.problem });
+      setState(result.ok ? { state: "ready", data: result.data } : { state: "error", problem: result.problem });
     });
-    return () => {
-      ignore = true;
-    };
   }, []);
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
-  return (
-    <section className={styles.panel} aria-label="Entregas">
-      <p className={styles.panelLead}>
-        Tudo o que as IAs fizeram para você: o site das receitas, PDF, planilha, Word, gráfico e projeto em .zip.
+  async function addFolder() {
+    const name = newFolder.trim();
+    if (!name || busy) return;
+    setBusy(true);
+    setProblem(null);
+    const result = await createFolder(name, pageMemberId);
+    setBusy(false);
+    if (!result.ok) {
+      setProblem(result.problem);
+      return;
+    }
+    setNewFolder("");
+    reload();
+  }
+
+  async function move(deliveryId: string, folderId: string | null) {
+    setBusy(true);
+    setProblem(null);
+    const result = await moveDelivery(deliveryId, folderId, pageMemberId);
+    setBusy(false);
+    if (!result.ok) {
+      setProblem(result.problem);
+      return;
+    }
+    reload();
+  }
+
+  async function removeFolder(id: string) {
+    if (!window.confirm("Apagar esta tarefa? Os documentos dentro dela voltam para “Sem tarefa”.")) return;
+    setBusy(true);
+    setProblem(null);
+    const result = await deleteFolder(id, pageMemberId);
+    setBusy(false);
+    if (!result.ok) {
+      setProblem(result.problem);
+      return;
+    }
+    reload();
+  }
+
+  if (state.state === "loading") return <p className={`${styles.panel} ${styles.muted}`}>Carregando…</p>;
+  if (state.state === "error") {
+    return (
+      <p className={`${styles.panel} ${styles.problem}`} role="alert">
+        {state.problem}
       </p>
-      {!isOwner && <p className={styles.muted}>{OWNER_SEES}</p>}
-      {deliveries.state === "loading" && <p className={styles.muted}>Carregando…</p>}
-      {deliveries.state === "error" && (
-        <p className={styles.problem} role="alert">
-          {deliveries.problem}
+    );
+  }
+
+  const { deliveries, folders } = state.data;
+
+  // O dono vê as entregas da empresa numa lista só; as pastas (tarefas) são a organização de cada funcionário.
+  if (isOwner) {
+    return (
+      <section className={styles.panel} aria-label="Entregas">
+        <p className={styles.panelLead}>
+          Tudo o que as IAs fizeram para a equipe: o site das receitas, PDF, planilha, Word, gráfico e projeto em .zip.
         </p>
-      )}
-      {deliveries.state === "ready" &&
-        (deliveries.data.length === 0 ? (
-          <p className={styles.muted}>
-            Nenhuma entrega ainda. Peça um arquivo no chat (ex.: &ldquo;gere um PDF&rdquo;) ou use uma receita.
-          </p>
+        {deliveries.length === 0 ? (
+          <p className={styles.muted}>Nenhuma entrega ainda.</p>
         ) : (
           <ul className={styles.rows}>
-            {deliveries.data.map((delivery) => (
+            {deliveries.map((delivery) => (
               <li key={delivery.id} className={styles.row}>
                 <span className={styles.rowName}>{delivery.name}</span>
                 <span className={styles.rowDate}>{formatDateTime(delivery.createdAt)}</span>
@@ -214,7 +287,139 @@ function DeliveriesPanel({ isOwner }: { isOwner: boolean }) {
               </li>
             ))}
           </ul>
-        ))}
+        )}
+      </section>
+    );
+  }
+
+  // Funcionário: as entregas organizadas por tarefa (pastas), com criar tarefa e mover documento entre elas.
+  const byFolder = new Map<string | null, ChatDelivery[]>();
+  for (const delivery of deliveries) {
+    const list = byFolder.get(delivery.folderId);
+    if (list) list.push(delivery);
+    else byFolder.set(delivery.folderId, [delivery]);
+  }
+  const loose = byFolder.get(null) ?? [];
+
+  return (
+    <section className={styles.panel} aria-label="Entregas">
+      <p className={styles.panelLead}>
+        Tudo o que as IAs fizeram para você, organizado por tarefa. Crie uma tarefa e mova cada documento (de qualquer
+        chat) para a tarefa que quiser.
+      </p>
+      <p className={styles.muted}>{OWNER_SEES}</p>
+      {problem && (
+        <p className={styles.problem} role="alert">
+          {problem}
+        </p>
+      )}
+
+      <form
+        className={styles.newFolder}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void addFolder();
+        }}
+      >
+        <input
+          className={styles.newFolderInput}
+          value={newFolder}
+          onChange={(event) => setNewFolder(event.target.value)}
+          maxLength={MAX_FOLDER_NAME}
+          placeholder="Nome da tarefa (ex.: Campanha de maio)"
+          aria-label="Nome da nova tarefa"
+        />
+        <button type="submit" className={styles.newFolderBtn} disabled={busy || !newFolder.trim()}>
+          + Nova tarefa
+        </button>
+      </form>
+
+      {deliveries.length === 0 && folders.length === 0 && (
+        <p className={styles.muted}>
+          Nenhuma entrega ainda. Peça um arquivo no chat (ex.: &ldquo;gere um PDF&rdquo;) ou use uma receita.
+        </p>
+      )}
+
+      {folders.map((folder) => (
+        <FolderBlock
+          key={folder.id}
+          title={folder.name}
+          items={byFolder.get(folder.id) ?? []}
+          folders={folders}
+          busy={busy}
+          onMove={move}
+          onDelete={() => void removeFolder(folder.id)}
+        />
+      ))}
+
+      {(loose.length > 0 || folders.length > 0) && (
+        <FolderBlock title="Sem tarefa" items={loose} folders={folders} busy={busy} onMove={move} />
+      )}
+    </section>
+  );
+}
+
+function FolderBlock({
+  title,
+  items,
+  folders,
+  busy,
+  onMove,
+  onDelete,
+}: {
+  title: string;
+  items: ChatDelivery[];
+  folders: ChatFolder[];
+  busy: boolean;
+  onMove: (deliveryId: string, folderId: string | null) => void;
+  onDelete?: () => void;
+}) {
+  return (
+    <section className={styles.folder} aria-label={`Tarefa: ${title}`}>
+      <div className={styles.folderHead}>
+        <h3 className={styles.folderName}>
+          {title}
+          <span className={styles.folderCount}>({items.length})</span>
+        </h3>
+        {onDelete && (
+          <button type="button" className={styles.folderDelete} onClick={onDelete} disabled={busy}>
+            Apagar tarefa
+          </button>
+        )}
+      </div>
+      {items.length === 0 ? (
+        <p className={styles.muted}>
+          {onDelete ? "Vazia. Mova um documento para cá pelo seletor “Mover para”." : "Nenhum documento solto."}
+        </p>
+      ) : (
+        <ul className={styles.rows}>
+          {items.map((delivery) => (
+            <li key={delivery.id} className={styles.row}>
+              <span className={styles.rowName}>{delivery.name}</span>
+              <span className={styles.rowDate}>{formatDateTime(delivery.createdAt)}</span>
+              <label>
+                <span className={styles.visuallyHidden}>Mover {delivery.name} para a tarefa</span>
+                <select
+                  className={styles.moveSelect}
+                  value={delivery.folderId ?? ""}
+                  disabled={busy}
+                  onChange={(event) => onMove(delivery.id, event.target.value || null)}
+                >
+                  <option value="">Sem tarefa</option>
+                  {folders.map((folder) => (
+                    <option key={folder.id} value={folder.id}>
+                      {folder.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <a className={styles.rowLink} href={fileUrl(delivery.id)} download={delivery.name}>
+                Baixar<span className={styles.visuallyHidden}> {delivery.name}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
@@ -251,6 +456,41 @@ function SpendingPanel({ isOwner, onMonthChange }: SpendingPanelProps) {
   }
 
   const { month, lines, more } = spending.data;
+
+  // O funcionário vê só os créditos que restam (nunca valores em dinheiro — isso é do dono).
+  if (!isOwner) {
+    const remaining = month.budgetCents === null ? null : Math.max(0, month.budgetCents - month.spentCents);
+    return (
+      <section className={styles.panel} aria-label="Meus créditos">
+        <div className={styles.usage}>
+          <div className={styles.usageTop}>
+            <div className={styles.usageItem}>
+              <span className={styles.muted}>Créditos restantes neste mês</span>
+              <span className={styles.usageValue}>{remaining === null ? "Ilimitados" : formatCredits(remaining)}</span>
+            </div>
+            {month.budgetCents !== null && (
+              <div className={`${styles.usageItem} ${styles.usageRight}`}>
+                <span className={styles.muted}>Do total do mês</span>
+                <span className={styles.usageLimit}>{formatCredits(month.budgetCents)} créditos</span>
+              </div>
+            )}
+          </div>
+          {month.budgetCents !== null && (
+            <BudgetBar
+              spentCents={month.spentCents}
+              budgetCents={month.budgetCents}
+              label="Quanto dos seus créditos do mês já foi usado"
+            />
+          )}
+          <p className={styles.muted}>
+            Os créditos renovam no dia 1º. O total é definido pelo dono da empresa. O que você produziu fica na aba
+            Entregas.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className={styles.panel} aria-label="Meus gastos">
       <div className={styles.usage}>
@@ -285,6 +525,11 @@ function SpendingPanel({ isOwner, onMonthChange }: SpendingPanelProps) {
       {more && <p className={styles.muted}>Mostrando os {STATEMENT_PAGE_SIZE} gastos mais recentes.</p>}
     </section>
   );
+}
+
+/** Os créditos da OCK que o funcionário vê (1 crédito = R$ 0,01): esconde o valor em dinheiro, mostra um número. */
+function formatCredits(cents: number): string {
+  return Math.round(cents).toLocaleString("pt-BR");
 }
 
 function nextTabIndex(key: string, current: number, count: number): number | null {

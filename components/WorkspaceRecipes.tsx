@@ -5,11 +5,13 @@
 // os cartões; o time de uma receita que já começou continua trabalhando no servidor e é retomado ao abri-la de novo.
 
 import { useEffect, useId, useRef } from "react";
+import type { CompanyAgentCard } from "@/lib/ock/agent-forms";
 import type { RecipeScreen } from "@/lib/recipes/screen";
 import type { RecipeSummary } from "@/lib/recipes/types";
 import type { StepCost } from "@/lib/runs/estimate";
 import { RecipeCard } from "./RecipeCard";
 import { RecipeFlow } from "./RecipeFlow";
+import { WorkspaceAgents } from "./WorkspaceAgents";
 import styles from "./WorkspaceRecipes.module.css";
 
 /** Uma receita pronta, com tudo o que a tela dela precisa: os dados da tela e o custo máximo de cada etapa. */
@@ -26,6 +28,10 @@ interface WorkspaceRecipesProps {
   onClose: () => void;
   /** Avisado quando a receita aberta gasta: o espaço de trabalho atualiza o "Gasto do mês". */
   onSpendingChange: () => void;
+  /** Abrir o chat já ligado a um agente pronto (a prateleira de agentes fica no alto desta aba). */
+  onStartAgent: (agentId: string) => void;
+  /** Os agentes que a própria empresa criou (Fase 2); entram numa área "Da sua empresa". */
+  companyAgents: CompanyAgentCard[];
 }
 
 export function WorkspaceRecipes({
@@ -36,6 +42,8 @@ export function WorkspaceRecipes({
   onOpen,
   onClose,
   onSpendingChange,
+  onStartAgent,
+  companyAgents,
 }: WorkspaceRecipesProps) {
   const titleId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -75,20 +83,25 @@ export function WorkspaceRecipes({
   }
 
   return (
-    <section className={styles.shelf} aria-labelledby={titleId}>
-      <div className={styles.intro}>
-        <h2 id={titleId} ref={headingRef} tabIndex={-1} className={styles.title}>
-          Receitas prontas
-        </h2>
-        <p className={styles.lead}>
-          Para um serviço maior, um time de IAs já montado: cada uma tem um papel, e você pode trocar qualquer uma.
-        </p>
-      </div>
-      <div className={styles.grid}>
-        {cards.map((card) => (
-          <RecipeCard key={card.id} recipe={card} onUse={() => onOpen(card.id)} />
-        ))}
-      </div>
-    </section>
+    <div className={styles.page}>
+      <WorkspaceAgents onStart={onStartAgent} companyAgents={companyAgents} />
+
+      <section className={styles.shelf} aria-labelledby={titleId}>
+        <div className={styles.intro}>
+          <h2 id={titleId} ref={headingRef} tabIndex={-1} className={styles.title}>
+            Receitas prontas
+          </h2>
+          <p className={styles.lead}>
+            Diferente dos agentes: aqui um time de IAs trabalha sozinho, do começo ao fim, e te entrega um arquivo pronto
+            (um site, uma proposta em Word). Você descreve o serviço e recebe o resultado.
+          </p>
+        </div>
+        <div className={styles.grid}>
+          {cards.map((card) => (
+            <RecipeCard key={card.id} recipe={card} onUse={() => onOpen(card.id)} />
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { DemoKeys } from "@/components/DemoKeys";
 import { DEMO_ACCOUNTS, isDemoMode, type DemoView } from "@/lib/auth/demo";
 import { entrarComoDemo } from "./actions";
 import styles from "./raiox.module.css";
@@ -39,6 +40,15 @@ export default function RaioXPage() {
             </form>
           );
         })}
+      </div>
+
+      <div className={styles.card}>
+        <h2 className={styles.cardTitle}>Conectar chaves de IA (teste)</h2>
+        <p className={styles.cardText}>
+          Cole suas chaves da plataforma para usar a IA de verdade aqui no computador, sem editar arquivo. Ficam só
+          nesta máquina (fora do Git e do site publicado). Sem chave, tudo continua simulado.
+        </p>
+        <DemoKeys />
       </div>
     </main>
   );

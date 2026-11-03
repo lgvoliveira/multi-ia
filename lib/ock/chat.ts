@@ -58,6 +58,8 @@ export interface ChatConversation {
   id: string;
   title: string;
   updatedAt: string;
+  /** O agente pronto com que a conversa começou (lib/ock/agents.ts), ou null (chat comum). */
+  agentId: string | null;
 }
 
 /** O que a plataforma fez com o pedido. Imagem, por enquanto, só responde que chega em breve (decisão 2, issue #39). */
@@ -99,7 +101,24 @@ export interface MonthSpending {
 
 export interface ChatDelivery extends ChatFile {
   createdAt: string;
+  /** A pasta (tarefa) em que a entrega está, ou null (sem pasta). */
+  folderId: string | null;
 }
+
+/** Uma pasta de entregas ("tarefa") que o funcionário criou para organizar os documentos. */
+export interface ChatFolder {
+  id: string;
+  name: string;
+}
+
+/** O que a aba Entregas carrega: as entregas da pessoa e as pastas em que ela organiza. */
+export interface DeliveriesData {
+  deliveries: ChatDelivery[];
+  folders: ChatFolder[];
+}
+
+/** O nome mais longo aceito para uma pasta (tarefa). */
+export const MAX_FOLDER_NAME = 80;
 
 /** A resposta do servidor a uma mensagem enviada. */
 export interface SendResult {

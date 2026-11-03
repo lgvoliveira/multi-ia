@@ -8,9 +8,10 @@ import {
   MAX_ATTACHMENT_BYTES,
   UNREADABLE_ATTACHMENT,
   type ChatConversation,
-  type ChatDelivery,
   type ChatFile,
+  type ChatFolder,
   type ChatTask,
+  type DeliveriesData,
   type MonthSpending,
   type SendResult,
 } from "./chat";
@@ -26,6 +27,8 @@ export interface SendBody {
   conversationId: string | null;
   fileIds: string[];
   pageMemberId: string;
+  /** Ao começar uma conversa nova com um agente pronto, o id dele (lib/ock/agents.ts). */
+  agentId?: string | null;
 }
 
 /** Manda uma mensagem e espera a resposta (com as IAs de verdade, pode levar alguns minutos). */
@@ -86,9 +89,79 @@ export function loadConversation(
   return request(`/api/ock/conversations/${encodeURIComponent(id)}`, {}, send);
 }
 
-export async function loadDeliveries(send: typeof fetch = fetch): Promise<Fetched<ChatDelivery[]>> {
-  const result = await request<{ deliveries: ChatDelivery[] }>("/api/ock/deliveries", {}, send);
-  return result.ok ? { ok: true, data: result.data.deliveries } : result;
+/** As entregas da pessoa e as pastas (tarefas) em que ela organiza. */
+export function loadDeliveries(send: typeof fetch = fetch): Promise<Fetched<DeliveriesData>> {
+  return request<DeliveriesData>("/api/ock/deliveries", {}, send);
+}
+
+/** Cria uma pasta (tarefa) para organizar as entregas. */
+export function createFolder(
+  name: string,
+  pageMemberId: string,
+  send: typeof fetch = fetch,
+): Promise<Fetched<{ folder: ChatFolder }>> {
+  return request(
+    "/api/ock/folders",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, [PAGE_MEMBER_FIELD]: pageMemberId }),
+    },
+    send,
+  );
+}
+
+/** Renomeia uma pasta. */
+export function renameFolder(
+  id: string,
+  name: string,
+  pageMemberId: string,
+  send: typeof fetch = fetch,
+): Promise<Fetched<{ ok: true }>> {
+  return request(
+    "/api/ock/folders",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, name, [PAGE_MEMBER_FIELD]: pageMemberId }),
+    },
+    send,
+  );
+}
+
+/** Apaga uma pasta (as entregas dentro dela voltam para "sem pasta"). */
+export function deleteFolder(
+  id: string,
+  pageMemberId: string,
+  send: typeof fetch = fetch,
+): Promise<Fetched<{ ok: true }>> {
+  return request(
+    "/api/ock/folders",
+    {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, [PAGE_MEMBER_FIELD]: pageMemberId }),
+    },
+    send,
+  );
+}
+
+/** Move uma entrega para uma pasta (folderId) ou para "sem pasta" (folderId null). */
+export function moveDelivery(
+  deliveryId: string,
+  folderId: string | null,
+  pageMemberId: string,
+  send: typeof fetch = fetch,
+): Promise<Fetched<{ ok: true }>> {
+  return request(
+    "/api/ock/deliveries",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deliveryId, folderId, [PAGE_MEMBER_FIELD]: pageMemberId }),
+    },
+    send,
+  );
 }
 
 export function loadSpending(

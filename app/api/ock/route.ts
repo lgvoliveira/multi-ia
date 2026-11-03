@@ -37,9 +37,9 @@ export async function POST(request: Request): Promise<Response> {
   const parsed = parseSendBody(body);
   if (!parsed.ok) return chatProblem(400, parsed.problem);
 
-  const { message, conversationId, fileIds } = parsed.input;
+  const { message, conversationId, fileIds, agentId } = parsed.input;
   try {
-    const outcome = await runQuickTask(caller.me, caller.session, { message, conversationId, fileIds });
+    const outcome = await runQuickTask(caller.me, caller.session, { message, conversationId, fileIds, agentId });
     if (!outcome.ok) return chatProblem(outcome.status, outcome.problem);
     return Response.json(outcome.result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

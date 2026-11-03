@@ -1,3 +1,10 @@
+/* A aba inteira: a prateleira de agentes no alto e a de receitas embaixo, bem separadas. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
 .shelf {
   display: flex;
   flex-direction: column;

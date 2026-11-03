@@ -44,7 +44,7 @@ export function MemberActions({ memberId, ownerId, name, status, budgetInput }: 
       {status === "active" ? (
         <>
           <button type="button" className={styles.smallButton} onClick={() => setMode("link")}>
-            Gerar link novo
+            Gerar senha nova
           </button>
           <button type="button" className={styles.smallButton} onClick={() => setMode("disable")}>
             Desativar
@@ -149,19 +149,21 @@ function DisableConfirm({ ids, name, onDone }: { ids: Ids; name: string; onDone:
 function NewLink({ ids, name, onDone }: { ids: Ids; name: string; onDone: () => void }) {
   const [state, formAction, pending] = useActionState(newLinkAction, IDLE);
 
-  if (state.status === "link") return <InviteLinkPanel name={name} link={state.link} kind={state.kind} onClose={onDone} />;
+  if (state.status === "credentials") {
+    return <InviteLinkPanel name={name} email={state.email} tempPassword={state.tempPassword} reset onClose={onDone} />;
+  }
 
   return (
     <form className={styles.inlineForm} action={formAction}>
       <HiddenIds ids={ids} />
       <p className={styles.confirmText}>
-        Gerar um link novo para {firstName(name)}? Serve para quem não aceitou o convite a tempo ou perdeu a senha. O
-        link anterior para de valer; a senha atual continua valendo até o link novo ser usado.
+        Gerar uma senha temporária nova para {firstName(name)}? Serve para quem perdeu a senha. A senha atual deixa de
+        valer, e a pessoa cria uma própria no primeiro acesso.
       </p>
       <ErrorMessage state={state} />
       <div className={styles.buttons}>
         <button type="submit" className={styles.smallPrimary} disabled={pending}>
-          {pending ? "Gerando…" : "Gerar o link"}
+          {pending ? "Gerando…" : "Gerar a senha"}
         </button>
         <button type="button" className={styles.smallButton} onClick={onDone}>
           Cancelar

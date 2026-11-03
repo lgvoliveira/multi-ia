@@ -4,6 +4,7 @@ import { readWorkspaceView } from "@/components/workspace-view";
 import { firstName } from "@/lib/auth/member";
 import { signedInSession } from "@/lib/auth/session";
 import { requireMember } from "@/lib/auth/viewer";
+import { listCompanyAgents } from "@/lib/ock/company-agents";
 import { loadMonth } from "@/lib/ock/spending";
 import { listOwnConversations } from "@/lib/ock/task-store";
 import { aiTools } from "@/lib/providers/mode";
@@ -23,9 +24,10 @@ export default async function TrabalhoPage(props: PageProps<"/trabalho">) {
   const me = await requireMember();
   const session = await signedInSession();
   if (!session) throw new Error("O login sumiu entre conferir a pessoa e ler as conversas.");
-  const [conversations, month, search] = await Promise.all([
+  const [conversations, month, companyAgents, search] = await Promise.all([
     listOwnConversations(session),
     loadMonth(session, me.id),
+    listCompanyAgents(session),
     props.searchParams,
   ]);
 
@@ -46,6 +48,7 @@ export default async function TrabalhoPage(props: PageProps<"/trabalho">) {
       initialMonth={month}
       recipeCards={listRecipeSummaries()}
       recipes={recipes}
+      companyAgents={companyAgents}
       initialView={view}
       voice={aiTools().has("voz")}
     />

@@ -22,6 +22,22 @@ testada; o teste com créditos dela passou para o bloco 6. Veja "Nova ordem (26/
 > `app/raiox/` (página + ação `signInWithPassword` nas contas de teste), `components/DemoSwitcher` (barra no topo que
 > alterna o lado) e um atalho na porta de entrada (`OckEntry`). Serve para o dono do produto demonstrar o funcionamento.
 
+> **Nota (27/10/2026):** adicionada a **recarga de teste** na visão raio-x. No painel do dono, só no computador (modo
+> raio-x), aparece "Recarga de teste": o dono põe crédito fictício na empresa para testar à vontade. A recarga de
+> verdade continua só pelo painel do Supabase (F25); esta é uma função à parte (`demo_wallet_topup`) criada **só no seed
+> local** (não existe na produção, onde a F25 segue inteira), chamada por uma ação conferida no servidor (modo raio-x e
+> dono logado). Arquivos: `components/DemoRecharge`, `demoTopupAction` em `app/dono/actions.ts`, `parseTopupAmount` em
+> `lib/ock/team-forms.ts`, a função no `supabase/seed.sql` e a exceção "demo_*" no teste de estrutura do banco. Para
+> ver no computador: `supabase db reset` (recria o seed com a função) e entre pela visão raio-x como Chefe.
+
+> **Nota (28/10/2026):** adicionada a tela **"Conectar chaves de IA (teste)"** na visão raio-x. No computador, em
+> `/raiox`, dá para colar as chaves da plataforma (Claude/GPT/Gemini) e salvar, **sem editar o `.env.local`**. As chaves
+> vão para `.ock-local-keys.json` na raiz (está no `.gitignore` — nunca no Git nem na produção), que o servidor lê SÓ no
+> modo raio-x: `serverKeys` sobrepõe essas chaves ao ambiente, e conectar uma chave já liga a IA real (`aiMode`). Em
+> produção a rota `/api/ock/demo-keys` dá 404 e as chaves continuam vindo só do ambiente do servidor (chave-da-plataforma).
+> Arquivos: `lib/keys/demo-keys.ts` (+ teste), `components/DemoKeys.tsx`, `app/api/ock/demo-keys/route.ts`, e os encaixes
+> em `server-keys.ts`, `mode.ts`, `.gitignore` e `app/raiox/page.tsx`.
+
 ---
 
 ## Links importantes

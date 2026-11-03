@@ -7,12 +7,19 @@
 // do login, nunca do formulário.
 
 import { refresh } from "next/cache";
+import { isDemoMode } from "@/lib/auth/demo";
 import { text } from "@/lib/auth/forms";
-import { invitePath } from "@/lib/auth/invite-token";
 import { inviteEmployee, issueNewLink } from "@/lib/auth/invites";
 import { createSessionClient } from "@/lib/auth/session";
-import { siteOrigin } from "@/lib/auth/site-origin";
 import { getViewer } from "@/lib/auth/viewer";
+import {
+  MAX_COMPANY_AGENTS,
+  parseCompanyAgentForm,
+  typedAgent,
+  type CompanyAgentState,
+} from "@/lib/ock/agent-forms";
+import { countCompanyAgents, createCompanyAgent, deleteCompanyAgent } from "@/lib/ock/company-agents";
+import { isUuid } from "@/lib/ock/chat-request";
 import { findEmployee, updateEmployee, type EmployeeChange } from "@/lib/ock/team";
 import {
   checkPageOwner,
@@ -20,24 +27,22 @@ import {
   parseBudget,
   parseInviteForm,
   parseMemberId,
+  parseTopupAmount,
   type InviteFormState,
   type MemberActionState,
   type PageOwnerCheck,
 } from "@/lib/ock/team-forms";
+import { supabaseAdmin } from "@/lib/runs/supabase-server";
 
 const GENERIC = "Não deu certo agora, por um problema do nosso lado. Tente de novo em instantes.";
 const NOT_FOUND = "Não encontramos essa pessoa na equipe. Recarregue a página e tente de novo.";
 
 const INVITE_REFUSED = {
-  "already-in-team": "Esta pessoa já está na equipe. Se ela perdeu o link, use “Gerar link novo” no cartão dela.",
+  "already-in-team": "Esta pessoa já está na equipe. Se ela perdeu a senha, use “Gerar senha nova” no cartão dela.",
   "email-taken":
     "Este e-mail já tem uma conta na plataforma (de outra empresa, ou de um dono). Use outro e-mail para esta pessoa.",
   "email-invalid": "Este e-mail não é aceito. Confira se está certo ou use outro.",
 } as const;
-
-async function inviteLink(token: string): Promise<string> {
-  return `${await siteOrigin()}${invitePath(token)}`;
-}
 
 /**
  * O dono que abriu o painel, conferido a cada pedido. Se o login do navegador mudou no meio do caminho (ex.: outra aba
@@ -63,7 +68,7 @@ export async function inviteEmployeeAction(_previous: InviteFormState, formData:
     const result = await inviteEmployee({ companyId: me.companyId, name, email, budgetCents });
     if (!result.ok) return { status: "error", message: INVITE_REFUSED[result.reason], values: typed };
     refresh();
-    return { status: "created", name, link: await inviteLink(result.token) };
+    return { status: "created", name, email: result.email, tempPassword: result.tempPassword };
   } catch (error) {
     console.error("[dono] O convite falhou:", error instanceof Error ? error.message : error);
     return { status: "error", message: GENERIC, values: typed };
@@ -83,11 +88,12 @@ export async function newLinkAction(_previous: MemberActionState, formData: Form
     const employee = await findEmployee(supabase, memberId);
     if (!employee) return { status: "error", message: NOT_FOUND };
     if (employee.status !== "active") {
-      return { status: "error", message: "Reative a pessoa antes de gerar um link novo." };
+      return { status: "error", message: "Reative a pessoa antes de gerar uma senha nova." };
     }
-    const { token, kind } = await issueNewLink({ memberId, companyId: me.companyId });
+    const reset = await issueNewLink({ memberId, companyId: me.companyId });
+    if (!reset.ok) return { status: "error", message: NOT_FOUND };
     refresh();
-    return { status: "link", link: await inviteLink(token), kind };
+    return { status: "credentials", email: reset.email, tempPassword: reset.tempPassword };
   } catch (error) {
     console.error("[dono] O link novo falhou:", error instanceof Error ? error.message : error);
     return { status: "error", message: GENERIC };
@@ -124,4 +130,86 @@ export async function setStatusAction(_previous: MemberActionState, formData: Fo
   const status = formData.get("status");
   if (status !== "active" && status !== "disabled") return { status: "error", message: GENERIC };
   return changeEmployee(formData, { status });
+}
+
+/** O dono cria um agente próprio da empresa (Fase 2). A empresa vem do login, nunca do formulário. */
+export async function createAgentAction(
+  _previous: CompanyAgentState,
+  formData: FormData,
+): Promise<CompanyAgentState> {
+  const owner = await pageOwner(formData);
+  if (!owner.ok) return { status: "error", message: owner.message, values: typedAgent(formData) };
+  const me = owner.me;
+  const parsed = parseCompanyAgentForm(formData);
+  if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values: typedAgent(formData) };
+
+  try {
+    if ((await countCompanyAgents(me.companyId)) >= MAX_COMPANY_AGENTS) {
+      return {
+        status: "error",
+        message: `A empresa já tem ${MAX_COMPANY_AGENTS} agentes. Apague um antes de criar outro.`,
+        values: typedAgent(formData),
+      };
+    }
+    const { name, role, tagline, persona, knowledge, starters } = parsed.values;
+    const card = await createCompanyAgent({
+      companyId: me.companyId,
+      createdBy: me.id,
+      name,
+      role,
+      tagline,
+      persona,
+      knowledge,
+      starters,
+    });
+    refresh();
+    return { status: "created", card };
+  } catch (error) {
+    console.error("[dono] Não deu para criar o agente:", error instanceof Error ? error.message : error);
+    return { status: "error", message: GENERIC, values: typedAgent(formData) };
+  }
+}
+
+/** O dono apaga um agente da empresa. Só da empresa dele (a conferência é no servidor). */
+export async function deleteAgentAction(_previous: MemberActionState, formData: FormData): Promise<MemberActionState> {
+  const owner = await pageOwner(formData);
+  if (!owner.ok) return { status: "error", message: owner.message };
+  const id = text(formData, "agentId");
+  if (!isUuid(id)) return { status: "error", message: NOT_FOUND };
+  try {
+    if (!(await deleteCompanyAgent(owner.me.companyId, id))) {
+      return { status: "error", message: "Este agente não foi encontrado. Recarregue a página." };
+    }
+  } catch (error) {
+    console.error("[dono] Não deu para apagar o agente:", error instanceof Error ? error.message : error);
+    return { status: "error", message: GENERIC };
+  }
+  refresh();
+  return { status: "done" };
+}
+
+/**
+ * Recarga de TESTE (visão raio-x): adiciona crédito fictício na empresa do dono logado. Só funciona no modo raio-x
+ * (lib/auth/demo.ts: no computador, nunca em produção); fora dele, recusa. A recarga de verdade continua só pelo painel
+ * do Supabase (F25). A função demo_wallet_topup existe só no banco local (seed), então em produção isto nunca roda.
+ */
+export async function demoTopupAction(_previous: MemberActionState, formData: FormData): Promise<MemberActionState> {
+  if (!isDemoMode()) return { status: "error", message: "A recarga de teste só existe no modo raio-x (no computador)." };
+  const owner = await pageOwner(formData);
+  if (!owner.ok) return { status: "error", message: owner.message };
+  const amount = parseTopupAmount(formData.get("amount")?.toString() ?? "");
+  if (!amount.ok) return { status: "error", message: amount.message };
+
+  try {
+    const { error } = await supabaseAdmin().rpc("demo_wallet_topup", {
+      p_company_id: owner.me.companyId,
+      p_amount_cents: amount.cents,
+    });
+    if (error) throw new Error(error.message);
+  } catch (error) {
+    console.error("[dono] A recarga de teste falhou:", error instanceof Error ? error.message : error);
+    return { status: "error", message: GENERIC };
+  }
+  refresh();
+  return { status: "done" };
 }

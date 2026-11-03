@@ -12,19 +12,17 @@ import {
   ATTACHMENT_ACCEPT,
   ATTACHMENTS_CUT_NOTICE,
   ATTACHMENTS_ONLY_PROMPT,
-  EFFORT_LABEL,
   MAX_ATTACHMENTS,
   MAX_MESSAGE_CHARS,
   MAX_VOICE_SECONDS,
-  TIER_LABEL,
   type ChatConversation,
   type ChatFile,
   type ChatTask,
   type MonthSpending,
 } from "@/lib/ock/chat";
+import type { CompanyAgentCard } from "@/lib/ock/agent-forms";
+import { findAgent } from "@/lib/ock/agents";
 import { fileUrl, loadConversation, sendMessage, transcribeAudio, uploadAttachment } from "@/lib/ock/chat-client";
-import { formatBRL } from "@/lib/ock/pricing";
-import { getProviderInfo } from "@/lib/providers/catalog";
 import type { RecipeSummary } from "@/lib/recipes/types";
 import styles from "./QuickChat.module.css";
 
@@ -36,8 +34,20 @@ interface QuickChatProps {
   /** As receitas prontas, sugeridas com o chat vazio. */
   recipeSuggestions: RecipeSummary[];
   onOpenRecipe: (recipeId: string) => void;
+  /** Pedido de começar o chat com um agente pronto (vindo da aba Receitas); o nonce força reagir a cada clique. */
+  agentChat: { agentId: string; nonce: number } | null;
+  /** Os agentes que a empresa criou (Fase 2), para a tela achar o agente de uma conversa pelo id. */
+  companyAgents: CompanyAgentCard[];
   /** Se a voz está ligada (OCK_AI_TOOLS): mostra o botão Ditar. */
   voice: boolean;
+}
+
+/** O que a tela mostra de um agente (de fábrica ou da empresa): o mesmo nos dois. */
+interface ChatAgent {
+  name: string;
+  role: string;
+  tagline: string;
+  starters: string[];
 }
 
 /** Uma mensagem na tela: já respondida, ou esperando a resposta. */
@@ -51,11 +61,17 @@ export function QuickChat({
   onMonthChange,
   recipeSuggestions,
   onOpenRecipe,
+  agentChat,
+  companyAgents,
   voice,
 }: QuickChatProps) {
   const ids = useId();
+  // Acha o agente de uma conversa pelo id: de fábrica (catálogo) ou da empresa (prop). Null se não for de nenhum.
+  const agentById = (id: string): ChatAgent | null => findAgent(id) ?? companyAgents.find((a) => a.id === id) ?? null;
   const [conversations, setConversations] = useState(initialConversations);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // O agente da conversa aberta (null = chat comum): define a tela de boas-vindas e vai no 1º envio de uma conversa nova.
+  const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [opening, setOpening] = useState(false);
   const [message, setMessage] = useState("");
@@ -77,6 +93,8 @@ export function QuickChat({
   // Cada conversa aberta ganha um número: a resposta de uma conversa que a pessoa já trocou é ignorada.
   const openTicket = useRef(0);
   const pendingCounter = useRef(0);
+  // O último pedido de "conversar com um agente" já atendido, para não repetir ao re-renderizar.
+  const lastAgentNonce = useRef<number | null>(null);
 
   // Saindo da página no meio de um ditado: o microfone desliga e nada é enviado.
   useEffect(
@@ -98,10 +116,26 @@ export function QuickChat({
     if (list) list.scrollTop = entries.length > 0 ? list.scrollHeight : 0;
   }, [entries, sending]);
 
+  // Veio um pedido de conversar com um agente (da aba Receitas): começa uma conversa nova ligada a ele. Não interrompe
+  // um envio em andamento (espera ele terminar, pelo efeito rodar de novo quando `sending` volta a ser falso).
+  useEffect(() => {
+    if (!agentChat || agentChat.nonce === lastAgentNonce.current || sending) return;
+    lastAgentNonce.current = agentChat.nonce;
+    openTicket.current++;
+    setActiveId(null);
+    setEntries([]);
+    setProblem(null);
+    setOpening(false);
+    setActiveAgentId(agentChat.agentId);
+    inputRef.current?.focus();
+  }, [agentChat, sending]);
+
   async function openConversation(id: string) {
     if (sending || id === activeId) return;
     const ticket = ++openTicket.current;
     setActiveId(id);
+    // O agente da conversa (para a tela saber com quem é); a lista já traz o agentId de cada conversa.
+    setActiveAgentId(conversations.find((item) => item.id === id)?.agentId ?? null);
     setEntries([]);
     setProblem(null);
     setOpening(true);
@@ -119,6 +153,7 @@ export function QuickChat({
     if (sending) return;
     openTicket.current++;
     setActiveId(null);
+    setActiveAgentId(null);
     setEntries([]);
     setProblem(null);
     setOpening(false);
@@ -211,10 +246,10 @@ export function QuickChat({
       setAnnouncement(result.problem);
       return;
     }
-    const { text, costCents, month } = result.data;
+    const { text, month } = result.data;
     setMessage((current) => (current.trim() ? `${current.trimEnd()} ${text}` : text).slice(0, MAX_MESSAGE_CHARS));
     onMonthChange(month);
-    setAnnouncement(`Texto ditado. ${costLabel(costCents)}. Revise e envie.`);
+    setAnnouncement("Texto ditado. Revise e envie.");
     inputRef.current?.focus();
   }
 
@@ -233,7 +268,14 @@ export function QuickChat({
     setSending(true);
     setAnnouncement("Mensagem enviada. O Chefe está escolhendo quem responde.");
 
-    const result = await sendMessage({ message: text, conversationId: activeId, fileIds: files.map((f) => f.id), pageMemberId });
+    const result = await sendMessage({
+      message: text,
+      conversationId: activeId,
+      fileIds: files.map((f) => f.id),
+      pageMemberId,
+      // O agente só vale ao começar uma conversa nova; numa que já existe, o servidor usa o que ela já guardou.
+      agentId: activeId ? null : activeAgentId,
+    });
     setSending(false);
     if (!result.ok) {
       // Nada foi guardado: a mensagem volta para a caixa, para mandar de novo.
@@ -250,10 +292,11 @@ export function QuickChat({
       current.map((entry) => (entry.kind === "pending" && entry.id === pendingId ? { kind: "task", task } : entry)),
     );
     setActiveId(conversation.id);
+    setActiveAgentId(conversation.agentId);
     setConversations((current) => [conversation, ...current.filter((item) => item.id !== conversation.id)]);
     onMonthChange(month);
     setAnnouncement(
-      task.status === "finished" ? `Resposta pronta. ${costLabel(task.costCents)}.` : (task.answer ?? "A resposta não veio."),
+      task.status === "finished" ? "Resposta pronta." : (task.answer ?? "A resposta não veio."),
     );
   }
 
@@ -267,9 +310,9 @@ export function QuickChat({
 
   const dictating = recording || transcribing;
   const canSend = !sending && uploading === 0 && !dictating && (message.trim().length > 0 || attached.length > 0);
-  const atLimit = message.length >= MAX_MESSAGE_CHARS;
   const inputId = `${ids}-message`;
-  const counterId = `${ids}-counter`;
+  // O agente da conversa aberta, para a tela de boas-vindas e o cabeçalho (null = chat comum).
+  const agent = activeAgentId ? agentById(activeAgentId) : null;
 
   return (
     <div className={styles.layout}>
@@ -291,7 +334,10 @@ export function QuickChat({
                   onClick={() => void openConversation(conversation.id)}
                   disabled={sending}
                 >
-                  {conversation.title}
+                  <span className={styles.conversationTitle}>{conversation.title}</span>
+                  {conversation.agentId && agentById(conversation.agentId) && (
+                    <span className={styles.conversationAgent}>{agentById(conversation.agentId)!.name}</span>
+                  )}
                 </button>
               </li>
             ))}
@@ -300,10 +346,28 @@ export function QuickChat({
       </nav>
 
       <section className={styles.main} aria-label="Conversa">
+        {agent && (
+          <p className={styles.agentHeader}>
+            <span className={styles.agentHeaderDot} aria-hidden="true">
+              {agent.name.slice(0, 1)}
+            </span>
+            Conversando com <strong>{agent.name}</strong> · {agent.role}
+          </p>
+        )}
         <div className={styles.messages} ref={listRef} tabIndex={0} aria-label="Mensagens da conversa">
-          {entries.length === 0 && !opening && (
-            <EmptyChat suggestions={recipeSuggestions} onOpenRecipe={onOpenRecipe} />
-          )}
+          {entries.length === 0 &&
+            !opening &&
+            (agent ? (
+              <AgentIntro
+                agent={agent}
+                onStarter={(starter) => {
+                  setMessage(starter);
+                  inputRef.current?.focus();
+                }}
+              />
+            ) : (
+              <EmptyChat suggestions={recipeSuggestions} onOpenRecipe={onOpenRecipe} />
+            ))}
           {opening && <p className={styles.status}>Abrindo a conversa…</p>}
           <ol className={styles.turns}>
             {entries.map((entry) =>
@@ -345,7 +409,6 @@ export function QuickChat({
             maxLength={MAX_MESSAGE_CHARS}
             rows={2}
             placeholder="O que você precisa? Ex.: escreva um e-mail, gere um PDF, faça um gráfico…"
-            aria-describedby={counterId}
           />
           {(attached.length > 0 || uploading > 0) && (
             <ul className={styles.attachedList} aria-label="Arquivos anexados">
@@ -388,25 +451,28 @@ export function QuickChat({
             {voice && (
               <button
                 type="button"
-                className={styles.attach}
+                className={styles.iconButton}
                 onClick={recording ? stopDictation : () => void startDictation()}
                 disabled={sending || transcribing}
                 aria-pressed={recording}
+                aria-label={recording ? "Parar a gravação" : "Ditar por voz"}
+                title={recording ? "Parar" : "Ditar por voz"}
               >
-                {recording ? `Parar (${clock(recordedSeconds)})` : transcribing ? "Transcrevendo…" : "Ditar"}
+                {recording ? (
+                  <>
+                    <StopIcon /> {clock(recordedSeconds)}
+                  </>
+                ) : transcribing ? (
+                  "…"
+                ) : (
+                  <MicIcon />
+                )}
               </button>
             )}
-            <span id={counterId} className={styles.counter} data-full={atLimit}>
-              {formatNumber(message.length)}/{formatNumber(MAX_MESSAGE_CHARS)} caracteres
-            </span>
             <button type="submit" className={styles.send} disabled={!canSend}>
               {sending ? "Respondendo…" : "Enviar"}
             </button>
           </div>
-          <p className={styles.hint}>
-            PDF, texto (.txt, .csv, .md, .json) ou imagem, até 5 arquivos de 10 MB.
-            {voice && ` Ditar: até ${MAX_VOICE_SECONDS / 60} minutos de voz, que viram texto aqui para você revisar.`}
-          </p>
         </form>
 
         <p className={styles.visuallyHidden} aria-live="polite">
@@ -437,8 +503,8 @@ function EmptyChat({
     <div className={styles.empty}>
       <h2 className={styles.emptyTitle}>Descreva a tarefa. O Chefe cuida do resto.</h2>
       <p className={styles.emptyText}>
-        Peça em português normal: o Chefe escolhe a IA que resolve melhor pelo menor custo, e cada resposta mostra quanto
-        custou. Dá para anexar um arquivo e pedir um PDF, uma planilha, um gráfico ou um projeto em .zip.
+        Peça em português normal e o time de IAs resolve para você. Dá para anexar um arquivo e pedir um PDF, uma
+        planilha, um gráfico ou um projeto em .zip.
       </p>
       {shown.length > 0 && (
         <div className={styles.suggestions}>
@@ -461,6 +527,27 @@ function EmptyChat({
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+/** A tela de boas-vindas de um agente: quem ele é e perguntas de partida que, ao clicar, caem na caixa de escrever. */
+function AgentIntro({ agent, onStarter }: { agent: ChatAgent; onStarter: (starter: string) => void }) {
+  return (
+    <div className={styles.empty}>
+      <h2 className={styles.emptyTitle}>{agent.name}</h2>
+      <p className={styles.emptyText}>
+        {agent.role}. {agent.tagline} Escreva abaixo, ou comece por uma destas:
+      </p>
+      <ul className={styles.starters}>
+        {agent.starters.map((starter) => (
+          <li key={starter}>
+            <button type="button" className={styles.starter} onClick={() => onStarter(starter)}>
+              {starter}
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -493,24 +580,9 @@ function UserBubble({ prompt, attachments }: { prompt: string; attachments: Chat
 }
 
 function Answer({ task }: { task: ChatTask }) {
-  // O pedido de imagem não passou por nenhuma IA: não tem "feito por".
-  const madeByAi = task.action !== "imagem";
+  // O funcionário não vê qual IA respondeu nem o custo (isso é do painel do dono): só a resposta.
   return (
     <article className={styles.answer}>
-      <div className={styles.byline}>
-        {madeByAi && (
-          <span className={styles.who}>
-            <AiDot provider={task.provider} size="large" />
-            <span>
-              {task.reason ? "O Chefe escolheu " : "Feito por "}
-              <strong>{getProviderInfo(task.provider).name}</strong> ({TIER_LABEL[task.tier]}, esforço{" "}
-              {EFFORT_LABEL[task.effort]})
-            </span>
-          </span>
-        )}
-        <span className={styles.cost}>{costLabel(task.costCents)}</span>
-      </div>
-      {task.reason && <p className={styles.reason}>{task.reason}</p>}
       {task.notice && <p className={styles.notice}>{task.notice}</p>}
       {task.attachmentsCut && <p className={styles.notice}>{ATTACHMENTS_CUT_NOTICE}</p>}
       <p className={styles.answerText}>{task.answer}</p>
@@ -631,10 +703,11 @@ function StopIcon() {
   );
 }
 
-function costLabel(cents: number): string {
-  return cents > 0 ? `Custou ${formatBRL(cents)}` : "Sem custo";
-}
-
-function formatNumber(value: number): string {
-  return value.toLocaleString("pt-BR");
+function MicIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8" />
+    </svg>
+  );
 }

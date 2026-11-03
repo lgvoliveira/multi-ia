@@ -70,6 +70,9 @@ web_modules/
 .env.*
 !.env.example
 
+# Chaves de IA coladas pela visão raio-x (tela de teste, só no computador — nunca no Git nem na produção)
+.ock-local-keys.json
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

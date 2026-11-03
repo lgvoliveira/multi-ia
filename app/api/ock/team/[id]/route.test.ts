@@ -20,7 +20,7 @@ const DETAILS: MemberMonthDetails = {
     },
   ],
   more: false,
-  deliveries: [{ id: "a1", name: "doce-encanto.html", createdAt: "2026-10-25T10:00:00Z" }],
+  deliveries: [{ id: "a1", name: "doce-encanto.html", createdAt: "2026-10-25T10:00:00Z", folderId: null }],
 };
 
 const state = vi.hoisted(() => ({
@@ -46,7 +46,7 @@ function get(id = MEMBER_ID): Promise<Response> {
 function signIn(role: "owner" | "employee") {
   state.viewer = {
     status: "member",
-    member: { id: "m1", companyId: "c1", companyName: "Doce Encanto", name: "Marina", email: "m@example.com", role },
+    member: { id: "m1", companyId: "c1", companyName: "Doce Encanto", name: "Marina", email: "m@example.com", role, mustChangePassword: false },
   };
 }
 

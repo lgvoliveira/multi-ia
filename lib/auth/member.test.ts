@@ -17,6 +17,7 @@ const MEMBER = {
   name: "Marina Souza",
   email: "marina@example.com",
   role: "owner",
+  mustChangePassword: false,
 };
 
 describe("quem está logado", () => {

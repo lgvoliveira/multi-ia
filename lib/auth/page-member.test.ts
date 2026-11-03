@@ -9,6 +9,7 @@ const ANA: CurrentMember = {
   name: "Ana Lima",
   email: "ana@example.com",
   role: "employee",
+  mustChangePassword: false,
 };
 const BRUNO: CurrentMember = { ...ANA, id: "22222222-2222-4222-8222-222222222222", name: "Bruno Teste" };
 

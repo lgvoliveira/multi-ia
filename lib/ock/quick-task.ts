@@ -128,7 +128,17 @@ export interface WorkPlan {
  * O que a IA escolhida pelo Chefe faz em cada ação. `tools` são as ferramentas ligadas (OCK_AI_TOOLS): com a pesquisa
  * ou o código ligado, a pesquisa vai para o Claude e o código para o Gemini, que são as IAs que têm cada um.
  */
-export function planWork(route: Route, message: string, tools: ReadonlySet<ToolSwitch> = new Set()): WorkPlan {
+/**
+ * Monta o plano de trabalho. `persona` é a instrução de um agente pronto (lib/ock/agent-persona.ts): quando a resposta é
+ * texto ("responder"), ela entra como preâmbulo do WORKER_SYSTEM, para a IA responder no personagem do agente. Nas ações
+ * de formato fixo (documento, gráfico, projeto, imagem, pesquisa/código), a instrução própria delas manda, sem a persona.
+ */
+export function planWork(
+  route: Route,
+  message: string,
+  tools: ReadonlySet<ToolSwitch> = new Set(),
+  persona?: string,
+): WorkPlan {
   const base = { action: route.action, provider: route.provider, tier: route.tier, effort: route.effort };
   switch (route.action) {
     case "imagem":
@@ -179,7 +189,7 @@ export function planWork(route: Route, message: string, tools: ReadonlySet<ToolS
         ...base,
         kind: "answer",
         maxOutputTokens: route.mode === "projeto" ? 6000 : 1500,
-        systemPrompt: WORKER_SYSTEM,
+        systemPrompt: persona ? `${persona}\n\n${WORKER_SYSTEM}` : WORKER_SYSTEM,
       };
   }
 }
