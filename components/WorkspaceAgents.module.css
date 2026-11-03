@@ -1,0 +1,130 @@
+.shelf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.lead {
+  max-width: var(--text-max-width);
+  color: var(--color-text-body);
+}
+
+.area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.areaHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.areaName {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+
+.areaBlurb {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Os cartões se arrumam sozinhos: quantos couberem por linha (um por linha no celular). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min-width), 100%), 1fr));
+  gap: var(--space-4);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+}
+
+.cardName {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  line-height: var(--line-height-tight);
+}
+
+.cardRole {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.tagline {
+  font-size: var(--text-md);
+  color: var(--color-text-body);
+}
+
+/* Fica sempre no pé do cartão, mesmo com alturas diferentes. */
+.action {
+  margin-top: auto;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: var(--control-height);
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.action:hover {
+  background: var(--color-primary-hover);
+  color: var(--color-on-primary);
+}

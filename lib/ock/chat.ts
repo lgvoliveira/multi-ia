@@ -58,6 +58,8 @@ export interface ChatConversation {
   id: string;
   title: string;
   updatedAt: string;
+  /** O agente pronto com que a conversa começou (lib/ock/agents.ts), ou null (chat comum). */
+  agentId: string | null;
 }
 
 /** O que a plataforma fez com o pedido. Imagem, por enquanto, só responde que chega em breve (decisão 2, issue #39). */

@@ -64,7 +64,9 @@ describe("rota POST /api/ock (mensagem do chat)", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(result);
     // Quem pede vem do login: um memberId no corpo é ignorado.
-    expect(state.calls).toEqual([{ me: CARLA, request: { message: "Oi", conversationId: null, fileIds: [] } }]);
+    expect(state.calls).toEqual([
+      { me: CARLA, request: { message: "Oi", conversationId: null, fileIds: [], agentId: null } },
+    ]);
   });
 
   it("a recusa da carteira volta com o status e a mensagem", async () => {

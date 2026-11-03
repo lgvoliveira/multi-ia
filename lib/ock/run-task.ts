@@ -28,6 +28,8 @@ import {
   WalletRefusedError,
   type WalletRefusalReason,
 } from "@/lib/runs/wallet";
+import { agentPersona } from "./agent-persona";
+import { findAgent } from "./agents";
 import { callAi, callImage } from "./ai-call";
 import { readAttachment } from "./attachments";
 import { parseChartSpec, renderChart } from "./chart";
@@ -89,6 +91,8 @@ export interface QuickTaskRequest {
   conversationId: string | null;
   /** Os anexos, já enviados para a pasta da pessoa (/api/ock/files). */
   fileIds: string[];
+  /** Ao começar uma conversa nova, o agente pronto escolhido (lib/ock/agents.ts); null é um chat comum. */
+  agentId?: string | null;
 }
 
 export type QuickTaskResult = { ok: true; result: SendResult } | { ok: false; status: 402 | 404; problem: string };
@@ -147,6 +151,12 @@ async function answerMessage(
   if (request.conversationId && !existing) {
     return refuse(404, "Esta conversa não foi encontrada. Abra outra ou comece um chat novo.");
   }
+  // O agente da conversa: numa conversa que continua, o que ela já tem; numa nova, o escolhido (se existir no catálogo).
+  // A persona (a instrução dele) só o servidor conhece; a tela manda só o id.
+  const newAgentId = request.agentId && findAgent(request.agentId) ? request.agentId : null;
+  const agentId = existing ? existing.agentId : newAgentId;
+  const persona = agentId ? agentPersona(agentId) : undefined;
+
   const uploads = await loadAttachments(session, me.id, request.fileIds);
   if (!uploads) return refuse(404, "Um dos arquivos anexados não foi encontrado. Anexe de novo.");
 
@@ -163,7 +173,7 @@ async function answerMessage(
   const route = await decide(getProvider, chiefRequest, prompt, onCall);
   await closeHold(chiefHold.id);
 
-  const plan = planWork(route, prompt, options.tools ?? aiTools());
+  const plan = planWork(route, prompt, options.tools ?? aiTools(), persona);
   const newTask = (conversation: ChatConversation): NewTask => ({
     id: taskId,
     company_id: me.companyId,
@@ -200,7 +210,8 @@ async function answerMessage(
 
   // Imagem ainda não existe aqui (decisão 2 da issue #39): responde sem chamar IA e sem cobrar.
   if (plan.kind === "unavailable") {
-    const conversation = existing ?? (await createOwnConversation(session, conversationTitle(message, names(uploads))));
+    const conversation =
+      existing ?? (await createOwnConversation(session, conversationTitle(message, names(uploads)), newAgentId));
     await createTask({ ...newTask(conversation), status: "finished", answer: IMAGE_UNAVAILABLE, finished_at: now() });
     await linkUploadsToTask(request.fileIds, taskId);
     const outcome: Outcome = { status: "finished", answer: IMAGE_UNAVAILABLE, deliveries: [], chart: null };
@@ -219,7 +230,8 @@ async function answerMessage(
   if (!answerHold.ok) return refuse(402, taskRefusalMessage(answerHold.reason, isOwner, holdCents));
   ledger.holds.push(answerHold.id);
 
-  const conversation = existing ?? (await createOwnConversation(session, conversationTitle(message, names(uploads))));
+  const conversation =
+    existing ?? (await createOwnConversation(session, conversationTitle(message, names(uploads)), newAgentId));
   await createTask(newTask(conversation));
   await linkUploadsToTask(request.fileIds, taskId);
 

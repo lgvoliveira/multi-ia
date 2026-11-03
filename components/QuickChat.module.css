@@ -61,7 +61,11 @@
 
 .conversation {
   width: 100%;
+  min-width: 0;
   text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   padding: var(--space-2) var(--space-3);
   border: 1px solid transparent;
   border-radius: var(--radius-control);
@@ -69,10 +73,25 @@
   color: var(--color-text-body);
   font-family: var(--font-body);
   font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+/* O título da conversa ocupa uma linha só e vira "…" quando é longo. */
+.conversationTitle {
+  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
+}
+
+/* O nome do agente da conversa, abaixo do título (quando a conversa é com um agente pronto). */
+.conversationAgent {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .conversation:hover:not(:disabled) {
@@ -147,6 +166,63 @@
   font-size: var(--text-base);
   line-height: var(--line-height-body);
   color: var(--color-text-body);
+}
+
+/* O cabeçalho "Conversando com X", quando a conversa é com um agente pronto. */
+.agentHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-body);
+  font-size: var(--text-sm);
+}
+
+.agentHeaderDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+/* As perguntas de partida de um agente, na tela de boas-vindas dele. */
+.starters {
+  list-style: none;
+  margin: var(--space-6) auto 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: var(--card-min-width);
+}
+
+.starter {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.starter:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 /* As receitas sugeridas com o chat vazio. */

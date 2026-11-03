@@ -58,7 +58,12 @@ export interface SendInput {
   message: string;
   conversationId: string | null;
   fileIds: string[];
+  /** O agente pronto escolhido ao começar a conversa (só o id; o servidor confere no catálogo). */
+  agentId: string | null;
 }
+
+/** O id de um agente tem o formato "area-nome" (letras, números e hífen), curto. Outro formato nem é considerado. */
+const AGENT_ID_PATTERN = /^[a-z0-9-]{1,64}$/;
 
 /** Confere o corpo de uma mensagem enviada. Devolve a mensagem ou o problema, em português. */
 export function parseSendBody(body: unknown): { ok: true; input: SendInput } | { ok: false; problem: string } {
@@ -95,5 +100,8 @@ export function parseSendBody(body: unknown): { ok: true; input: SendInput } | {
     return { ok: false, problem: "Escreva o que você precisa ou anexe um arquivo." };
   }
 
-  return { ok: true, input: { message, conversationId, fileIds } };
+  // O agente só vale ao começar uma conversa; o servidor ainda confere se o id existe no catálogo.
+  const agentId = typeof data.agentId === "string" && AGENT_ID_PATTERN.test(data.agentId) ? data.agentId : null;
+
+  return { ok: true, input: { message, conversationId, fileIds, agentId } };
 }

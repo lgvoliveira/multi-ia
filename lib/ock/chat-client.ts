@@ -27,6 +27,8 @@ export interface SendBody {
   conversationId: string | null;
   fileIds: string[];
   pageMemberId: string;
+  /** Ao começar uma conversa nova com um agente pronto, o id dele (lib/ock/agents.ts). */
+  agentId?: string | null;
 }
 
 /** Manda uma mensagem e espera a resposta (com as IAs de verdade, pode levar alguns minutos). */

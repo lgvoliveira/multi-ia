@@ -23,8 +23,9 @@ const db = vi.hoisted(() => ({
   /** A próxima reserva: recusada com este motivo, ou aceita (null ou fila vazia). */
   refusals: [] as (WalletRefusalReason | null)[],
   aiCalls: [] as AiCallRow[],
-  conversations: [] as { id: string; title: string; updated_at: string }[],
+  conversations: [] as { id: string; title: string; updated_at: string; agent_id?: string | null }[],
   createdConversations: [] as string[],
+  createdAgentIds: [] as (string | null)[],
   tasks: [] as Record<string, unknown>[],
   finished: [] as { id: string; status: string; answer: string }[],
   history: [] as TaskRow[],
@@ -58,14 +59,18 @@ vi.mock("@/lib/ock/spending", () => ({
   loadMonth: async () => ({ spentCents: 42, budgetCents: 5000 }),
 }));
 vi.mock("@/lib/ock/task-store", () => ({
-  loadOwnConversation: async (_session: unknown, id: string) => db.conversations.find((c) => c.id === id) && {
-    id,
-    title: db.conversations.find((c) => c.id === id)!.title,
-    updatedAt: "2026-10-25T10:00:00Z",
+  loadOwnConversation: async (_session: unknown, id: string) => {
+    const found = db.conversations.find((c) => c.id === id);
+    return found && { id, title: found.title, updatedAt: "2026-10-25T10:00:00Z", agentId: found.agent_id ?? null };
   },
-  createOwnConversation: async (_session: unknown, title: string): Promise<ChatConversation> => {
+  createOwnConversation: async (
+    _session: unknown,
+    title: string,
+    agentId: string | null = null,
+  ): Promise<ChatConversation> => {
     db.createdConversations.push(title);
-    return { id: "conversa-nova", title, updatedAt: "2026-10-25T12:00:00Z" };
+    db.createdAgentIds.push(agentId);
+    return { id: "conversa-nova", title, updatedAt: "2026-10-25T12:00:00Z", agentId };
   },
   loadOwnTasks: async () => db.history,
   createTask: async (task: Record<string, unknown>) => {
@@ -116,12 +121,16 @@ function simulated(failures: Partial<Record<ProviderId, number>> = {}) {
   return { options, requests };
 }
 
-function send(message: string, extra: { conversationId?: string; fileIds?: string[] } = {}, failures = {}) {
+function send(
+  message: string,
+  extra: { conversationId?: string; fileIds?: string[]; agentId?: string | null } = {},
+  failures = {},
+) {
   const ai = simulated(failures);
   const result = runQuickTask(
     CARLA,
     SESSION,
-    { message, conversationId: extra.conversationId ?? null, fileIds: extra.fileIds ?? [] },
+    { message, conversationId: extra.conversationId ?? null, fileIds: extra.fileIds ?? [], agentId: extra.agentId ?? null },
     ai.options,
   );
   return { result, requests: ai.requests };
@@ -151,6 +160,7 @@ beforeEach(() => {
   db.aiCalls = [];
   db.conversations = [];
   db.createdConversations = [];
+  db.createdAgentIds = [];
   db.tasks = [];
   db.finished = [];
   db.history = [];
@@ -218,6 +228,33 @@ describe("uma mensagem do chat", () => {
       ["chief", "gpt", true, task.id],
       ["answer", "claude", true, task.id],
     ]);
+  });
+
+  it("com um agente pronto, a conversa guarda o agente e a persona dele vai na frente da resposta", async () => {
+    const { result, requests } = send("Oi, pode me ajudar?", { agentId: "ti-fullstack" });
+    const outcome = await result;
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+
+    // A conversa nasceu ligada ao agente.
+    expect(db.createdAgentIds).toEqual(["ti-fullstack"]);
+    expect(outcome.result.conversation.agentId).toBe("ti-fullstack");
+
+    // A resposta de texto recebeu a persona do agente como preâmbulo (o Chefe, não).
+    const answer = requests.find((item) => item.request.systemPrompt.includes("assistente de trabalho"));
+    expect(answer?.request.systemPrompt.startsWith("Você é Dani")).toBe(true);
+  });
+
+  it("um agente que não existe no catálogo é ignorado: conversa comum, sem persona", async () => {
+    const { result, requests } = send("Oi, tudo bem?", { agentId: "nao-existe" });
+    const outcome = await result;
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+
+    expect(db.createdAgentIds).toEqual([null]);
+    expect(outcome.result.conversation.agentId).toBeNull();
+    const answer = requests.find((item) => item.request.systemPrompt.includes("assistente de trabalho"));
+    expect(answer?.request.systemPrompt.startsWith("Você é um assistente de trabalho")).toBe(true);
   });
 
   it("sem saldo, nenhuma IA trabalha e nada é guardado", async () => {

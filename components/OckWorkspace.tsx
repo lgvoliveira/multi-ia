@@ -58,6 +58,8 @@ export function OckWorkspace({
   const ids = useId();
   const [view, setView] = useState(initialView);
   const [month, setMonth] = useState(initialMonth);
+  // O pedido de abrir o chat com um agente pronto: o nonce faz o chat reagir mesmo ao mesmo agente duas vezes seguidas.
+  const [agentChat, setAgentChat] = useState<{ agentId: string; nonce: number } | null>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const tab = view.tab;
   const suggestions = recipeCards.filter((card) => card.available);
@@ -71,6 +73,12 @@ export function OckWorkspace({
 
   function selectTab(next: WorkspaceTab) {
     changeView({ ...view, tab: next });
+  }
+
+  // Um agente foi escolhido na aba Receitas: vai para o Chat e manda o chat começar uma conversa nova com ele.
+  function startAgentChat(agentId: string) {
+    setAgentChat({ agentId, nonce: Date.now() });
+    changeView({ ...view, tab: "chat" });
   }
 
   // A receita cobrou uma etapa: busca o gasto do mês de novo, para o alto da página acompanhar.
@@ -146,6 +154,7 @@ export function OckWorkspace({
           onMonthChange={setMonth}
           recipeSuggestions={suggestions}
           onOpenRecipe={(recipeId) => changeView({ tab: "recipes", recipeId })}
+          agentChat={agentChat}
           voice={voice}
         />
       </div>
@@ -159,6 +168,7 @@ export function OckWorkspace({
           onOpen={(recipeId) => changeView({ tab: "recipes", recipeId })}
           onClose={() => changeView({ tab: "recipes", recipeId: null })}
           onSpendingChange={refreshMonth}
+          onStartAgent={startAgentChat}
         />
       </div>
       <div
