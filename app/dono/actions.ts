@@ -12,6 +12,14 @@ import { text } from "@/lib/auth/forms";
 import { inviteEmployee, issueNewLink } from "@/lib/auth/invites";
 import { createSessionClient } from "@/lib/auth/session";
 import { getViewer } from "@/lib/auth/viewer";
+import {
+  MAX_COMPANY_AGENTS,
+  parseCompanyAgentForm,
+  typedAgent,
+  type CompanyAgentState,
+} from "@/lib/ock/agent-forms";
+import { countCompanyAgents, createCompanyAgent, deleteCompanyAgent } from "@/lib/ock/company-agents";
+import { isUuid } from "@/lib/ock/chat-request";
 import { findEmployee, updateEmployee, type EmployeeChange } from "@/lib/ock/team";
 import {
   checkPageOwner,
@@ -122,6 +130,62 @@ export async function setStatusAction(_previous: MemberActionState, formData: Fo
   const status = formData.get("status");
   if (status !== "active" && status !== "disabled") return { status: "error", message: GENERIC };
   return changeEmployee(formData, { status });
+}
+
+/** O dono cria um agente próprio da empresa (Fase 2). A empresa vem do login, nunca do formulário. */
+export async function createAgentAction(
+  _previous: CompanyAgentState,
+  formData: FormData,
+): Promise<CompanyAgentState> {
+  const owner = await pageOwner(formData);
+  if (!owner.ok) return { status: "error", message: owner.message, values: typedAgent(formData) };
+  const me = owner.me;
+  const parsed = parseCompanyAgentForm(formData);
+  if (!parsed.ok) return { status: "invalid", errors: parsed.errors, values: typedAgent(formData) };
+
+  try {
+    if ((await countCompanyAgents(me.companyId)) >= MAX_COMPANY_AGENTS) {
+      return {
+        status: "error",
+        message: `A empresa já tem ${MAX_COMPANY_AGENTS} agentes. Apague um antes de criar outro.`,
+        values: typedAgent(formData),
+      };
+    }
+    const { name, role, tagline, persona, knowledge, starters } = parsed.values;
+    const card = await createCompanyAgent({
+      companyId: me.companyId,
+      createdBy: me.id,
+      name,
+      role,
+      tagline,
+      persona,
+      knowledge,
+      starters,
+    });
+    refresh();
+    return { status: "created", card };
+  } catch (error) {
+    console.error("[dono] Não deu para criar o agente:", error instanceof Error ? error.message : error);
+    return { status: "error", message: GENERIC, values: typedAgent(formData) };
+  }
+}
+
+/** O dono apaga um agente da empresa. Só da empresa dele (a conferência é no servidor). */
+export async function deleteAgentAction(_previous: MemberActionState, formData: FormData): Promise<MemberActionState> {
+  const owner = await pageOwner(formData);
+  if (!owner.ok) return { status: "error", message: owner.message };
+  const id = text(formData, "agentId");
+  if (!isUuid(id)) return { status: "error", message: NOT_FOUND };
+  try {
+    if (!(await deleteCompanyAgent(owner.me.companyId, id))) {
+      return { status: "error", message: "Este agente não foi encontrado. Recarregue a página." };
+    }
+  } catch (error) {
+    console.error("[dono] Não deu para apagar o agente:", error instanceof Error ? error.message : error);
+    return { status: "error", message: GENERIC };
+  }
+  refresh();
+  return { status: "done" };
 }
 
 /**

@@ -26,6 +26,7 @@ const db = vi.hoisted(() => ({
   conversations: [] as { id: string; title: string; updated_at: string; agent_id?: string | null }[],
   createdConversations: [] as string[],
   createdAgentIds: [] as (string | null)[],
+  companyAgents: [] as { id: string; persona: string; knowledge: string | null }[],
   tasks: [] as Record<string, unknown>[],
   finished: [] as { id: string; status: string; answer: string }[],
   history: [] as TaskRow[],
@@ -55,6 +56,10 @@ vi.mock("@/lib/runs/wallet", async (importOriginal) => {
   };
 });
 vi.mock("@/lib/runs/store", () => ({ recordAiCalls: async (rows: AiCallRow[]) => void db.aiCalls.push(...rows) }));
+vi.mock("@/lib/ock/company-agents", () => ({
+  loadCompanyAgentPersona: async (_companyId: string, id: string) =>
+    db.companyAgents.find((agent) => agent.id === id) ?? null,
+}));
 vi.mock("@/lib/ock/spending", () => ({
   loadMonth: async () => ({ spentCents: 42, budgetCents: 5000 }),
 }));
@@ -161,6 +166,7 @@ beforeEach(() => {
   db.conversations = [];
   db.createdConversations = [];
   db.createdAgentIds = [];
+  db.companyAgents = [];
   db.tasks = [];
   db.finished = [];
   db.history = [];
@@ -255,6 +261,19 @@ describe("uma mensagem do chat", () => {
     expect(outcome.result.conversation.agentId).toBeNull();
     const answer = requests.find((item) => item.request.systemPrompt.includes("assistente de trabalho"));
     expect(answer?.request.systemPrompt.startsWith("Você é um assistente de trabalho")).toBe(true);
+  });
+
+  it("agente da empresa: a persona e o conhecimento vão na frente da resposta de uma conversa que já tem o agente", async () => {
+    const AGENT = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    db.conversations = [{ id: "conversa-1", title: "Suporte", updated_at: "2026-10-25T10:00:00Z", agent_id: AGENT }];
+    db.companyAgents = [{ id: AGENT, persona: "Você é a Clara, do suporte da Loja X.", knowledge: "Horário: 9h às 18h." }];
+
+    const { result, requests } = send("Oi", { conversationId: "conversa-1" });
+    expect((await result).ok).toBe(true);
+
+    const answer = requests.find((item) => item.request.systemPrompt.includes("assistente de trabalho"));
+    expect(answer?.request.systemPrompt.startsWith("Você é a Clara")).toBe(true);
+    expect(answer?.request.systemPrompt).toContain("Horário: 9h às 18h.");
   });
 
   it("sem saldo, nenhuma IA trabalha e nada é guardado", async () => {

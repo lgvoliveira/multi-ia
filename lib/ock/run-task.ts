@@ -32,6 +32,8 @@ import { agentPersona } from "./agent-persona";
 import { findAgent } from "./agents";
 import { callAi, callImage } from "./ai-call";
 import { readAttachment } from "./attachments";
+import { isUuid } from "./chat-request";
+import { loadCompanyAgentPersona } from "./company-agents";
 import { parseChartSpec, renderChart } from "./chart";
 import { ATTACHMENTS_ONLY_PROMPT, type ChatConversation, type ChatFile, type ChatTask, type SendResult } from "./chat";
 import { heuristicRoute, parseRoute, ROUTER, routerRequest, type Route } from "./chief";
@@ -151,11 +153,11 @@ async function answerMessage(
   if (request.conversationId && !existing) {
     return refuse(404, "Esta conversa não foi encontrada. Abra outra ou comece um chat novo.");
   }
-  // O agente da conversa: numa conversa que continua, o que ela já tem; numa nova, o escolhido (se existir no catálogo).
-  // A persona (a instrução dele) só o servidor conhece; a tela manda só o id.
-  const newAgentId = request.agentId && findAgent(request.agentId) ? request.agentId : null;
-  const agentId = existing ? existing.agentId : newAgentId;
-  const persona = agentId ? agentPersona(agentId) : undefined;
+  // O agente da conversa: numa que continua, o que ela já tem; numa nova, o escolhido. Resolve a persona (de fábrica,
+  // em código, ou da empresa, no banco); um agente desconhecido é ignorado (conversa comum). A persona só o servidor vê.
+  const resolved = await resolveAgent(existing ? existing.agentId : (request.agentId ?? null), me.companyId);
+  const newAgentId = existing ? null : resolved.id;
+  const persona = resolved.persona;
 
   const uploads = await loadAttachments(session, me.id, request.fileIds);
   if (!uploads) return refuse(404, "Um dos arquivos anexados não foi encontrado. Anexe de novo.");
@@ -381,6 +383,29 @@ function finished(answer: string, deliveries: ChatFile[] = [], chart: string | n
 
 function failed(answer: string): Outcome {
   return { status: "failed", answer, deliveries: [], chart: null };
+}
+
+/** Junta a persona do agente da empresa com o que ele sempre deve saber (o conhecimento, quando houver). */
+function companyPersona(agent: { persona: string; knowledge: string | null }): string {
+  if (!agent.knowledge) return agent.persona;
+  return `${agent.persona}\n\nO que você sempre deve saber sobre esta empresa:\n${agent.knowledge}`;
+}
+
+/**
+ * Resolve o agente de uma conversa: o id válido e a persona dele. De fábrica (lib/ock/agents.ts, persona no código) ou da
+ * empresa (banco). Um id que não é de nenhum dos dois é ignorado (id null, persona undefined → conversa comum).
+ */
+async function resolveAgent(
+  agentId: string | null,
+  companyId: string,
+): Promise<{ id: string | null; persona: string | undefined }> {
+  if (!agentId) return { id: null, persona: undefined };
+  if (findAgent(agentId)) return { id: agentId, persona: agentPersona(agentId) };
+  if (isUuid(agentId)) {
+    const agent = await loadCompanyAgentPersona(companyId, agentId);
+    if (agent) return { id: agentId, persona: companyPersona(agent) };
+  }
+  return { id: null, persona: undefined };
 }
 
 /** O Chefe decide numa tentativa só: se a IA falhar ou responder fora do formato, vale a regra simples. */

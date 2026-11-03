@@ -5,6 +5,7 @@
 // os cartões; o time de uma receita que já começou continua trabalhando no servidor e é retomado ao abri-la de novo.
 
 import { useEffect, useId, useRef } from "react";
+import type { CompanyAgentCard } from "@/lib/ock/agent-forms";
 import type { RecipeScreen } from "@/lib/recipes/screen";
 import type { RecipeSummary } from "@/lib/recipes/types";
 import type { StepCost } from "@/lib/runs/estimate";
@@ -29,6 +30,8 @@ interface WorkspaceRecipesProps {
   onSpendingChange: () => void;
   /** Abrir o chat já ligado a um agente pronto (a prateleira de agentes fica no alto desta aba). */
   onStartAgent: (agentId: string) => void;
+  /** Os agentes que a própria empresa criou (Fase 2); entram numa área "Da sua empresa". */
+  companyAgents: CompanyAgentCard[];
 }
 
 export function WorkspaceRecipes({
@@ -40,6 +43,7 @@ export function WorkspaceRecipes({
   onClose,
   onSpendingChange,
   onStartAgent,
+  companyAgents,
 }: WorkspaceRecipesProps) {
   const titleId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -80,7 +84,7 @@ export function WorkspaceRecipes({
 
   return (
     <div className={styles.page}>
-      <WorkspaceAgents onStart={onStartAgent} />
+      <WorkspaceAgents onStart={onStartAgent} companyAgents={companyAgents} />
 
       <section className={styles.shelf} aria-labelledby={titleId}>
         <div className={styles.intro}>

@@ -20,7 +20,8 @@ import {
   type ChatTask,
   type MonthSpending,
 } from "@/lib/ock/chat";
-import { findAgent, type AgentSummary } from "@/lib/ock/agents";
+import type { CompanyAgentCard } from "@/lib/ock/agent-forms";
+import { findAgent } from "@/lib/ock/agents";
 import { fileUrl, loadConversation, sendMessage, transcribeAudio, uploadAttachment } from "@/lib/ock/chat-client";
 import type { RecipeSummary } from "@/lib/recipes/types";
 import styles from "./QuickChat.module.css";
@@ -35,8 +36,18 @@ interface QuickChatProps {
   onOpenRecipe: (recipeId: string) => void;
   /** Pedido de começar o chat com um agente pronto (vindo da aba Receitas); o nonce força reagir a cada clique. */
   agentChat: { agentId: string; nonce: number } | null;
+  /** Os agentes que a empresa criou (Fase 2), para a tela achar o agente de uma conversa pelo id. */
+  companyAgents: CompanyAgentCard[];
   /** Se a voz está ligada (OCK_AI_TOOLS): mostra o botão Ditar. */
   voice: boolean;
+}
+
+/** O que a tela mostra de um agente (de fábrica ou da empresa): o mesmo nos dois. */
+interface ChatAgent {
+  name: string;
+  role: string;
+  tagline: string;
+  starters: string[];
 }
 
 /** Uma mensagem na tela: já respondida, ou esperando a resposta. */
@@ -51,9 +62,12 @@ export function QuickChat({
   recipeSuggestions,
   onOpenRecipe,
   agentChat,
+  companyAgents,
   voice,
 }: QuickChatProps) {
   const ids = useId();
+  // Acha o agente de uma conversa pelo id: de fábrica (catálogo) ou da empresa (prop). Null se não for de nenhum.
+  const agentById = (id: string): ChatAgent | null => findAgent(id) ?? companyAgents.find((a) => a.id === id) ?? null;
   const [conversations, setConversations] = useState(initialConversations);
   const [activeId, setActiveId] = useState<string | null>(null);
   // O agente da conversa aberta (null = chat comum): define a tela de boas-vindas e vai no 1º envio de uma conversa nova.
@@ -298,7 +312,7 @@ export function QuickChat({
   const canSend = !sending && uploading === 0 && !dictating && (message.trim().length > 0 || attached.length > 0);
   const inputId = `${ids}-message`;
   // O agente da conversa aberta, para a tela de boas-vindas e o cabeçalho (null = chat comum).
-  const agent = activeAgentId ? findAgent(activeAgentId) : null;
+  const agent = activeAgentId ? agentById(activeAgentId) : null;
 
   return (
     <div className={styles.layout}>
@@ -321,8 +335,8 @@ export function QuickChat({
                   disabled={sending}
                 >
                   <span className={styles.conversationTitle}>{conversation.title}</span>
-                  {conversation.agentId && findAgent(conversation.agentId) && (
-                    <span className={styles.conversationAgent}>{findAgent(conversation.agentId)!.name}</span>
+                  {conversation.agentId && agentById(conversation.agentId) && (
+                    <span className={styles.conversationAgent}>{agentById(conversation.agentId)!.name}</span>
                   )}
                 </button>
               </li>
@@ -518,7 +532,7 @@ function EmptyChat({
 }
 
 /** A tela de boas-vindas de um agente: quem ele é e perguntas de partida que, ao clicar, caem na caixa de escrever. */
-function AgentIntro({ agent, onStarter }: { agent: AgentSummary; onStarter: (starter: string) => void }) {
+function AgentIntro({ agent, onStarter }: { agent: ChatAgent; onStarter: (starter: string) => void }) {
   return (
     <div className={styles.empty}>
       <h2 className={styles.emptyTitle}>{agent.name}</h2>

@@ -11,7 +11,9 @@ import {
   type StatementLine,
 } from "@/lib/ock/statement";
 import { deadlineText, type TeamMember } from "@/lib/ock/team";
+import type { CompanyAgentCard } from "@/lib/ock/agent-forms";
 import { budgetInputValue } from "@/lib/ock/team-forms";
+import { CompanyAgents } from "./CompanyAgents";
 import { CompanyCredit } from "./CompanyCredit";
 import { DemoRecharge } from "./DemoRecharge";
 import { InviteEmployee } from "./InviteEmployeeForm";
@@ -28,6 +30,8 @@ interface OwnerHomeProps {
   months: ReadonlyMap<string, Month>;
   /** O extrato do mês da empresa (as linhas mais recentes) e se há mais. */
   statement: { lines: StatementLine[]; more: boolean };
+  /** Os agentes prontos que a empresa criou (Fase 2). */
+  agents: CompanyAgentCard[];
   /** Na visão raio-x (só no computador), mostra a recarga de teste. Em produção é sempre falso. */
   demo: boolean;
 }
@@ -51,7 +55,7 @@ function inviteInfo(person: TeamMember): { tag: string; note: string } | null {
   };
 }
 
-export function OwnerHome({ me, team, credit, months, statement, demo }: OwnerHomeProps) {
+export function OwnerHome({ me, team, credit, months, statement, agents, demo }: OwnerHomeProps) {
   const people = new Map(team.map((person) => [person.id, person.name]));
   return (
     <main className={styles.main}>
@@ -132,6 +136,17 @@ export function OwnerHome({ me, team, credit, months, statement, demo }: OwnerHo
           entregar a ela; no primeiro acesso ela cria a própria senha.
         </p>
         <InviteEmployee ownerId={me.id} />
+      </section>
+
+      <section className={styles.section} aria-labelledby="agents-title">
+        <h2 id="agents-title" className={styles.sectionTitle}>
+          Agentes da empresa <span className={styles.count}>({agents.length})</span>
+        </h2>
+        <p className={styles.sectionLead}>
+          Crie assistentes de IA próprios da sua empresa. Eles aparecem na aba Receitas da equipe, ao lado dos agentes
+          prontos, e respondem do jeito que você definir.
+        </p>
+        <CompanyAgents ownerId={me.id} agents={agents} />
       </section>
 
       <section className={styles.section} aria-labelledby="statement-title">

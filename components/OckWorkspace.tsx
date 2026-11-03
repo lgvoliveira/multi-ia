@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { QuickChat } from "@/components/QuickChat";
 import { MAX_FOLDER_NAME } from "@/lib/ock/chat";
+import type { CompanyAgentCard } from "@/lib/ock/agent-forms";
 import type { ChatConversation, ChatDelivery, ChatFolder, DeliveriesData, MonthSpending } from "@/lib/ock/chat";
 import { createFolder, deleteFolder, fileUrl, loadDeliveries, loadSpending, moveDelivery } from "@/lib/ock/chat-client";
 import { formatBRL } from "@/lib/ock/pricing";
@@ -38,6 +39,8 @@ interface OckWorkspaceProps {
   recipeCards: RecipeSummary[];
   /** As receitas prontas, com o que a tela de cada uma precisa. */
   recipes: WorkspaceRecipe[];
+  /** Os agentes prontos que a empresa criou (Fase 2); aparecem na prateleira junto com os de fábrica. */
+  companyAgents: CompanyAgentCard[];
   /** A aba e a receita com que a página abre, lidas do endereço. */
   initialView: WorkspaceView;
   /** Se a voz está ligada no chat (OCK_AI_TOOLS). */
@@ -52,6 +55,7 @@ export function OckWorkspace({
   initialMonth,
   recipeCards,
   recipes,
+  companyAgents,
   initialView,
   voice,
 }: OckWorkspaceProps) {
@@ -155,6 +159,7 @@ export function OckWorkspace({
           recipeSuggestions={suggestions}
           onOpenRecipe={(recipeId) => changeView({ tab: "recipes", recipeId })}
           agentChat={agentChat}
+          companyAgents={companyAgents}
           voice={voice}
         />
       </div>
@@ -169,6 +174,7 @@ export function OckWorkspace({
           onClose={() => changeView({ tab: "recipes", recipeId: null })}
           onSpendingChange={refreshMonth}
           onStartAgent={startAgentChat}
+          companyAgents={companyAgents}
         />
       </div>
       <div

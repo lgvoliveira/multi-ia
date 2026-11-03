@@ -1,0 +1,89 @@
+/* "Agentes da empresa" no painel do dono: a lista dos agentes criados e os campos de texto do formulário (o resto do
+   formulário reaproveita TeamForms.module.css). */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.agent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.agentMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.agentName {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+
+.agentRole {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  color: var(--color-text-muted);
+}
+
+.agentTagline {
+  font-size: var(--text-md);
+  color: var(--color-text-body);
+}
+
+.agentStarters {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Os campos longos do formulário (como ele age, o que sabe, perguntas de partida). */
+.textarea {
+  font-family: inherit;
+  width: 100%;
+  min-width: 0;
+  min-height: calc(var(--control-height) * 2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  font-size: var(--text-md);
+  line-height: var(--line-height-body);
+  color: var(--color-text);
+  background: var(--color-surface);
+  resize: vertical;
+}
+
+.textarea[aria-invalid="true"] {
+  border-color: var(--color-error-text);
+}
+
+.created {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--color-status-done-bg);
+  color: var(--color-status-done-text);
+  font-size: var(--text-md);
+}
