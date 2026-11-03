@@ -137,6 +137,107 @@
   font-weight: var(--weight-semibold);
 }
 
+/* Entregas organizadas por tarefa (pastas). */
+.newFolder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.newFolderInput {
+  flex: 1 1 260px;
+  min-width: 0;
+  height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+}
+
+.newFolderBtn {
+  height: var(--control-height);
+  padding: 0 var(--space-4);
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.newFolderBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.folder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.folderHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.folderName {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+
+.folderCount {
+  margin-left: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.folderDelete {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.folderDelete:hover:not(:disabled) {
+  color: var(--color-error-text);
+}
+
+.folderDelete:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.moveSelect {
+  height: var(--control-height-sm);
+  max-width: 180px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-body);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
 .usage {
   display: flex;
   flex-direction: column;

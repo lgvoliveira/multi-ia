@@ -12,19 +12,15 @@ import {
   ATTACHMENT_ACCEPT,
   ATTACHMENTS_CUT_NOTICE,
   ATTACHMENTS_ONLY_PROMPT,
-  EFFORT_LABEL,
   MAX_ATTACHMENTS,
   MAX_MESSAGE_CHARS,
   MAX_VOICE_SECONDS,
-  TIER_LABEL,
   type ChatConversation,
   type ChatFile,
   type ChatTask,
   type MonthSpending,
 } from "@/lib/ock/chat";
 import { fileUrl, loadConversation, sendMessage, transcribeAudio, uploadAttachment } from "@/lib/ock/chat-client";
-import { formatBRL } from "@/lib/ock/pricing";
-import { getProviderInfo } from "@/lib/providers/catalog";
 import type { RecipeSummary } from "@/lib/recipes/types";
 import styles from "./QuickChat.module.css";
 
@@ -211,10 +207,10 @@ export function QuickChat({
       setAnnouncement(result.problem);
       return;
     }
-    const { text, costCents, month } = result.data;
+    const { text, month } = result.data;
     setMessage((current) => (current.trim() ? `${current.trimEnd()} ${text}` : text).slice(0, MAX_MESSAGE_CHARS));
     onMonthChange(month);
-    setAnnouncement(`Texto ditado. ${costLabel(costCents)}. Revise e envie.`);
+    setAnnouncement("Texto ditado. Revise e envie.");
     inputRef.current?.focus();
   }
 
@@ -253,7 +249,7 @@ export function QuickChat({
     setConversations((current) => [conversation, ...current.filter((item) => item.id !== conversation.id)]);
     onMonthChange(month);
     setAnnouncement(
-      task.status === "finished" ? `Resposta pronta. ${costLabel(task.costCents)}.` : (task.answer ?? "A resposta não veio."),
+      task.status === "finished" ? "Resposta pronta." : (task.answer ?? "A resposta não veio."),
     );
   }
 
@@ -267,9 +263,7 @@ export function QuickChat({
 
   const dictating = recording || transcribing;
   const canSend = !sending && uploading === 0 && !dictating && (message.trim().length > 0 || attached.length > 0);
-  const atLimit = message.length >= MAX_MESSAGE_CHARS;
   const inputId = `${ids}-message`;
-  const counterId = `${ids}-counter`;
 
   return (
     <div className={styles.layout}>
@@ -345,7 +339,6 @@ export function QuickChat({
             maxLength={MAX_MESSAGE_CHARS}
             rows={2}
             placeholder="O que você precisa? Ex.: escreva um e-mail, gere um PDF, faça um gráfico…"
-            aria-describedby={counterId}
           />
           {(attached.length > 0 || uploading > 0) && (
             <ul className={styles.attachedList} aria-label="Arquivos anexados">
@@ -388,25 +381,28 @@ export function QuickChat({
             {voice && (
               <button
                 type="button"
-                className={styles.attach}
+                className={styles.iconButton}
                 onClick={recording ? stopDictation : () => void startDictation()}
                 disabled={sending || transcribing}
                 aria-pressed={recording}
+                aria-label={recording ? "Parar a gravação" : "Ditar por voz"}
+                title={recording ? "Parar" : "Ditar por voz"}
               >
-                {recording ? `Parar (${clock(recordedSeconds)})` : transcribing ? "Transcrevendo…" : "Ditar"}
+                {recording ? (
+                  <>
+                    <StopIcon /> {clock(recordedSeconds)}
+                  </>
+                ) : transcribing ? (
+                  "…"
+                ) : (
+                  <MicIcon />
+                )}
               </button>
             )}
-            <span id={counterId} className={styles.counter} data-full={atLimit}>
-              {formatNumber(message.length)}/{formatNumber(MAX_MESSAGE_CHARS)} caracteres
-            </span>
             <button type="submit" className={styles.send} disabled={!canSend}>
               {sending ? "Respondendo…" : "Enviar"}
             </button>
           </div>
-          <p className={styles.hint}>
-            PDF, texto (.txt, .csv, .md, .json) ou imagem, até 5 arquivos de 10 MB.
-            {voice && ` Ditar: até ${MAX_VOICE_SECONDS / 60} minutos de voz, que viram texto aqui para você revisar.`}
-          </p>
         </form>
 
         <p className={styles.visuallyHidden} aria-live="polite">
@@ -437,8 +433,8 @@ function EmptyChat({
     <div className={styles.empty}>
       <h2 className={styles.emptyTitle}>Descreva a tarefa. O Chefe cuida do resto.</h2>
       <p className={styles.emptyText}>
-        Peça em português normal: o Chefe escolhe a IA que resolve melhor pelo menor custo, e cada resposta mostra quanto
-        custou. Dá para anexar um arquivo e pedir um PDF, uma planilha, um gráfico ou um projeto em .zip.
+        Peça em português normal e o time de IAs resolve para você. Dá para anexar um arquivo e pedir um PDF, uma
+        planilha, um gráfico ou um projeto em .zip.
       </p>
       {shown.length > 0 && (
         <div className={styles.suggestions}>
@@ -493,24 +489,9 @@ function UserBubble({ prompt, attachments }: { prompt: string; attachments: Chat
 }
 
 function Answer({ task }: { task: ChatTask }) {
-  // O pedido de imagem não passou por nenhuma IA: não tem "feito por".
-  const madeByAi = task.action !== "imagem";
+  // O funcionário não vê qual IA respondeu nem o custo (isso é do painel do dono): só a resposta.
   return (
     <article className={styles.answer}>
-      <div className={styles.byline}>
-        {madeByAi && (
-          <span className={styles.who}>
-            <AiDot provider={task.provider} size="large" />
-            <span>
-              {task.reason ? "O Chefe escolheu " : "Feito por "}
-              <strong>{getProviderInfo(task.provider).name}</strong> ({TIER_LABEL[task.tier]}, esforço{" "}
-              {EFFORT_LABEL[task.effort]})
-            </span>
-          </span>
-        )}
-        <span className={styles.cost}>{costLabel(task.costCents)}</span>
-      </div>
-      {task.reason && <p className={styles.reason}>{task.reason}</p>}
       {task.notice && <p className={styles.notice}>{task.notice}</p>}
       {task.attachmentsCut && <p className={styles.notice}>{ATTACHMENTS_CUT_NOTICE}</p>}
       <p className={styles.answerText}>{task.answer}</p>
@@ -631,10 +612,11 @@ function StopIcon() {
   );
 }
 
-function costLabel(cents: number): string {
-  return cents > 0 ? `Custou ${formatBRL(cents)}` : "Sem custo";
-}
-
-function formatNumber(value: number): string {
-  return value.toLocaleString("pt-BR");
+function MicIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8" />
+    </svg>
+  );
 }

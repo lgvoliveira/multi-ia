@@ -128,7 +128,7 @@ describe("gasto do mês", () => {
     });
     const details = await loadMemberMonthDetails(session, "pessoa-1", new Date("2026-10-25T15:00:00Z"));
     expect(details.lines).toHaveLength(1);
-    expect(details.deliveries).toEqual([{ id: "a1", name: "site.html", createdAt: "2026-10-25T12:00:00Z" }]);
+    expect(details.deliveries).toEqual([{ id: "a1", name: "site.html", createdAt: "2026-10-25T12:00:00Z", folderId: null }]);
     expect(calls).toContainEqual(["files", "eq", "member_id", "pessoa-1"]);
     expect(calls).toContainEqual(["files", "eq", "kind", "delivery"]);
     expect(calls).toContainEqual(["files", "gte", "created_at", "2026-10-01T03:00:00.000Z"]);

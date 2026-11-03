@@ -11,8 +11,9 @@ vi.mock("@/lib/auth/session", () => ({ signedInSession: async () => ({}) }));
 vi.mock("@/lib/ock/files", () => ({
   listOwnDeliveries: async (_session: unknown, memberId: string) => {
     state.asked.push(memberId);
-    return [{ id: "a1", name: "relatorio.pdf", createdAt: "2026-10-25T10:00:00Z" }];
+    return [{ id: "a1", name: "relatorio.pdf", createdAt: "2026-10-25T10:00:00Z", folderId: null }];
   },
+  listFolders: async () => [],
 }));
 
 describe("rota GET /api/ock/deliveries", () => {
@@ -24,7 +25,8 @@ describe("rota GET /api/ock/deliveries", () => {
     const response = await GET();
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      deliveries: [{ id: "a1", name: "relatorio.pdf", createdAt: "2026-10-25T10:00:00Z" }],
+      deliveries: [{ id: "a1", name: "relatorio.pdf", createdAt: "2026-10-25T10:00:00Z", folderId: null }],
+      folders: [],
     });
     expect(state.asked).toEqual(["dona"]);
   });

@@ -130,7 +130,7 @@
   --result-aside-min-width: 300px;
   --preview-height: clamp(420px, 70vh, 720px);
   /* Espaço de trabalho (chat): a lista de conversas ao lado da conversa (abaixo destas larguras, ela vai para cima) */
-  --chat-sidebar-width: 240px;
+  --chat-sidebar-width: 220px;
   --chat-main-min-width: 360px;
   --chat-column-max-width: 760px; /* largura das mensagens dentro da conversa */
   --chat-messages-height: clamp(320px, 55vh, 680px); /* altura da conversa (depois disso, ela rola) */
