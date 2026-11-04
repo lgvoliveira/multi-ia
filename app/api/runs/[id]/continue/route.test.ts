@@ -6,6 +6,7 @@ import type { ProviderId } from "@/lib/providers/types";
 import { getRecipe } from "@/lib/recipes/catalog";
 import { SAMPLE_PROPOSAL_FINAL } from "@/lib/recipes/commercial-proposal.samples";
 import { SAMPLE_FINAL_SITE } from "@/lib/recipes/create-site.samples";
+import { SAMPLE_POSTS_FINAL } from "@/lib/recipes/social-posts.samples";
 import { stepChargeCents } from "@/lib/runs/billing";
 import { estimateCents, stepCosts } from "@/lib/runs/estimate";
 import { INTERNAL_SECRET_HEADER, internalRunSecret } from "@/lib/runs/internal-secret";
@@ -332,6 +333,42 @@ describe("rota interna POST /api/runs/[id]/continue", () => {
         name: "Proposta-comercial.docx",
         mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       }),
+    );
+  });
+
+  it("os posts rodam os dois redatores ao mesmo tempo; se o GPT falhar, o Gemini assume o Redator 1 e o Claude segue no 2", async () => {
+    const posts = getRecipe("social-posts")!;
+    const estimate = estimateCents(stepCosts(posts), resolveTeam(posts));
+    db.row = { ...db.row, recipe_id: posts.id, request: "Posts para a Pão Quente.", team: resolveTeam(posts) };
+    wallet.holds = [{ id: "hold-1", amountCents: estimate, chargedCents: 0, open: true, expiresAt: IN_AN_HOUR() }];
+    // O GPT (Redator 1 e Editor) falha nas 3 tentativas de cada etapa: a reserva de cada papel assume.
+    mockAi.failures = { gpt: 3 };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.useFakeTimers();
+    const done = runToEnd();
+    await vi.advanceTimersByTimeAsync(30_000);
+    await done;
+    warn.mockRestore();
+
+    expect(db.row.status).toBe("finished");
+    expect(db.row.result).toBe(SAMPLE_POSTS_FINAL);
+    const switches = db.events.filter((event) => event.type === "step-switched");
+    expect(switches.map((event) => [event.stepId, event.from, event.to])).toEqual([
+      ["draft1", "gpt", "gemini"],
+      ["final", "gpt", "claude"],
+    ]);
+    // Uma cobrança por etapa, com a IA que fez: os dois redatores continuaram sendo de IAs diferentes.
+    expect(wallet.charges.map((charge) => [charge.description, charge.provider])).toEqual([
+      ["Posts para redes sociais · Estrategista", "claude"],
+      ["Posts para redes sociais · Redator 1", "gemini"],
+      ["Posts para redes sociais · Redator 2", "claude"],
+      ["Posts para redes sociais · Editor", "claude"],
+    ]);
+    expect(wallet.holds[0].open).toBe(false);
+    expect(saveRunDelivery).toHaveBeenCalledTimes(1);
+    expect(saveRunDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({ id: RUN_ID }),
+      expect.objectContaining({ name: "Posts-para-redes-sociais.docx" }),
     );
   });
 

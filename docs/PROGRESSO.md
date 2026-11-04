@@ -4,8 +4,9 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 04/11/2026 (painel do dono: créditos por pessoa + custo total da empresa; antes: 26/10/2026, noite (nova ordem do Luis: as IAs de verdade ficam para o fim, em seis blocos; o
-bloco 1 aprovado na issue #54, e o primeiro PR dele, a receita "Proposta comercial", esperando o teste do Luis)
+**Última atualização:** 04/11/2026 (painel do dono: créditos por pessoa + custo total da empresa; antes: 27/10/2026,
+madrugada — bloco 1, issue #54: a Proposta comercial na `main`, pelo merge do Luis em 26/10; o segundo PR, a receita
+"Posts para redes sociais", esperando o teste do Luis)
 **Etapa atual:** bloco 1 da nova ordem (etapa 6, o produto do funcionário). A etapa 5 (base para empresas) está no ar e
 testada; o teste com créditos dela passou para o bloco 6. Veja "Nova ordem (26/10)", antes do "Próximo passo"
 
@@ -156,7 +157,7 @@ checagens (lint, testes, build) do PR #19 não foram conferidas aqui.
 | 4 | Primeiro fluxo ponta a ponta (1 receita, 3 IAs, resultado na tela) | Parte A concluída; IAs reais entraram no PR #19, falta conferir com chaves | Claude Code |
 | — | Virada para empresas: visão nova, `FALHAS.md`, alinhar com o parceiro | Em andamento (22/10) | Cowork |
 | 5 | Base para empresas: banco novo do zero (no repositório), login de verdade, cadastro de empresa, painel do dono protegido, OCK rodando no computador do Luis | Concluída (26/10): PR 1 (banco), PR 2a (login), PR 2b (convite), o PR 3 inteiro (3a, 3b, 3c, aba Receitas e 3d, painel do dono) e as IAs de verdade sem gastar (#47 a #52) no ar e testados. O teste com créditos passou para o bloco 6 | Claude Code |
-| 6 = bloco 1 | O produto do funcionário: 3 receitas para PMEs, receita própria e escolha livre da IA no chat | Em andamento (issue #54, aprovada em 26/10): 1º PR, a Proposta comercial, esperando o teste | Claude Code |
+| 6 = bloco 1 | O produto do funcionário: 3 receitas para PMEs, receita própria e escolha livre da IA no chat | Em andamento (issue #54, aprovada em 26/10): 1º PR, a Proposta comercial, no ar (#56); 2º PR, os Posts, esperando o teste | Claude Code |
 | bloco 2 | Conta de verdade: e-mail próprio do login (F30), recuperar a senha do dono, termos de uso e privacidade com aceite (F05) | A fazer | Claude Code (+ guia para criar a conta do e-mail) |
 | bloco 3 | Painel interno da plataforma: empresas, recarga pela tela, extrato de recargas, custo real das IAs contra o cobrado | A fazer | Claude Code |
 | 7 = bloco 4 | Pagamento, só preparar: comparação de gateways (Pix, boleto, cartão); programar só depois da decisão do preço (F04) e do CNPJ | A fazer | Claude Code (pesquisa) + Luis e parceiro (decisão) |
@@ -1094,7 +1095,7 @@ publicar com a IA simulada só para empresas de teste ou fazer a sessão 2 logo 
 no chat; (5) a receita própria: montar, salvar, editar e apagar; (6) a receita própria: rodar.
 
 **PR 1 — o resultado em texto e a receita "Proposta comercial" (26/10, Claude Code; branch `feat/receita-proposta`,
-empilhado sobre o PR #55)**
+empilhado sobre o PR #55). No ar: o Luis fez o merge do #55 e do #56 na noite de 26/10, com os branches apagados.**
 - **A receita:** o **Consultor** (Claude, reserva GPT) monta o roteiro; o **Redator** (GPT, reserva Claude) escreve; o
   **Cliente exigente** (Claude, reserva GPT) lê como quem vai receber a proposta e aponta o que melhorar; o Redator
   aplica os apontamentos e entrega a **versão final** (esforço baixo, partindo da própria proposta). Quatro etapas, uma
@@ -1119,14 +1120,47 @@ empilhado sobre o PR #55)**
   360 e 320 px sem rolar para o lado).
 - **Guia do teste:** `docs/GUIA-TESTE-PROPOSTA.md`, para o Luis seguir com o chat do Claude.
 
+**PR 2 — a receita "Posts para redes sociais" (27/10, Claude Code; branch `feat/receita-posts`, a partir da `main`)**
+- **A receita** (`lib/recipes/social-posts.ts`): o **Estrategista** (Claude, reserva GPT) define o objetivo, o público,
+  a rede (o Instagram, se o pedido não disser), o tom, a chamada para ação e **três ângulos**; o **Redator 1** (GPT) e o
+  **Redator 2** (Claude) escrevem **ao mesmo tempo** um post para cada ângulo, com a mesma tarefa; o **Editor** (GPT,
+  reserva Claude) compara as duas versões de cada ângulo, fica com a melhor (ou junta o melhor das duas) e entrega **3
+  opções**, cada uma com a chamada, o texto, as hashtags e uma ideia de imagem, e uma seção "Antes de publicar" com os
+  [marcadores] a preencher. Regras dos posts (`POST_RULES`): tamanho e hashtags por rede (Instagram, Facebook, LinkedIn,
+  WhatsApp) e nada de promessa que a empresa não pode cumprir ou provar. Resultado: "Seus posts estão prontos" e o Word
+  "Posts-para-redes-sociais.docx". Estimativa **"até R$ 2,03"** (R$ 1,81 com o Gemini num redator); com a IA simulada,
+  uns R$ 0,12.
+- **Decisões do Claude:** (1) a **reserva dos dois redatores é o Gemini**: se o GPT ou o Claude falhar, os dois
+  continuam sendo de IAs diferentes (com a reserva cruzada, os dois virariam a mesma IA); (2) os **três ângulos** vêm do
+  Estrategista, e cada redator escreve um post por ângulo: a disputa fica justa (o Editor compara versão com versão do
+  mesmo ângulo) e as 3 opções saem diferentes entre si; (3) **esforço baixo nos redatores** (textos curtos não pedem
+  "pensamento") e médio no Estrategista e no Editor, o que deixa a receita mais barata que a proposta; (4) o Editor
+  não cita os redatores no texto final; quem quiser ver a disputa abre "Ver todas as etapas".
+- **Correção (F56, nova e resolvida):** a caixa "O documento vai tomando forma" da tela ao vivo foi feita para o site e
+  aparecia também na proposta (já na `main`) e nos posts com o nome errado "Plano do chefe". Agora só aparece nas
+  receitas que terminam num site (`components/run-state.ts`).
+- **Risco aceito (F57, nova):** o Editor (GPT) escolhe entre os textos de um redator GPT e de um Claude e pode preferir
+  os do GPT. É o time aprovado na issue #54; a comparação com um Editor de outra IA fica para o bloco 6.
+- **Como foi conferido:** lint, tipos, 563 testes (13 novos: a receita, os dois redatores ao mesmo tempo com a troca do
+  GPT pelo Gemini no servidor, as hashtags que não viram título, a estimativa de toda receita contra o gasto da IA
+  simulada, o documento vivo só no site) e build. **Ponta a ponta** contra o projeto de testes, com uma empresa de
+  mentira sem crédito: 60 conferências, todas certas (os cartões; a estimativa e a troca de IA na tela do time; a recusa
+  sem crédito; a tela ao vivo com os dois redatores lado a lado, o aviso de troca e sem a caixa do site, que continua
+  no site; a execução encerrada pelo servidor cobrando as 4 etapas e guardando o Word uma vez só; a tela do resultado,
+  Copiar e o Word com as hashtags e os emojis; Entregas, Meus gastos e o painel do dono, sem o pedido; colega, dono e
+  outra empresa sem acesso ao Word; 360 e 320 px).
+- **Guia do teste:** `docs/GUIA-TESTE-POSTS.md`, com uma parte opcional que faz o GPT simulado falhar
+  (`MOCK_AI_FAILURES`, só naquele terminal).
+- **Ideia de ajuste (para a lista de depois do MVP):** um "Copiar" para cada opção de post (hoje o botão copia as 3).
+
 ## Próximo passo
 
-1. **Luis:** testar o PR da Proposta comercial com o `docs/GUIA-TESTE-PROPOSTA.md` (uns 25 minutos, com o chat do
-   Claude) e contar ao Claude Code como foi. O merge vem depois, na ordem: primeiro o PR #55 (com **Delete branch**),
-   depois o da proposta.
-2. **Claude Code, numa conversa nova:** o PR 2 do bloco 1, a receita "Posts para redes sociais" (estrategista, dois
-   redatores ao mesmo tempo com IAs diferentes e um editor), empilhado sobre o PR da proposta, que traz o resultado em
-   texto.
+1. **Luis:** contar ao Claude Code como foi o teste da Proposta comercial (`docs/GUIA-TESTE-PROPOSTA.md`), se ele foi
+   feito antes do merge do #56. Depois, testar o PR dos Posts com o `docs/GUIA-TESTE-POSTS.md` (uns 25 minutos, com o
+   chat do Claude) e contar como foi. O merge vem depois do teste.
+2. **Claude Code, numa conversa nova:** o PR 3 do bloco 1, a receita "Relatório mensal para cliente" (analista dos
+   números, redator e conferente que checa cada número contra os dados colados no pedido), e com ela sai o último
+   "Em breve". Parte da `main` se o PR dos posts já tiver entrado; senão, empilhado sobre ele.
 3. **Luis, quando quiser (no chat do Claude, sem código):** as decisões provisórias da madrugada, o câmbio e a F52
    (lista no resumo da madrugada, acima). A sessão 2 do guia das IAs de verdade ficou para o bloco 6.
 4. **Com o parceiro (sem código):** avisar da F27, caso o banco dele esteja no ar com dados de verdade; confirmar a

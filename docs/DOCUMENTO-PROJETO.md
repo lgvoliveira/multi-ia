@@ -13,6 +13,7 @@ receita vira entrega, o funcionário lê o que o dono vê, e só o mês atual po
 Atualizado em 26/10/2026 com a nova ordem do Luis: as IAs de verdade ficam para o fim, depois de seis blocos (próximos
 passos, no fim deste documento). No mesmo dia, as receitas do MVP para PMEs (issue #54): Proposta comercial, Posts para
 redes sociais e Relatório mensal para cliente, ao lado de "Criar um site"; o resultado em texto vira um arquivo Word.
+Atualizado em 27/10/2026 com a receita "Posts para redes sociais" pronta (bloco 1, PR 2).
 
 ## Visão e problema
 
@@ -125,6 +126,10 @@ são produtos separados e ficam para integrações futuras.
   pronta" mostra o texto com títulos, listas e destaques, com **Copiar o texto** e **Baixar em Word**, e o Word vira uma
   entrega da pessoa, como o site. O nome do arquivo vem da receita, nunca do pedido (F49). Falta a receita
   própria (etapa 6, F08). O dono tem atalhos no topo do site entre o painel e o espaço de trabalho.
+- A receita **"Posts para redes sociais"** (bloco 1, PR 2): o Estrategista define o público e três ângulos, dois
+  redatores de IAs diferentes escrevem ao mesmo tempo um post para cada ângulo, e o Editor fica com a melhor versão de
+  cada um. A tela "Seus posts estão prontos" mostra 3 opções, cada uma com a chamada, o texto, as hashtags e uma ideia
+  de imagem, com Copiar e Word, como a proposta.
 - O Chefe escolhe sozinho a IA, o nível, o esforço e a ação (responder, documento, gráfico, projeto, pesquisa, código ou
   imagem). **Falta** o funcionário poder escolher (etapa 6).
 - Imagem, pesquisa na internet, rodar código e voz chegam com as IAs de verdade (decisão do Luis, 25/10): até lá,
@@ -141,14 +146,15 @@ As receitas ficam dentro do workspace do funcionário. As do MVP foram escolhida
 para o trabalho de uma pequena empresa, no lugar de três da lista original, pensadas para a pessoa comum.
 
 O MVP começa com receitas cujo resultado é texto ou código, que só exigem as APIs. As que precisam de ambiente de execução ficam para depois.
-Nas receitas de texto, quem revisa é sempre de outra família de IA que quem escreveu, e ninguém inventa preço, prazo,
+Nas receitas de texto, quem revisa é sempre de outra família de IA que quem escreveu (com uma exceção aceita nos posts,
+F57), e ninguém inventa preço, prazo,
 número, cliente ou depoimento: o que falta vira um marcador entre colchetes, como [valor], para a pessoa preencher.
 
 | Receita | Time sugerido | Fase |
 | --- | --- | --- |
 | Criar um site | Chefe + pesquisador + front-end + back-end, com revisão do chefe | MVP (pronta) |
 | Proposta comercial | Consultor (roteiro) + redator + cliente exigente (crítica), e o redator entrega a versão final em Word | MVP (pronta desde 26/10) |
-| Posts para redes sociais | Estrategista + dois redatores ao mesmo tempo (IAs diferentes) + editor que escolhe as melhores legendas | MVP |
+| Posts para redes sociais | Estrategista (público e três ângulos) + dois redatores ao mesmo tempo (GPT e Claude), um post por ângulo + editor que fica com a melhor versão de cada ângulo e entrega 3 opções em Word | MVP (pronta desde 27/10) |
 | Relatório mensal para cliente | Analista dos números + redator + conferente que checa cada número contra os dados | MVP |
 | Escrever e revisar um texto | Redator + revisor crítico | Ideia (o chat já faz boa parte) |
 | Pesquisa com checagem cruzada | Pesquisador + verificador + síntese | Ideia (depende da pesquisa na internet de verdade) |
