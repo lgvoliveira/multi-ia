@@ -6,7 +6,7 @@
 
 import { useId, useRef, useState } from "react";
 import { fileUrl, loadMemberMonth } from "@/lib/ock/chat-client";
-import { formatBRL } from "@/lib/ock/pricing";
+import { formatBRL, formatCredits } from "@/lib/ock/pricing";
 import {
   formatDateTime,
   monthActivityText,
@@ -24,16 +24,26 @@ interface MemberMonthProps {
   month: Month;
   /** O teto do mês, em centavos; null = sem teto. */
   budgetCents: number | null;
+  /** O que a empresa ainda tem disponível: é o "restante" de quem não tem teto próprio. */
+  companyAvailableCents: number;
 }
 
 type Details = { state: "loading" } | { state: "ready"; data: MemberMonthDetails } | { state: "error"; problem: string };
 
-export function MemberMonth({ memberId, name, month, budgetCents }: MemberMonthProps) {
+export function MemberMonth({ memberId, name, month, budgetCents, companyAvailableCents }: MemberMonthProps) {
   const panelId = useId();
   const [open, setOpen] = useState(false);
   const [details, setDetails] = useState<Details>({ state: "loading" });
   // Só a resposta do último pedido vale (abrir, fechar e abrir de novo depressa).
   const lastRequest = useRef(0);
+
+  // Os números desta pessoa no mês, em créditos (1 crédito = R$ 1): o que gastou, o que ainda pode gastar e o total que
+  // a empresa pôs nela (o gasto mais o que está separado agora para tarefas em andamento). Nada por IA aqui: isso é
+  // visão do dono, no painel de custo total, lá em cima.
+  const spent = month.spentCents;
+  const invested = month.spentCents + month.reservedCents;
+  const remaining =
+    budgetCents === null ? Math.max(0, companyAvailableCents) : Math.max(0, budgetCents - invested);
 
   function toggle() {
     const next = !open;
@@ -49,21 +59,42 @@ export function MemberMonth({ memberId, name, month, budgetCents }: MemberMonthP
 
   return (
     <div className={styles.month}>
-      <p className={styles.spent}>
-        Gasto do mês: <strong>{formatBRL(month.spentCents)}</strong>
-        {budgetCents === null ? " · sem teto" : ` de ${formatBRL(budgetCents)}`}
-      </p>
+      <dl className={styles.credits} aria-label={`Créditos de ${name} neste mês`}>
+        <div className={styles.credit}>
+          <dt className={styles.creditLabel}>Créditos gastos</dt>
+          <dd className={styles.creditValue}>
+            {formatCredits(spent)}
+            <span className={styles.creditSub}>{formatBRL(spent)} neste mês</span>
+          </dd>
+        </div>
+        <div className={styles.credit}>
+          <dt className={styles.creditLabel}>Créditos restantes</dt>
+          <dd className={styles.creditValue}>
+            {formatCredits(remaining)}
+            <span className={styles.creditSub}>
+              {budgetCents === null
+                ? "do crédito da empresa (sem teto próprio)"
+                : `de ${formatCredits(budgetCents)} no mês`}
+            </span>
+          </dd>
+        </div>
+        <div className={styles.credit}>
+          <dt className={styles.creditLabel}>Total investido nesta pessoa</dt>
+          <dd className={styles.creditValue}>
+            {formatCredits(invested)}
+            <span className={styles.creditSub}>
+              {formatBRL(invested)} neste mês
+              {month.reservedCents > 0 && ` · inclui ${formatBRL(month.reservedCents)} separado agora`}
+            </span>
+          </dd>
+        </div>
+      </dl>
       {budgetCents !== null && (
         <BudgetBar
-          spentCents={month.spentCents}
+          spentCents={invested}
           budgetCents={budgetCents}
           label={`Quanto do teto do mês ${name} já usou`}
         />
-      )}
-      {month.reservedCents > 0 && (
-        <p className={styles.note}>
-          Mais {formatBRL(month.reservedCents)} separado agora para o que está em andamento (também conta no teto).
-        </p>
       )}
       <p className={styles.activity}>{monthActivityText(month)}</p>
 

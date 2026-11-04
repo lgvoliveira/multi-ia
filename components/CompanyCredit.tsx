@@ -1,8 +1,9 @@
-// O alto do painel do dono: quanto a equipe ainda pode usar, o saldo e o que está separado agora, e o gasto do mês
-// dividido por IA (cada uma com a sua cor, e sempre com o nome e o valor escritos ao lado). A recarga é feita pela
-// nossa equipe, por Pix (F25): o dono não coloca crédito sozinho.
+// O alto do painel do dono: o PAINEL DE CUSTO TOTAL da empresa (04/11/2026, pedido do Leandro). Quanto a equipe ainda
+// pode usar, o saldo, o que foi colocado em créditos neste mês, o gasto do mês, quantas execuções houve, e o gasto do mês
+// dividido por IA (cada uma com a sua cor, e sempre com o nome e o valor escritos ao lado). Só o dono vê isto: o card de
+// cada funcionário mostra créditos, nunca o gasto por IA. A recarga é feita pela nossa equipe, por Pix (F25).
 
-import { formatBRL } from "@/lib/ock/pricing";
+import { formatBRL, formatCredits } from "@/lib/ock/pricing";
 import { signedBRL, type CompanyCredit as Credit, type ProviderSpending } from "@/lib/ock/statement";
 import { getProviderInfo } from "@/lib/providers/catalog";
 import type { ProviderId } from "@/lib/providers/types";
@@ -22,7 +23,17 @@ function isProviderSlice(line: ProviderSpending): line is ProviderSlice {
   return line.provider !== null;
 }
 
-export function CompanyCredit({ credit }: { credit: Credit }) {
+interface CompanyCreditProps {
+  credit: Credit;
+  /** O que entrou em créditos neste mês (as recargas somadas), em centavos. */
+  topupCents: number;
+  /** Se o extrato do mês tinha mais linhas do que as lidas: aí a soma das recargas pode estar incompleta. */
+  topupPartial: boolean;
+  /** Quantas execuções a equipe fez neste mês (tarefas rápidas + receitas). */
+  runs: number;
+}
+
+export function CompanyCredit({ credit, topupCents, topupPartial, runs }: CompanyCreditProps) {
   const withoutCredit = credit.availableCents <= 0;
   // O saldo pode ficar um pouco negativo (F29): aí não há nada disponível, e o saldo aparece com o sinal.
   const available = Math.max(0, credit.availableCents);
@@ -34,7 +45,7 @@ export function CompanyCredit({ credit }: { credit: Credit }) {
   return (
     <section className={styles.card} aria-labelledby="credit-title">
       <h2 id="credit-title" className={styles.title}>
-        Crédito da empresa
+        Custo total da empresa
       </h2>
 
       <div className={styles.figure}>
@@ -43,7 +54,7 @@ export function CompanyCredit({ credit }: { credit: Credit }) {
           {formatBRL(available)}
         </span>
         <span className={styles.detail}>
-          Saldo {balance}
+          {formatCredits(available)} · saldo {balance}
           {credit.reservedCents > 0 &&
             ` · ${formatBRL(credit.reservedCents)} separado agora para tarefas em andamento`}
         </span>
@@ -55,9 +66,43 @@ export function CompanyCredit({ credit }: { credit: Credit }) {
         </p>
       )}
 
+      {/* O resumo do mês em números: o que entrou, o que saiu e quanto trabalho isso rendeu. */}
+      <dl className={styles.stats} aria-label="Resumo do mês da empresa">
+        <div className={styles.stat}>
+          <dt className={styles.statLabel}>Colocado em créditos neste mês</dt>
+          <dd className={styles.statValue}>
+            {formatCredits(topupCents)}
+            <span className={styles.statSub}>
+              {formatBRL(topupCents)} em recargas{topupPartial && " (soma das recargas mais recentes)"}
+            </span>
+          </dd>
+        </div>
+        <div className={styles.stat}>
+          <dt className={styles.statLabel}>Gasto neste mês</dt>
+          <dd className={styles.statValue}>
+            {formatCredits(credit.monthSpentCents)}
+            <span className={styles.statSub}>{formatBRL(credit.monthSpentCents)} com as IAs</span>
+          </dd>
+        </div>
+        <div className={styles.stat}>
+          <dt className={styles.statLabel}>Execuções neste mês</dt>
+          <dd className={styles.statValue}>
+            {runs.toLocaleString("pt-BR")}
+            <span className={styles.statSub}>tarefas rápidas e receitas da equipe</span>
+          </dd>
+        </div>
+        <div className={styles.stat}>
+          <dt className={styles.statLabel}>Saldo da empresa</dt>
+          <dd className={styles.statValue}>
+            {balance}
+            <span className={styles.statSub}>tudo que entrou menos tudo que saiu</span>
+          </dd>
+        </div>
+      </dl>
+
       <div className={styles.month}>
         <p className={styles.monthTotal}>
-          Gasto da empresa neste mês: <strong>{formatBRL(credit.monthSpentCents)}</strong>
+          Gasto do mês em cada IA: <strong>{formatBRL(credit.monthSpentCents)}</strong>
         </p>
         {barTotal > 0 ? (
           <>

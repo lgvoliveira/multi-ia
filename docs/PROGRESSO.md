@@ -4,10 +4,19 @@
 > Atualizado pelo Claude ao fim de cada etapa.
 > **Versão oficial:** este arquivo, no repositório `C:\Users\Luis\projetos\multi-ia\docs\`.
 
-**Última atualização:** 26/10/2026, noite (nova ordem do Luis: as IAs de verdade ficam para o fim, em seis blocos; o
+**Última atualização:** 04/11/2026 (painel do dono: créditos por pessoa + custo total da empresa; antes: 26/10/2026, noite (nova ordem do Luis: as IAs de verdade ficam para o fim, em seis blocos; o
 bloco 1 aprovado na issue #54, e o primeiro PR dele, a receita "Proposta comercial", esperando o teste do Luis)
 **Etapa atual:** bloco 1 da nova ordem (etapa 6, o produto do funcionário). A etapa 5 (base para empresas) está no ar e
 testada; o teste com créditos dela passou para o bloco 6. Veja "Nova ordem (26/10)", antes do "Próximo passo"
+
+> **Nota (04/11/2026, Claudio):** o painel do dono mudou a pedido do Leandro. O card de cada pessoa da equipe
+> (`MemberMonth`) deixou de ter qualquer gasto por IA e passou a mostrar só três números, em créditos e em reais:
+> **créditos gastos**, **créditos restantes** (do teto; sem teto, o disponível da empresa) e **total investido nesta
+> pessoa** (gasto + separado agora). O alto do painel (`CompanyCredit`) virou o **painel de custo total da empresa**:
+> disponível, colocado em créditos no mês (recargas), gasto no mês, execuções no mês (tarefas rápidas + receitas) e
+> saldo, e só ali fica o gasto do mês por IA. Convenção adotada: **1 crédito = R$ 1,00** (`formatCredits` em
+> `lib/ock/pricing.ts`), a confirmar com o Leandro/Luis. Limite conhecido: a soma das recargas vem das 200 linhas mais
+> recentes do extrato do mês; se houver mais, a tela avisa "soma das recargas mais recentes".
 
 > **Nota (27/10/2026):** adicionada a **voz de saída** — botão "Ouvir" em cada resposta da IA, que lê o texto
 > em voz alta via TTS da OpenAI (`lib/ock/speak.ts`, rota `app/api/ock/speak`, botão no `QuickChat`/`Answer`).

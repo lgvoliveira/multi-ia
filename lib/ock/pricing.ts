@@ -79,6 +79,15 @@ export function formatBRL(cents: number): string {
 }
 
 /**
+ * Os mesmos centavos vistos como CRÉDITOS da empresa: 1 crédito = R$ 1,00 (o crédito é o real que entrou na carteira,
+ * já descontada a taxa de entrada). 1234 → "12,34 créditos". Decisão de 04/11/2026, a confirmar com o Leandro/Luis.
+ */
+export function formatCredits(cents: number): string {
+  const value = (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${value} ${cents === 100 ? "crédito" : "créditos"}`;
+}
+
+/**
  * Taxa da OCK na ENTRADA do crédito, em escala regressiva: quanto mais a empresa coloca, menor a taxa.
  * Cobrada uma vez, quando o dinheiro entra; o que vira crédito depois não é taxado de novo.
  */

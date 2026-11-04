@@ -57,17 +57,23 @@ function inviteInfo(person: TeamMember): { tag: string; note: string } | null {
 
 export function OwnerHome({ me, team, credit, months, statement, agents, demo }: OwnerHomeProps) {
   const people = new Map(team.map((person) => [person.id, person.name]));
+  // Para o painel de custo total: o que entrou em créditos neste mês (as recargas do extrato) e quantas execuções a
+  // equipe fez (as contas do mês de cada pessoa, feitas no banco).
+  const topupCents = statement.lines
+    .filter((line) => line.kind === "topup")
+    .reduce((total, line) => total + line.amountCents, 0);
+  const runs = [...months.values()].reduce((total, month) => total + month.quickTasks + month.recipes, 0);
   return (
     <main className={styles.main}>
       <section className={styles.intro}>
         <p className={styles.kicker}>Painel do dono</p>
         <h1 className={styles.title}>{me.companyName}</h1>
         <p className={styles.lead}>
-          Olá, {firstName(me.name)}. Aqui você acompanha o crédito da empresa e o que cada pessoa da equipe fez e gastou.
+          Olá, {firstName(me.name)}. Aqui você acompanha o custo total da empresa e os créditos de cada pessoa da equipe.
         </p>
       </section>
 
-      <CompanyCredit credit={credit} />
+      <CompanyCredit credit={credit} topupCents={topupCents} topupPartial={statement.more} runs={runs} />
 
       {demo && (
         <section className={styles.section} aria-labelledby="demo-topup-title">
@@ -111,6 +117,7 @@ export function OwnerHome({ me, team, credit, months, statement, agents, demo }:
                   name={person.name}
                   month={months.get(person.id) ?? emptyMonth(person.id)}
                   budgetCents={person.monthlyBudgetCents}
+                  companyAvailableCents={credit.availableCents}
                 />
                 {person.role === "employee" && (
                   <MemberActions
